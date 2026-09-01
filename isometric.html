@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아이소메트릭은 직교투영이 아니다</title>
+<meta name="description" content="고정 시점 게임이 골라야 하는 투영. 아이소메트릭과 직교투영이 어떻게 다르고, Godot Camera3D 의 size 기본값 1.0 이 왜 함정인가.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F6F8FA; --card:#FFFFFF; --ink:#16202B; --muted:#5B6B7B;
+  --rule:#C7D0DA; --grid:rgba(22,32,43,.045); --code:#F1F3F5;
+  --accent:#D9480F; --blue:#1864AB; --ok:#2B8A3E;
+  --shadow:0 1px 2px rgba(22,32,43,.06),0 8px 24px -12px rgba(22,32,43,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+    --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+    --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+  --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+  --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px;color:var(--ink);
+  font-family:Chivo,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:16.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:76ch;margin:0 auto;padding:clamp(24px,5vw,56px) clamp(16px,4vw,28px) 96px;
+  display:flex;flex-direction:column;gap:38px}
+.back{text-decoration:none;color:var(--muted);font-size:14px;font-weight:700}
+.back:hover{color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(30px,6.5vw,50px);font-weight:900;line-height:1.08;margin:.25em 0 .3em;letter-spacing:-.025em}
+.lede{font-size:clamp(16px,2.3vw,19px);color:var(--muted);margin:0}
+h2{font-size:clamp(20px,3.4vw,27px);font-weight:900;margin:0 0 .5em;
+  padding-bottom:.3em;border-bottom:2px solid var(--ink);letter-spacing:-.015em}
+h3{font-size:17.5px;font-weight:700;margin:1.6em 0 .4em}
+section>p:first-of-type{margin-top:0}
+p{margin:.9em 0}
+.verified{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.tag{background:var(--card);border:1px solid var(--rule);border-radius:999px;
+  padding:4px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.tag b{color:var(--ok)}
+figure{margin:1.4em 0;background:var(--card);border:1px solid var(--rule);border-radius:14px;
+  padding:20px 18px 14px;box-shadow:var(--shadow)}
+figure svg{display:block;width:100%;height:auto}
+figcaption{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.6}
+table{border-collapse:collapse;width:100%;margin:1.3em 0;font-size:14.5px;
+  display:block;overflow-x:auto}
+th,td{border:1px solid var(--rule);padding:9px 13px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:700;white-space:nowrap}
+tr:nth-child(even) td{background:var(--card)}
+td b{color:var(--accent)}
+code{background:var(--code);border:1px solid var(--rule);padding:.12em .38em;
+  border-radius:4px;font-size:.87em}
+pre{background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.6;box-shadow:var(--shadow);margin:1.2em 0}
+pre code{background:none;border:0;padding:0}
+blockquote{margin:1.3em 0;padding:14px 18px;background:var(--card);
+  border-left:3px solid var(--accent);border-radius:0 10px 10px 0;box-shadow:var(--shadow)}
+blockquote>*:first-child{margin-top:0} blockquote>*:last-child{margin-bottom:0}
+.formula{background:var(--card);border:1px solid var(--rule);border-radius:10px;
+  padding:16px;text-align:center;font-family:"IBM Plex Mono",monospace;
+  font-size:17px;font-weight:600;box-shadow:var(--shadow);margin:1.2em 0}
+footer{border-top:1px solid var(--rule);padding-top:22px;font-size:13.5px;color:var(--muted)}
+footer a{color:var(--blue)}
+.k{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="back" href="index.html">← 목차</a>
+  <div class="eyebrow" style="margin-top:18px">Godot 4.7 · Camera3D</div>
+  <h1>아이소메트릭은<br>직교투영이 아니다</h1>
+  <p class="lede">
+    고정 시점 게임은 반드시 투영 방식을 골라야 합니다.
+    그런데 이 두 말이 자주 뒤섞여 쓰이고, <b>하나가 다른 하나의 부분집합</b>이라는 데서
+    혼란이 시작됩니다.
+  </p>
+  <div class="verified">
+    <span class="tag"><b>✓</b> 4.7.2.stable 에서 확인</span>
+    <span class="tag"><b>✓</b> 값은 <code>--doctool</code> 추출</span>
+  </div>
+</header>
+
+<section>
+  <h2>세계를 납작하게 만드는 두 가지 방법</h2>
+  <p>
+    <b>투영(projection)</b>은 3D 공간을 2D 화면에 어떻게 눌러 담을지 정합니다.
+    둘의 차이는 <b>시선(sight line)이 어디로 향하는가</b> 하나뿐입니다.
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 640 240" role="img" aria-label="원근투영과 직교투영의 시선 비교">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g font-family="Chivo, sans-serif" font-size="12" fill="currentColor">
+        <!-- 원근 -->
+        <g transform="translate(0,0)" color="#D9480F">
+          <text x="20" y="20" font-weight="700" font-size="13">원근 (Perspective)</text>
+          <circle cx="36" cy="120" r="6" fill="currentColor"/>
+          <text x="18" y="148" font-size="11" fill="#5B6B7B">카메라</text>
+          <g stroke="currentColor" stroke-width="1.2" opacity=".55" marker-end="url(#ah)">
+            <path d="M42 120 L250 52"/><path d="M42 120 L250 92"/>
+            <path d="M42 120 L250 148"/><path d="M42 120 L250 188"/>
+          </g>
+          <rect x="120" y="98" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="228" y="82" width="76" height="76" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="126" y="160" font-size="11" fill="#5B6B7B">가까운 상자</text>
+          <text x="230" y="176" font-size="11" fill="#5B6B7B">먼 상자 — 더 크게 보임</text>
+        </g>
+        <line x1="330" y1="24" x2="330" y2="216" stroke="#C7D0DA" stroke-width="1" stroke-dasharray="4 4"/>
+        <!-- 직교 -->
+        <g transform="translate(340,0)" color="#1864AB">
+          <text x="20" y="20" font-weight="700" font-size="13">직교 (Orthographic)</text>
+          <line x1="30" y1="60" x2="30" y2="184" stroke="currentColor" stroke-width="2"/>
+          <text x="6" y="200" font-size="11" fill="#5B6B7B">카메라 평면</text>
+          <g stroke="currentColor" stroke-width="1.2" opacity=".55" marker-end="url(#ah)">
+            <path d="M34 76 L250 76"/><path d="M34 108 L250 108"/>
+            <path d="M34 140 L250 140"/><path d="M34 172 L250 172"/>
+          </g>
+          <rect x="96" y="98" width="52" height="52" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="212" y="98" width="52" height="52" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="86" y="168" font-size="11" fill="#5B6B7B">가까운 상자</text>
+          <text x="200" y="168" font-size="11" fill="#5B6B7B">먼 상자 — 크기 같음</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>
+      <b>원근</b>은 시선이 한 점에서 퍼져 나가므로 멀수록 작아집니다.
+      <b>직교</b>는 시선이 나란해서 상자가 어디 있든 크기가 같습니다.
+      위 두 상자는 월드 공간에서 <b>완전히 같은 크기</b>입니다.
+    </figcaption>
+  </figure>
+
+  <table>
+    <tr><th></th><th>원근 (Perspective)</th><th>직교 (Orthographic)</th></tr>
+    <tr><td>먼 물체</td><td>작아진다</td><td><b>크기가 그대로</b></td></tr>
+    <tr><td>시선</td><td>카메라 한 점으로 모인다</td><td><b>나란하다</b></td></tr>
+    <tr><td>사람 눈과 같은가</td><td>그렇다</td><td>아니다</td></tr>
+    <tr><td>Godot 상수</td><td><code>PROJECTION_PERSPECTIVE</code> (기본 <code>0</code>)</td><td><code>PROJECTION_ORTHOGONAL</code> (<code>1</code>)</td></tr>
+    <tr><td>시야 크기를 정하는 값</td><td><code>fov</code> — 기본 <code>75.0</code></td><td><code>size</code> — 기본 <b><code>1.0</code></b></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>아이소메트릭은 부분집합이지 동의어가 아니다</h2>
+  <p>
+    <b>직교는 투영 방식</b>이고, <b>아이소메트릭은 그 투영을 바라보는 하나의 각도</b>입니다.
+    정확히는 <b>세 축이 모두 똑같은 비율로 줄어드는</b> 그 각도입니다.
+  </p>
+
+  <pre><code>직교투영 (orthographic)
+ └─ 아이소메트릭  ← 직교이면서 + 특정한 각도일 때</code></pre>
+
+  <p>
+    <span class="k">모든 아이소메트릭 뷰는 직교입니다. 그러나 직교 뷰가 아이소메트릭인 경우는
+    거의 없습니다.</span>
+  </p>
+
+  <p>
+    바닥에 정사각형 타일을 하나 놓고, 카메라를 Y축으로 45° 돌린 뒤 아래로 θ 만큼 기울여 봅시다.
+    화면에 보이는 타일의 <b>가로 대 세로 비율</b>은 이렇게 나옵니다.
+  </p>
+
+  <div class="formula">비율 = 1 / sin(θ)</div>
+
+  <figure>
+    <svg viewBox="0 0 640 210" role="img" aria-label="피치 30도, 35.264도, 45도에서 같은 타일이 보이는 모습">
+      <g font-family="Chivo, sans-serif" font-size="12" fill="currentColor">
+        <g transform="translate(60,30)">
+          <polygon points="80,0 160,40 80,80 0,40" fill="none" stroke="#5B6B7B" stroke-width="2"/>
+          <text x="80" y="112" text-anchor="middle" font-weight="700" font-size="13">30°</text>
+          <text x="80" y="132" text-anchor="middle" font-size="11.5" fill="#5B6B7B">2.000 : 1</text>
+          <text x="80" y="150" text-anchor="middle" font-size="11" fill="#5B6B7B">2D 타일 게임</text>
+        </g>
+        <g transform="translate(250,30)">
+          <polygon points="70,0 140,40.4 70,80.8 0,40.4" fill="none" stroke="#D9480F" stroke-width="2.5"/>
+          <text x="70" y="112" text-anchor="middle" font-weight="700" font-size="13" fill="#D9480F">35.264°</text>
+          <text x="70" y="132" text-anchor="middle" font-size="11.5" fill="#5B6B7B">1.732 : 1</text>
+          <text x="70" y="150" text-anchor="middle" font-size="11" fill="#D9480F" font-weight="700">진짜 아이소메트릭</text>
+        </g>
+        <g transform="translate(440,30)">
+          <polygon points="62,0 124,44 62,88 0,44" fill="none" stroke="#5B6B7B" stroke-width="2"/>
+          <text x="62" y="112" text-anchor="middle" font-weight="700" font-size="13">45°</text>
+          <text x="62" y="132" text-anchor="middle" font-size="11.5" fill="#5B6B7B">1.414 : 1</text>
+          <text x="62" y="150" text-anchor="middle" font-size="11" fill="#5B6B7B">더 내려다보는 시점</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>
+      <b>같은 타일, 세 가지 피치.</b> 엄밀한 의미에서 아이소메트릭인 것은 가운데 하나뿐입니다.
+      그런데 <b>셋 다 직교</b>이고, 업계에서는 <b>셋 다 "아이소메트릭"이라고 부릅니다.</b>
+    </figcaption>
+  </figure>
+
+  <table>
+    <tr><th>피치</th><th>비율</th><th>어디서 만나는가</th></tr>
+    <tr><td><b>30°</b></td><td>2.000 : 1</td><td>2D 타일 게임 — 고전적인 64×32px 타일. 엄밀히는 <b>다이메트릭</b></td></tr>
+    <tr><td><b>35.264°</b></td><td>1.732 : 1</td><td><b>진짜 아이소메트릭</b> — <code>arctan(1/√2)</code>. 제도·기술 일러스트</td></tr>
+    <tr><td><b>45°</b></td><td>1.414 : 1</td><td>더 내려다보는 시점. 직교이지만 아이소메트릭은 아님</td></tr>
+  </table>
+
+  <h3>단어 말고 숫자를 말하세요</h3>
+  <p>
+    "아이소메트릭"은 업계에서 <b>고정 각도 쿼터뷰 전반</b>을 가리키는 말로 느슨하게 쓰입니다.
+    대화에서는 괜찮지만 <b>명세서에서는 쓸모가 없습니다.</b>
+    각도가 실제로 중요한 상황 — 기존 아트 파이프라인에 맞추거나 임포스터를 구울 때 —
+    에서는 <b>피치를 도(degree)로 적으세요.</b>
+  </p>
+</section>
+
+<section>
+  <h2>고정 시점 게임이 직교를 원하는 이유</h2>
+  <p>겉모습을 넘어, <b>투영 방식이 쓸 수 있는 최적화를 바꿉니다.</b></p>
+
+  <table>
+    <tr><th></th><th>직교</th><th>원근</th></tr>
+    <tr><td><b>임포스터</b><br><span style="font-size:12.5px;color:var(--muted)">한 각도에서 구운 빌보드</span></td>
+        <td><b>화면 어디서나 정확</b></td><td>가장자리에서 어긋난다</td></tr>
+    <tr><td>줌</td><td>값 하나: <code>size</code></td><td>카메라 거리 + near/far</td></tr>
+    <tr><td>전술 가독성</td><td>화면 전체가 같은 축척</td><td>위로 갈수록 압축된다</td></tr>
+    <tr><td>깊이감</td><td>없다 — 셰이딩으로 직접 만든다</td><td>공짜로 얻는다</td></tr>
+  </table>
+
+  <blockquote>
+    <p>
+      <b>값을 하는 것은 임포스터 줄입니다.</b>
+      임포스터는 멀리 있는 진짜 메시를 대신하는 <b>미리 렌더링한 이미지</b>입니다.
+      원근에서는 화면 <b>중앙과 모서리의 시선이 서로 달라서</b>, 한 각도로 구운 이미지가
+      중앙을 벗어나면 미묘하게 틀립니다.
+      직교에서는 <b>모든 시선이 나란하므로 한 각도로 구운 것이 화면 전체에서 정확합니다.</b>
+    </p>
+  </blockquote>
+</section>
+
+<section>
+  <h2>모두가 걸리는 그 설정</h2>
+  <p>
+    인스펙터에서 투영을 바꾸는 것은 드롭다운 하나입니다.
+    <b>함정은 그 옆의 값</b>입니다.
+  </p>
+
+  <h3><code>size</code> 의 기본값은 <b>1.0</b> 입니다</h3>
+  <p>
+    직교에서 <code>size</code> 는 <b>보이는 높이(미터)</b> 입니다.
+    이 값을 건드리지 않고 투영만 바꾸면 <b>카메라가 월드를 1미터만 보여줍니다.</b>
+    화면에는 숫자가 잘못된 것으로 보이지 않고 <b>카메라가 고장 난 것처럼</b> 보입니다.
+  </p>
+
+  <h3>카메라를 움직여도 더 이상 줌이 되지 않습니다</h3>
+  <p>
+    직교에서는 <b>거리와 <code>size</code> 가 무관합니다.</b>
+    카메라를 뒤로 빼도 화면이 넓어지지 않고, <b>near·far 평면을 지나며 잘려 나가기만</b> 합니다.
+    줌은 <code>size</code> 를 바꿔서 합니다.
+  </p>
+
+  <table>
+    <tr><th>프로퍼티</th><th>기본값</th><th>고정 시점 카메라라면</th></tr>
+    <tr><td><code>projection</code></td><td><code>0</code> · Perspective</td><td><b>Orthogonal</b></td></tr>
+    <tr><td><code>size</code></td><td><code>1.0</code></td><td><b>반드시 설정</b> — 아래 표</td></tr>
+    <tr><td><code>fov</code></td><td><code>75.0</code></td><td>직교에서는 무시됨. 그대로 둔다</td></tr>
+    <tr><td><code>keep_aspect</code></td><td><code>1</code> · Keep Height</td><td>유지 — <code>size</code> 가 높이라는 뜻</td></tr>
+    <tr><td><code>near</code> / <code>far</code></td><td><code>0.05</code> / <code>4000.0</code></td><td>여전히 잘라낸다. 높은 지형을 확인</td></tr>
+  </table>
+
+  <p>
+    <code>keep_aspect</code> 가 <b>Keep Height</b> 이므로 <code>size</code> 는 <b>보이는 높이</b>이고
+    너비는 화면 비율을 따라갑니다. 디자인이 실제로 고정하는 쪽이 어느 변인지에 따라
+    거꾸로 계산하세요.
+  </p>
+
+  <table>
+    <tr><th>화면</th><th>비율</th><th><code>size</code></th><th>보이는 영역</th><th>중심 → 모서리</th></tr>
+    <tr><td>1080 × 1920 세로</td><td>9:16</td><td><b>15</b></td><td>8.4 × 15 m</td><td><b>8.6 m</b></td></tr>
+    <tr><td>1920 × 1080 가로</td><td>16:9</td><td><b>22.5</b></td><td>40 × 22.5 m</td><td><b>22.9 m</b></td></tr>
+  </table>
+
+  <blockquote>
+    <p>
+      <b>모서리까지의 거리는 일찍 계산해 둘 값입니다.</b>
+      네트워크 게임에서는 서버가 <b>관심 반경(interest radius)</b> 안의 것만 보내 줍니다.
+      화면 모서리가 그 반경 너머까지 닿으면
+      <b>플레이어는 화면 가장자리에서 몬스터가 사라지는 것을 보게 됩니다.</b>
+    </p>
+    <p style="margin-bottom:0">
+      <span class="k">줌 상한은 카메라 설정이 아니라 서버와의 계약입니다.</span>
+    </p>
+  </blockquote>
+</section>
+
+<section>
+  <h2>라리엔 3D 는 어떻게 하는가</h2>
+  <p>
+    이 스킬이 규범으로 삼는 프로젝트는 <b>회전 3축을 전부 잠급니다</b> —
+    피치 <b>−45°</b> 고정, 요 고정, 롤 <b>0°</b>. 허용되는 조작은 <b>줌뿐</b>입니다.
+  </p>
+  <p>
+    각도를 고정해서 얻는 것이 앞의 임포스터 줄과 정확히 이어집니다.
+    지물의 <b>보이는 면만</b> 만들면 되고(건물 5면 → 3면, 아트 물량 약 40% 감소),
+    오클루전을 <b>한 세트만</b> 사전 계산하며, 임포스터를 <b>한 각도만</b> 구우면 됩니다.
+  </p>
+  <p>
+    자세한 내용은 <a href="doc.html?d=3d-core">좌표·변환·카메라</a>,
+    <a href="doc.html?d=lowend-3gb-60fps">3GB 폰에서 60 FPS</a>,
+    <a href="doc.html?d=openworld-3d">오픈월드</a> 문서에 있습니다.
+  </p>
+</section>
+
+<footer>
+  기본값은 <code>godot --headless --doctool</code> 로 4.7.2.stable 에서 읽었습니다.
+  비율은 45° 요 직교 카메라 아래 바닥 정사각형에 대한 <code>1/sin(θ)</code> 입니다.
+  <br><br>
+  <a href="index.html">← 문서 목차로</a> ·
+  <a href="https://github.com/thruthesky/godot">GitHub 저장소</a>
+</footer>
+
+</div>
+</body>
+</html>

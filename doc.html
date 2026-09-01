@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>문서 · Godot 3D 개발 스킬</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F6F8FA; --card:#FFFFFF; --ink:#16202B; --muted:#5B6B7B;
+  --rule:#C7D0DA; --grid:rgba(22,32,43,.045); --hi:#FFF3BF;
+  --accent:#D9480F; --blue:#1864AB; --code:#F1F3F5;
+  --shadow:0 1px 2px rgba(22,32,43,.06),0 8px 24px -12px rgba(22,32,43,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+    --rule:#2B3742; --grid:rgba(223,231,237,.05); --hi:#5C4813;
+    --accent:#FF7A45; --blue:#5DA9E9; --code:#0B1116;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+  --rule:#2B3742; --grid:rgba(223,231,237,.05); --hi:#5C4813;
+  --accent:#FF7A45; --blue:#5DA9E9; --code:#0B1116;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px; color:var(--ink);
+  font-family:Chivo,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:16px;line-height:1.72;-webkit-font-smoothing:antialiased}
+code,pre,kbd{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+.topbar{position:sticky;top:0;z-index:30;background:var(--card);border-bottom:1px solid var(--rule)}
+.topbar .in{max-width:1240px;margin:0 auto;padding:10px clamp(14px,3vw,24px);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.back{text-decoration:none;color:var(--ink);font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
+.back:hover{color:var(--accent)}
+.crumb{font-size:13px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+.tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+#find{padding:7px 11px;font-size:13px;font-family:inherit;background:var(--paper);color:var(--ink);
+  border:1px solid var(--rule);border-radius:8px;outline:none;width:170px}
+#find:focus{border-color:var(--accent)}
+.ghlink{font-size:13px;color:var(--blue);text-decoration:none}
+.ghlink:hover{text-decoration:underline}
+#toctoggle{display:none;background:var(--paper);border:1px solid var(--rule);border-radius:8px;
+  padding:7px 11px;font-size:13px;font-family:inherit;color:var(--ink);cursor:pointer}
+
+.layout{max-width:1240px;margin:0 auto;padding:0 clamp(14px,3vw,24px);
+  display:grid;grid-template-columns:250px minmax(0,1fr);gap:36px;align-items:start}
+nav.toc{position:sticky;top:64px;max-height:calc(100vh - 84px);overflow-y:auto;
+  padding:20px 0 40px;font-size:13.5px}
+nav.toc .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;margin-bottom:10px}
+nav.toc a{display:block;padding:3px 10px;color:var(--muted);text-decoration:none;
+  border-left:2px solid transparent;line-height:1.45;margin:1px 0}
+nav.toc a:hover{color:var(--ink);border-left-color:var(--rule)}
+nav.toc a.h3{padding-left:22px;font-size:12.5px}
+nav.toc a.h4{padding-left:32px;font-size:12px;opacity:.85}
+nav.toc a.cur{color:var(--accent);border-left-color:var(--accent);font-weight:700}
+
+article{padding:28px 0 96px;min-width:0}
+article>*:first-child{margin-top:0}
+h1,h2,h3,h4{line-height:1.25;letter-spacing:-.01em;scroll-margin-top:70px}
+h1{font-size:clamp(28px,5vw,40px);font-weight:900;margin:0 0 .5em;padding-bottom:.3em;border-bottom:2px solid var(--ink)}
+h2{font-size:clamp(21px,3.4vw,27px);font-weight:900;margin:2em 0 .6em;padding-bottom:.25em;border-bottom:1px solid var(--rule)}
+h3{font-size:18.5px;font-weight:700;margin:1.7em 0 .5em}
+h4{font-size:16px;font-weight:700;margin:1.4em 0 .4em;color:var(--muted)}
+p,ul,ol{margin:.85em 0}
+li{margin:.3em 0}
+a{color:var(--blue)}
+hr{border:0;border-top:1px solid var(--rule);margin:2.2em 0}
+blockquote{margin:1.2em 0;padding:12px 18px;background:var(--card);
+  border-left:3px solid var(--accent);border-radius:0 10px 10px 0;box-shadow:var(--shadow)}
+blockquote>*:first-child{margin-top:0} blockquote>*:last-child{margin-bottom:0}
+code{background:var(--code);padding:.12em .38em;border-radius:4px;font-size:.88em;
+  border:1px solid var(--rule);word-break:break-word}
+pre{background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.6;box-shadow:var(--shadow)}
+pre code{background:none;border:0;padding:0;font-size:inherit}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;
+  display:block;overflow-x:auto;white-space:nowrap}
+th,td{border:1px solid var(--rule);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:700}
+tr:nth-child(even) td{background:var(--card)}
+mark{background:var(--hi);color:inherit;border-radius:2px;padding:0 2px}
+.loading,.err{padding:60px 0;text-align:center;color:var(--muted)}
+.err b{display:block;font-size:18px;color:var(--accent);margin-bottom:8px}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;gap:0}
+  nav.toc{position:static;max-height:none;padding:16px;background:var(--card);
+    border:1px solid var(--rule);border-radius:12px;margin-top:16px;display:none}
+  nav.toc.open{display:block}
+  #toctoggle{display:block}
+  table{white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="in">
+  <a class="back" href="index.html">← 목차</a>
+  <span class="crumb" id="crumb"></span>
+  <div class="tools">
+    <button id="toctoggle">목차</button>
+    <input id="find" type="search" placeholder="이 문서에서 찾기" autocomplete="off">
+    <a class="ghlink" id="gh" href="#" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</div></div>
+
+<div class="layout">
+  <nav class="toc" id="toc"><div class="t">이 문서의 목차</div><div id="tocbody"></div></nav>
+  <article id="doc"><div class="loading">문서를 불러오는 중…</div></article>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
+<script>
+const P = new URLSearchParams(location.search);
+const SLUG = (P.get('d') || 'basics').replace(/[^a-z0-9-]/g, '');
+const Q = P.get('q') || '';
+const REPO = 'https://github.com/thruthesky/godot/blob/main/references/' + SLUG + '.md';
+
+document.getElementById('crumb').textContent = 'references/' + SLUG + '.md';
+document.getElementById('gh').href = REPO;
+
+const slugify = s => s.trim().toLowerCase()
+  .replace(/[`*_\[\]()#]/g, '').replace(/[^\w\s가-힣-]/g, '')
+  .replace(/\s+/g, '-').slice(0, 80);
+
+fetch('references/' + SLUG + '.md')
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+  .then(md => {
+    marked.setOptions({ gfm: true, breaks: false });
+    const art = document.getElementById('doc');
+    art.innerHTML = marked.parse(md);
+
+    // .md 내부 링크를 뷰어 링크로 바꾼다
+    art.querySelectorAll('a[href$=".md"]').forEach(a => {
+      const f = a.getAttribute('href').replace(/^\.\//, '').replace(/\.md$/, '');
+      if (!f.includes('/')) a.setAttribute('href', 'doc.html?d=' + f);
+    });
+
+    // 제목에 id 를 달고 목차를 만든다
+    const heads = art.querySelectorAll('h2, h3, h4');
+    const seen = {}, tb = document.getElementById('tocbody');
+    heads.forEach(h => {
+      let id = slugify(h.textContent);
+      if (seen[id]) { seen[id]++; id += '-' + seen[id]; } else seen[id] = 1;
+      h.id = id;
+      const a = document.createElement('a');
+      a.href = '#' + id;
+      a.textContent = h.textContent;
+      a.className = h.tagName.toLowerCase() === 'h2' ? '' : h.tagName.toLowerCase();
+      tb.appendChild(a);
+    });
+
+    document.title = (art.querySelector('h1')?.textContent || SLUG) + ' · Godot 스킬';
+
+    // 현재 위치 표시
+    const links = [...tb.querySelectorAll('a')];
+    const io = new IntersectionObserver(es => {
+      es.forEach(e => {
+        if (!e.isIntersecting) return;
+        links.forEach(l => l.classList.toggle('cur', l.getAttribute('href') === '#' + e.target.id));
+      });
+    }, { rootMargin: '-70px 0px -75% 0px' });
+    heads.forEach(h => io.observe(h));
+
+    if (Q) { document.getElementById('find').value = Q; highlight(Q); }
+  })
+  .catch(e => {
+    document.getElementById('doc').innerHTML =
+      `<div class="err"><b>문서를 불러오지 못했습니다</b>
+       <code>references/${SLUG}.md</code> (${e.message})<br><br>
+       <a href="index.html">← 목차로</a></div>`;
+  });
+
+// ── 문서 내 찾기 ──────────────────────────
+let marks = [];
+function clearMarks() {
+  marks.forEach(m => { const p = m.parentNode; p.replaceChild(document.createTextNode(m.textContent), m); p.normalize(); });
+  marks = [];
+}
+function highlight(q) {
+  clearMarks();
+  q = q.trim();
+  if (q.length < 2) return;
+  const art = document.getElementById('doc');
+  const w = document.createTreeWalker(art, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => (n.parentNode.tagName === 'SCRIPT' || n.parentNode.tagName === 'STYLE')
+      ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+  });
+  const targets = [];
+  while (w.nextNode()) {
+    const i = w.currentNode.data.toLowerCase().indexOf(q.toLowerCase());
+    if (i >= 0) targets.push([w.currentNode, i]);
+  }
+  targets.forEach(([node, i]) => {
+    const after = node.splitText(i);
+    after.splitText(q.length);
+    const m = document.createElement('mark');
+    m.textContent = after.textContent;
+    after.parentNode.replaceChild(m, after);
+    marks.push(m);
+  });
+  if (marks.length) marks[0].scrollIntoView({ block: 'center' });
+}
+let ft;
+document.getElementById('find').addEventListener('input', e => {
+  clearTimeout(ft); ft = setTimeout(() => highlight(e.target.value), 200);
+});
+document.getElementById('toctoggle').addEventListener('click', () => {
+  document.getElementById('toc').classList.toggle('open');
+});
+addEventListener('keydown', e => {
+  const f = document.getElementById('find');
+  if (e.key === '/' && document.activeElement !== f) { e.preventDefault(); f.focus(); f.select(); }
+  if (e.key === 'Escape') { f.value = ''; clearMarks(); f.blur(); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Godot 3D 개발 스킬</title>
+<meta name="description" content="최신 Godot 으로 3D 게임을 만들 때 따르는 개발 규범과 검증 도구. 문서 32편·30,000줄, 값은 전부 엔진에서 직접 확인한 것.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F6F8FA; --card:#FFFFFF; --ink:#16202B; --muted:#5B6B7B;
+  --rule:#C7D0DA; --grid:rgba(22,32,43,.045); --hi:#FFF3BF;
+  --accent:#D9480F; --blue:#1864AB; --ok:#2B8A3E;
+  --shadow:0 1px 2px rgba(22,32,43,.06),0 8px 24px -12px rgba(22,32,43,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+    --rule:#2B3742; --grid:rgba(223,231,237,.05); --hi:#5C4813;
+    --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+  --rule:#2B3742; --grid:rgba(223,231,237,.05); --hi:#5C4813;
+  --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px;
+  color:var(--ink);
+  font-family:Chivo,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+code,kbd,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,4vw,28px) 96px}
+
+/* ── 헤더 ─────────────────────────────── */
+header{margin-bottom:36px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(30px,6vw,46px);font-weight:900;line-height:1.1;margin:.3em 0 .35em;letter-spacing:-.02em}
+.lede{font-size:clamp(16px,2.2vw,19px);color:var(--muted);max-width:62ch;margin:0}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.stat{background:var(--card);border:1px solid var(--rule);border-radius:999px;padding:5px 13px;font-size:13px;font-weight:600}
+.stat b{color:var(--accent)}
+
+/* ── 검색 ─────────────────────────────── */
+.searchbar{position:sticky;top:0;z-index:20;padding:14px 0 12px;
+  background:linear-gradient(var(--paper) 78%,transparent);margin-bottom:8px}
+.sfield{position:relative;display:flex;align-items:center}
+.sfield svg{position:absolute;left:14px;width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2;pointer-events:none}
+#q{width:100%;padding:14px 96px 14px 44px;font-size:16px;font-family:inherit;
+  background:var(--card);color:var(--ink);border:1.5px solid var(--rule);border-radius:12px;
+  box-shadow:var(--shadow);outline:none}
+#q:focus{border-color:var(--accent)}
+#q::placeholder{color:var(--muted)}
+.slash{position:absolute;right:14px;display:flex;gap:6px;align-items:center;pointer-events:none}
+kbd{background:var(--paper);border:1px solid var(--rule);border-bottom-width:2px;border-radius:5px;
+  padding:2px 6px;font-size:11px;color:var(--muted);font-weight:600}
+#clear{position:absolute;right:12px;background:none;border:0;color:var(--muted);cursor:pointer;
+  font-size:20px;line-height:1;padding:6px 8px;display:none}
+#clear:hover{color:var(--accent)}
+.count{font-size:13px;color:var(--muted);padding:2px 2px 0}
+
+/* ── 그룹·카드 ────────────────────────── */
+.group{margin-top:36px}
+.ghead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  padding-bottom:8px;border-bottom:2px solid var(--ink);margin-bottom:16px}
+.ghead h2{font-size:19px;font-weight:900;margin:0;letter-spacing:-.01em}
+.ghead p{margin:0;font-size:13px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.card{display:block;background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:16px 18px;text-decoration:none;box-shadow:var(--shadow);
+  transition:transform .12s ease,border-color .12s ease}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card h3{margin:0 0 5px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.card p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.55}
+.star{color:var(--accent);font-size:12px}
+.meta{margin-top:9px;font-size:11.5px;color:var(--muted);display:flex;gap:10px;align-items:center}
+.meta .slug{font-family:"IBM Plex Mono",monospace}
+.hits{margin-top:10px;padding-top:9px;border-top:1px dashed var(--rule);
+  font-size:12.5px;color:var(--muted);display:none}
+.hits.on{display:block}
+.hits li{margin:3px 0;list-style:none}
+.hits ul{margin:0;padding:0}
+mark{background:var(--hi);color:inherit;border-radius:2px;padding:0 1px}
+
+.empty{display:none;text-align:center;padding:56px 20px;color:var(--muted)}
+.empty.on{display:block}
+.empty b{display:block;font-size:18px;color:var(--ink);margin-bottom:6px}
+
+/* ── 푸터 ─────────────────────────────── */
+footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--rule);
+  font-size:13px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between}
+footer a{color:var(--blue);text-decoration:none}
+footer a:hover{text-decoration:underline}
+.install{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:16px 18px;margin-top:24px;box-shadow:var(--shadow)}
+.install h3{margin:0 0 8px;font-size:14px;font-weight:900;letter-spacing:.02em}
+.install pre{margin:0;background:var(--paper);border:1px solid var(--rule);border-radius:8px;
+  padding:11px 13px;overflow-x:auto;font-size:13px}
+.install p{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.note{background:var(--card);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
+  padding:14px 18px;margin-top:20px;font-size:14px;box-shadow:var(--shadow)}
+.note b{color:var(--accent)}
+@media (max-width:560px){ .slash{display:none} #q{padding-right:44px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Claude Code Skill · Godot 4.7</div>
+  <h1>Godot 3D 개발 스킬</h1>
+  <p class="lede">
+    최신 Godot 으로 3D 게임을 만들 때 따르는 <b>개발 규범</b>이자,
+    엔진을 배우는 <b>학습 자료</b>입니다.
+    적힌 값은 전부 <b>엔진에서 직접 추출·실행해 확인한 것</b>입니다.
+  </p>
+  <div class="stats">
+    <span class="stat">문서 <b>32</b>편</span>
+    <span class="stat">약 <b>30,000</b>줄</span>
+    <span class="stat">소제목 <b>1,335</b>개</span>
+    <span class="stat">기준 <b>4.7.2.stable</b></span>
+    <span class="stat">최소 사양 <b>3GB RAM</b></span>
+  </div>
+</header>
+
+<div class="searchbar">
+  <div class="sfield">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" autocomplete="off" spellcheck="false"
+           placeholder="무엇이 궁금한가요?  예) 충돌, 카메라, 점프, 드로우콜, 빌드">
+    <div class="slash"><kbd>/</kbd><span style="font-size:11px;color:var(--muted)">로 검색</span></div>
+    <button id="clear" title="지우기">&times;</button>
+  </div>
+  <div class="count" id="count"></div>
+</div>
+
+<section class="group" id="essays">
+  <div class="ghead"><h2>해설</h2><p>문서 밖에서 따로 풀어 쓴 글</p></div>
+  <div class="cards">
+    <a class="card" href="isometric.html">
+      <h3>아이소메트릭은 직교투영이 아니다<span class="star">★</span></h3>
+      <p>고정 시점 게임이 골라야 하는 투영. 두 말이 어떻게 다르고,
+         Camera3D 의 <code>size</code> 기본값 <code>1.0</code> 이 왜 함정인가</p>
+      <div class="meta"><span class="slug">isometric.html</span><span>그림 2 · 표 5</span></div>
+    </a>
+  </div>
+</section>
+
+<main id="list"></main>
+
+<div class="empty" id="empty">
+  <b>찾는 것이 없습니다</b>
+  다른 말로 검색해 보세요. 문서 제목·설명·소제목을 함께 찾습니다.
+</div>
+
+<div class="note">
+  <b>🛑 이 스킬 문서만 보고 답하지 않습니다.</b>
+  스킬은 출발점이지 울타리가 아닙니다. 여기 없는 것은
+  엔진 실측(<code>--doctool</code>·헤드리스 실행·소스)·공식 문서·웹 검색으로
+  확인한 뒤 답하고, 알아낸 것은 다시 문서에 남깁니다.
+</div>
+
+<div class="install">
+  <h3>설치</h3>
+  <pre><code>git clone https://github.com/thruthesky/godot .claude/skills/godot</code></pre>
+  <p>Claude Code 에서 Godot 작업을 시작하면 자동으로 불러옵니다.
+     <code>/godot init</code> 으로 슬래시 명령(<code>/godot-example</code>)도 설치할 수 있습니다.</p>
+</div>
+
+<footer>
+  <div>값은 <code>godot --headless --doctool</code> 과 실기기 측정으로 확인했습니다.</div>
+  <div>
+    <a href="https://github.com/thruthesky/godot">GitHub 저장소</a> ·
+    <a href="https://docs.godotengine.org/en/4.7/">Godot 공식 문서</a>
+  </div>
+</footer>
+
+</div>
+
+<script>
+const STAR = new Set(['basics','example','lowend-3gb-60fps','lsp']);
+const $ = s => document.querySelector(s);
+const list = $('#list'), qEl = $('#q'), countEl = $('#count'), emptyEl = $('#empty'), clearEl = $('#clear');
+let DATA = null;
+
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mark = (s, q) => {
+  if (!q) return esc(s);
+  const i = s.toLowerCase().indexOf(q);
+  if (i < 0) return esc(s);
+  return esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length));
+};
+
+function render(q) {
+  q = (q || '').trim().toLowerCase();
+  let shown = 0;
+  const parts = [];
+
+  DATA.groups.forEach((g, gi) => {
+    const docs = DATA.docs.filter(d => d.gi === gi);
+    const rows = [];
+
+    docs.forEach(d => {
+      let ok = !q, hits = [];
+      if (q) {
+        if (d.title.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q) || d.slug.includes(q)) ok = true;
+        hits = d.heads.filter(h => h.toLowerCase().includes(q)).slice(0, 5);
+        if (hits.length) ok = true;
+      }
+      if (!ok) return;
+      shown++;
+      const star = STAR.has(d.slug) ? '<span class="star">★</span>' : '';
+      const hitHtml = hits.length
+        ? `<div class="hits on"><ul>${hits.map(h => '<li>› ' + mark(h, q) + '</li>').join('')}</ul></div>` : '';
+      rows.push(
+        `<a class="card" href="doc.html?d=${d.slug}${q ? '&q=' + encodeURIComponent(q) : ''}">
+           <h3>${mark(d.title, q)}${star}</h3>
+           <p>${mark(d.desc, q)}</p>
+           <div class="meta"><span class="slug">${mark(d.slug, q)}.md</span><span>${d.lines.toLocaleString()}줄</span></div>
+           ${hitHtml}
+         </a>`);
+    });
+
+    if (rows.length) {
+      parts.push(
+        `<section class="group">
+           <div class="ghead"><h2>${esc(g.name)}</h2>${g.desc ? '<p>' + esc(g.desc) + '</p>' : ''}</div>
+           <div class="cards">${rows.join('')}</div>
+         </section>`);
+    }
+  });
+
+  list.innerHTML = parts.join('');
+  document.getElementById('essays').style.display = q ? 'none' : '';
+  emptyEl.classList.toggle('on', shown === 0);
+  countEl.textContent = q ? `${shown}편에서 일치` : '';
+  clearEl.style.display = q ? 'block' : 'none';
+}
+
+fetch('site/index.json')
+  .then(r => r.json())
+  .then(j => {
+    DATA = j;
+    const u = new URLSearchParams(location.search).get('q') || '';
+    qEl.value = u;
+    render(u);
+  })
+  .catch(() => {
+    list.innerHTML = '<div class="empty on"><b>목록을 불러오지 못했습니다</b>site/index.json 을 찾을 수 없습니다.</div>';
+  });
+
+let t;
+qEl.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => render(qEl.value), 90); });
+clearEl.addEventListener('click', () => { qEl.value = ''; render(''); qEl.focus(); });
+addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== qEl) { e.preventDefault(); qEl.focus(); qEl.select(); }
+  if (e.key === 'Escape' && document.activeElement === qEl) { qEl.value = ''; render(''); }
+});
+</script>
+</body>
+</html>
