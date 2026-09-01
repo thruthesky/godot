@@ -727,8 +727,10 @@ Invalid access to property or key 'global_position' on a base object of type 'nu
 @export var player: Node3D
 ```
 
-`@export` 는 **이름이 아니라 노드 자체를 가리키므로** 나중에 이름을 바꾸거나 다른
-부모 밑으로 옮겨도 연결이 유지된다. 대신 **씬에서 한 번 지정해 줘야** 하고,
+`@export` 는 **씬 데이터에 저장되어 에디터가 관리**하므로 나중에 이름을 바꾸거나
+다른 부모 밑으로 옮겨도 연결이 유지된다(`.tscn` 에 `node_paths=` 표시와 함께
+`NodePath` 로 저장되고, 에디터가 그 값을 추적해 갱신한다 —
+근거는 [basics.md](basics.md) 의 "다른 노드를 가리키는 세 가지 방법"). 대신 **씬에서 한 번 지정해 줘야** 하고,
 잊으면 역시 `null` 이 된다.
 
 > 💡 **`%` 고유 이름**은 Scene 독에서 노드 우클릭 → `Access as Unique Name` 으로 켠다.
