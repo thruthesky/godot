@@ -25,6 +25,9 @@
 
 > ### 🛑 이 절은 요약이다 — 실제 작업은 [lowend-3gb-60fps.md](lowend-3gb-60fps.md) 를 본다
 >
+> **LOD·컬링·해상도 스케일링·VRS 를 3GB 폰에서 쓸지 말지**는
+> **[lowend-culling-lod.md](lowend-culling-lod.md)** 에 판정표로 정리되어 있다.
+>
 > **모바일 3D MMORPG 의 최소 지원 RAM 은 3GB 다.**
 >
 > 🛑 **드로우콜·GPU 만 보지 말고 메모리도 예산으로 잡는다.** 반복 배치를 병합하면
@@ -365,6 +368,9 @@ func merge_meshes(parent: Node3D) -> ArrayMesh:
 
 ## 5. 메시 LOD와 가시 범위
 
+> 🛑 **3GB 폰 기준의 판정과 설정값은 [lowend-culling-lod.md §3·§4](lowend-culling-lod.md) 를 본다** —
+> MultiMesh 안의 인스턴스는 **전부 같은 LOD** 로 그려지고, 페이드는 **끄는 편이 빠르다.**
+
 ### 자동 메시 LOD
 
 glTF 임포트 시 `Generate LODs`를 켜면 Godot이 자동으로 단순화된 버전을 만든다.
@@ -433,6 +439,9 @@ AI는 저빈도로 계속 돌리고, 애니메이션·이펙트만 끄는 편이
 
 ## 6. 오클루전 컬링
 
+> 🛑 **켜기 전에 [lowend-culling-lod.md §5](lowend-culling-lod.md) 를 읽는다** — Mobile 렌더러에서
+> 효과가 크다는 건 사실이지만 **CPU 를 더 쓴다.** 평탄한 야외에서는 손해일 수 있다.
+
 건물 뒤에 가려진 물체를 그리지 않는다. Mobile 렌더러에서도 지원된다.
 
 ### 설정
@@ -468,6 +477,9 @@ mesh.ignore_occlusion_culling = false
 ---
 
 ## 7. MultiMeshInstance3D
+
+> 🛑 **맵 전체를 하나로 묶지 않는다** — 컬링과 LOD 가 통째로 죽는다.
+> [lowend-culling-lod.md §2](lowend-culling-lod.md) · [lowend-3gb-60fps.md §5.3](lowend-3gb-60fps.md)
 
 **같은 메시를 수백~수만 개 그릴 때 드로우콜을 1개로 만든다.**
 풀, 나무, 바위, 파편에 필수적이다.

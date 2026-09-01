@@ -35,6 +35,8 @@
 | 앱이 가끔 죽는다 | §8 크래시 |
 | **메모리가 부족하다 · 나무를 많이 심고 싶다** | **§5.3 MultiMesh vs 병합** ★ |
 | **AI 가 원인을 단정하는데 믿어도 되나** | **§3.4 되물을 말** ★ |
+| **먼 것을 싸게 그리고 싶다** (LOD·컬링·해상도) | → **[lowend-culling-lod.md](lowend-culling-lod.md)** ★ |
+| **VRS·FSR·오클루전을 켜도 되나** | → **[lowend-culling-lod.md §0](lowend-culling-lod.md)** — 판정표 |
 
 ---
 
