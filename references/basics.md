@@ -1335,7 +1335,7 @@ Parse Error: Unrecognized annotation: "@my_annotation".
 |---|---|
 | **`@onready`** | 자식 노드를 변수에 잡을 때 — **가장 자주 쓴다** |
 | **`@export`** | 인스펙터에서 값을 조절하고 싶을 때 |
-| `@tool` | 에디터에서도 스크립트를 돌리고 싶을 때 (당분간 필요 없다) |
+| `@tool` | 에디터에서도 스크립트를 돌리고 싶을 때 — **바로 아래 절** |
 
 ```gdscript
 @export var speed := 5.0        # 인스펙터에 "Speed" 칸이 생긴다
@@ -1346,6 +1346,91 @@ Parse Error: Unrecognized annotation: "@my_annotation".
 `const` 로 박아 둔 `SPEED` 를 `@export var` 로 바꾸면 인스펙터에서 바로 조절된다.
 
 전체 어노테이션의 상세와 인스펙터 표시 방법은 [gdscript.md](gdscript.md) 에 있다.
+
+#### `@tool` — 스크립트를 **에디터에서도** 돌린다
+
+**기본적으로 스크립트는 게임을 실행할 때만 돕니다.** 에디터에서 씬을 편집하는 동안에는
+`_ready()` 도 `_process()` 도 불리지 않는다. 첫 줄에 `@tool` 을 붙이면 그것이 바뀐다.
+
+```gdscript
+@tool
+extends Node3D
+```
+
+**이 한 줄이 "에디터에서도 이 코드를 실행하라"는 뜻**이다.
+
+##### 언제 쓰나 — 에디터에서 **결과를 미리 보고 싶을 때**
+
+| 예 | `@tool` 없이 | `@tool` 로 |
+|---|---|---|
+| 원형으로 스폰 지점 8개 배치 | 실행해야 보인다 | **인스펙터에서 개수를 바꾸면 즉시 배치가 갱신된다** |
+| 절차적으로 만든 지형·나무 | 실행해야 보인다 | 에디터에서 모양을 보며 값을 조절한다 |
+| 설정이 빠졌다고 경고 표시 | 알 수 없다 | 씬 독에 ⚠️ 아이콘을 띄운다 |
+
+**값을 바꿀 때마다 게임을 실행해 확인하는 왕복을 없애는 것**이 목적이다.
+
+##### 🛑 절대 규칙 — `Engine.is_editor_hint()` 로 갈라라
+
+`@tool` 을 붙이면 **게임 로직이 에디터에서도 실행된다.** 이것이 사고의 원인이다.
+
+```gdscript
+@tool
+extends Node3D
+
+func _process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		_editor_preview()      # 에디터에서만
+		return
+	_game_logic(delta)         # 게임에서만
+```
+
+`Engine.is_editor_hint()` 는 **에디터 안에서 돌고 있으면 `true`** 를 돌려준다.
+**엔진에서 확인** — 게임을 실행하면 `false` 다.
+
+```
+게임 실행 중 Engine.is_editor_hint() = false
+```
+
+이 분기를 빠뜨리면 이런 일이 벌어진다.
+
+| 빠뜨리면 | 무슨 일이 |
+|---|---|
+| 무한 루프·긴 계산 | **에디터가 응답 없음**이 된다 |
+| `queue_free()` 로 노드 삭제 | **편집 중인 씬이 지워진다** — 작업 내용 소실 |
+| 파일 쓰기 | 프로젝트 파일이 손상된다 |
+| 물리·입력 처리 | 의미 없는 부하만 생긴다 |
+
+**게임에서는 잘 돌던 코드가 에디터를 망가뜨린다.** 그래서 `@tool` 은
+"편리한 기능"이 아니라 **책임이 따르는 스위치**다.
+
+##### 에디터에서 만든 노드는 `owner` 를 지정한다
+
+```gdscript
+var node := Node3D.new()
+add_child(node)
+if Engine.is_editor_hint():
+	node.owner = get_tree().edited_scene_root   # 이게 없으면 저장되지 않는다
+```
+
+`owner` 가 없으면 **`.tscn` 에 저장되지 않아** 에디터를 껐다 켜면 사라진다.
+
+##### 초보라면 — **당분간 쓰지 않아도 된다**
+
+캐릭터를 움직이고 맵을 만드는 데는 `@tool` 이 전혀 필요 없다.
+**"에디터에서 미리 보고 싶다"는 요구가 실제로 생겼을 때** 그때 붙이면 된다.
+
+다만 **남의 코드에서 첫 줄에 `@tool` 을 보면** "이건 에디터에서도 도는 스크립트구나"
+라고 읽을 수 있어야 한다. 그것이 이 절의 목적이다.
+
+##### `@tool` 과 `EditorPlugin` 은 다르다
+
+| | `@tool` 스크립트 | `EditorPlugin` |
+|---|---|---|
+| 무엇 | **씬의 노드**가 에디터에서도 도는 것 | **에디터 자체**를 확장하는 것 |
+| 예 | 배치 미리보기, 설정 경고 | 새 독·툴바·메뉴·임포터 추가 |
+| 등록 | 첫 줄에 `@tool` | `addons/*/plugin.cfg` + Plugins 탭에서 활성화 |
+
+깊이 들어가려면 [editor-plugin.md](editor-plugin.md) 를 본다.
 
 #### 그 밖에 먼저 알아 둘 것
 
@@ -1371,6 +1456,122 @@ func _physics_process(delta: float) -> void:
 
 문법 전체 목록과 심화는 [gdscript.md](gdscript.md) 에 있다.
 실제 코드에 이 문법이 어떻게 쓰이는지는 [example.md](example.md) §7 을 본다.
+
+
+### 값을 바꾸는 것과 **실제로 일어나는 것**은 다르다
+
+**초보가 가장 크게 오해하는 지점**이다. 예를 들어 이런 코드를 보면
+`velocity` 가 캐릭터의 **위치**라고 생각하기 쉽다.
+
+```gdscript
+velocity.z = -5.0
+move_and_slide()
+# → 캐릭터가 앞으로 걸어간다
+```
+
+**둘 다 틀렸다.** `velocity` 는 위치가 아니고, 값을 바꾼다고 저절로 움직이지도 않는다.
+
+#### ① `velocity` 는 위치가 아니라 **속도**다
+
+| | 단위 | 뜻 | 비유 |
+|---|---|---|---|
+| **`position` / `global_position`** | **m** (미터) | 지금 **어디 있는가** | 지도 위의 **점** |
+| **`velocity`** | **m/s** (초당 미터) | 어느 쪽으로 **얼마나 빨리** | 그 점을 미는 **화살표** |
+
+자동차로 치면 `position` 은 현재 위치, `velocity` 는 **속도계 + 방향**이다.
+속도계가 60을 가리킨다고 차가 60km 지점에 있는 것은 아니다.
+
+**엔진에서 확인** — `velocity` 를 `(0, 0, -5)` 로 **고정**하고 4틱 돌렸다.
+
+| 틱 | `velocity.z` | `position.z` |
+|---|---|---|
+| 1 | **-5.0** (그대로) | -0.08 |
+| 2 | **-5.0** (그대로) | -0.17 |
+| 3 | **-5.0** (그대로) | -0.25 |
+| 4 | **-5.0** (그대로) | -0.33 |
+
+**`velocity` 는 하나도 변하지 않는데 `position` 은 계속 변한다.**
+매 틱 `0.083m` 씩이고 이는 `5.0 m/s × 1/60초` 다.
+`velocity` 를 `0` 으로 되돌리면 `position` 이 그 자리에서 **멈춘다**(원점으로 돌아가지 않는다).
+
+**위치를 직접 바꾸고 싶으면** `global_position` 에 대입한다 — 순간이동한다.
+
+```gdscript
+global_position = Vector3(3, 1, 3)   # 즉시 그 자리로
+velocity = Vector3.ZERO              # 남아 있던 속도도 지운다
+```
+
+> 🛑 좌표를 옮기려고 `velocity.z = -100` 을 넣으면 **"1초에 100미터씩 가라"** 가 되어
+> 총알처럼 날아간다(실측 — 매 틱 1.67m 이동).
+
+#### ② `velocity` 를 바꾸는 것만으로는 **아무 일도 일어나지 않는다**
+
+**이것이 빠진 조각이다.** 값을 넣어 두는 것과 엔진이 그것을 실행하는 것은 별개다.
+
+**엔진에서 확인** — 같은 코드에서 `move_and_slide()` 한 줄만 뺐다 넣었다.
+
+| 코드 | 틱1 | 틱2 | 틱3 |
+|---|---|---|---|
+| `velocity = (0,0,-5)` **만** | `position.z = 0.000` | `0.000` | `0.000` |
+| `velocity = (0,0,-5)` + **`move_and_slide()`** | **-0.083** | **-0.167** | **-0.250** |
+
+**`velocity` 는 위에서 똑같이 `-5.0` 이었다.** 그런데 위쪽은 꿈쩍도 하지 않는다.
+
+```
+velocity          =  주문서에 "북쪽으로 시속 5미터" 라고 적는 것
+move_and_slide()  =  그 주문서를 들고 실제로 몸을 미는 것
+```
+
+**주문서만 쓰고 아무도 밀지 않으면 제자리에 서 있다.**
+`move_and_slide()` 가 매 틱 `velocity` 를 **읽어서** `position` 을 옮기는
+**실행자**이고, `velocity` 는 그에게 건네는 **지시서**다.
+
+#### ③ 프로퍼티는 **노드마다 따로** 있다
+
+*"`velocity` 를 바꿨는데 왜 저 캐릭터가 움직이지?"* 라는 의문의 답이다.
+
+스크립트 안에서 그냥 쓴 `velocity` 는 사실 **`self.velocity`** 의 줄임이고,
+`self` 는 **이 스크립트가 붙어 있는 바로 그 노드**다.
+
+```gdscript
+extends CharacterBody3D          # ← 이 스크립트는 CharacterBody3D 노드에 붙는다
+
+func _physics_process(delta):
+	velocity.z = -5.0            # ← self.velocity, 즉 "이 노드 자신"의 속도
+	move_and_slide()             # ← self.move_and_slide(), 이 노드를 민다
+```
+
+그래서 **같은 스크립트를 두 캐릭터에 붙여도 서로 간섭하지 않는다.**
+각자 자기 `velocity` 를 갖기 때문이다.
+
+**엔진에서 확인** — `CharacterBody3D` 두 개(A·B)에 서로 다른 속도를 넣었다.
+
+| 틱 | `A.velocity.z` | `A.position.z` | `B.velocity.z` | `B.position.z` |
+|---|---|---|---|---|
+| 1 | **-5.0** | -0.08 | **+10.0** | +0.17 |
+| 2 | **-5.0** | -0.17 | **+10.0** | +0.33 |
+| 3 | **-5.0** | -0.25 | **+10.0** | +0.50 |
+
+**이름은 똑같이 `velocity` 인데 값도 결과도 완전히 따로 논다.**
+A 는 북으로 초당 5m, B 는 남으로 초당 10m 씩 간다.
+
+#### 정리 — 캐릭터가 움직이는 전체 사슬
+
+```
+① extends CharacterBody3D
+     → 이 스크립트는 그 노드 자신이 된다(self). velocity 를 물려받는다.
+②  velocity.z = -5.0
+     → self(= 이 캐릭터)의 "속도 지시서"에 값을 쓴다. 아직 아무 일도 없다.
+③  move_and_slide()
+     → 엔진이 그 지시서를 읽어 position += velocity × delta 를 실행한다.
+     → 부딪히면 멈추고, velocity 를 실제 결과로 고쳐 쓴다.
+④ 화면에 옮겨진 위치가 그려진다
+```
+
+**②만 있고 ③이 없으면 캐릭터는 영원히 제자리다**(위 실측).
+반대로 ③만 있고 ②가 없으면 `velocity` 가 `(0,0,0)` 이라 역시 제자리다.
+
+실제 코드와 줄별 해설은 [example.md](example.md) §7 에 있다.
 
 
 ### 생명주기 — 언제 불리는가
@@ -1935,6 +2136,148 @@ charset = utf-8   # UTF-8 로 저장한다
 > 같은 EditorConfig 표준 키를 읽는 코드는 없다.)* 내장 에디터의 들여쓰기·인코딩은
 > `Editor Settings > Text Editor > Behavior` 가 따로 정한다.
 > **즉 이 파일은 순전히 외부 에디터를 위한 배려다.**
+
+### FileSystem 독에서 파일·폴더를 숨긴다
+
+위 표의 `.editorconfig`·`.gitignore` 는 **분명히 프로젝트 폴더에 있는데 FileSystem
+독에는 보이지 않는다.** 점(`.`)으로 시작하는 이름이라 에디터가 아예 스캔하지 않기
+때문이다. 같은 원리로 **보고 싶지 않은 것을 독에서 치울 수 있다.**
+
+> 🛑 **"가려 준다"가 아니라 "에디터가 없는 것으로 친다"이다.**
+> 독에서 사라지는 것은 결과일 뿐이고, 실제로는 **스캔·임포트 대상에서 빠진다.**
+> 그래서 제외한 것은 **`res://` 로 로드할 수 없다.** 게임이 실제로 읽어야 하는
+> 파일에는 절대 쓰지 않는다.
+
+**수단은 폴더냐 파일이냐에 따라 완전히 다르다.** 하나로 둘 다 처리할 수 없다.
+
+| 대상 | 수단 | 어디에 두나 | 범위 |
+|---|---|---|---|
+| **폴더** | 빈 **`.gdignore`** 파일 | **숨길 폴더 안에** | 그 프로젝트만 |
+| **개별 파일** | 확장자를 **화이트리스트에서 뺀다** | `Editor Settings` | 🛑 **에디터 전역** |
+| 개별 파일 (이름을 바꿔도 되면) | 이름을 **`.` 으로 시작**하게 | 그 파일 | 그 파일만 |
+
+#### 폴더 — 빈 `.gdignore` 를 폴더 **안에** 넣는다
+
+```bash
+touch game-assets/.gdignore     # 폴더 안에. 내용은 비운다
+```
+
+🛑 **틀리기 쉬운 두 가지**
+
+| 흔한 착각 | 사실 |
+|---|---|
+| 이름이 `.godotignore` 다 | **아니다. `.gdignore` 다.** 4.7.2 바이너리에 `.godotignore` 라는 문자열 자체가 없다 (`strings` 확인). 그 이름으로 만들면 **아무 일도 일어나지 않는다** |
+| `.gitignore` 처럼 **목록을 적는다** | **아니다.** 엔진은 내용을 읽지 않는다. **파일이 거기 있다는 사실**만 본다. 프로젝트 루트에 하나 두고 경로를 나열하는 방식은 **동작하지 않는다** |
+
+엔진 소스가 그렇게 생겼다.
+
+```cpp
+// editor/file_system/editor_file_system.cpp:3502 (4.7)
+if (FileAccess::exists(p_path.path_join(".gdignore"))) {
+	// Skip if a `.gdignore` file is inside this.
+	return true;
+}
+```
+
+`FileAccess::exists()` — **존재만 검사하고 열지도 않는다.** 실측도 같다.
+
+| 폴더에 넣은 것 | 임포트 |
+|---|---|
+| 없음 | ✅ 됨 |
+| **빈** `.gdignore` | 🚫 제외 |
+| 경로를 적은 `.gdignore` | 🚫 제외 (**내용 무관**) |
+| 빈 `.godotignore` | ✅ **됨** — 이름이 틀려 무시 |
+
+**하위 폴더까지 통째로** 걸린다. `deep/` 에 하나 넣으면 `deep/sub/deeper/` 까지 사라진다.
+위 함수가 `true` 를 내면 `_scan_new_dir()` 이 **그 폴더로 재귀하지 않기** 때문이다.
+
+같은 함수(`_should_skip_directory()`)가 검사하는 조건은 셋이고, 나머지 둘은 **저절로** 걸린다.
+
+| 조건 | 뜻 |
+|---|---|
+| `.godot/` (프로젝트 데이터 경로) | 임포트 캐시는 항상 제외 |
+| 폴더 안에 **`project.godot` 이 있다** | *"Detected another project.godot at %s. The folder will be ignored."* 경고와 함께 제외 |
+| **`.gdignore` 가 있다** | 위에서 설명한 것 |
+
+#### 개별 파일 — 확장자 화이트리스트가 정한다
+
+`.gdignore` 는 폴더 전용이라 **파일 하나만 골라 숨길 수 없다.** 개별 파일이 독에
+뜨느냐 마느냐는 **확장자**가 정한다.
+
+```cpp
+// editor/file_system/editor_file_system.cpp:1242
+String ext = scan_file.get_extension().to_lower();
+if (!valid_extensions.has(ext)) {
+	p_progress.increment();
+	continue; //invalid
+}
+```
+
+`valid_extensions` 는 셋을 합친 것이다 — ① 엔진이 리소스로 인식하는 확장자
+② `docks/filesystem/textfile_extensions` ③ `docks/filesystem/other_file_extensions`.
+뒤의 둘은 **에디터 설정**이고 기본값은 이렇다.
+
+```cpp
+// editor/settings/editor_settings.cpp:717 (4.7)
+_initial_set("docks/filesystem/textfile_extensions", "txt,md,cfg,ini,log,json,yml,yaml,toml,xml");
+_initial_set("docks/filesystem/other_file_extensions", "ico,icns");
+```
+
+**`md` 가 여기 있어서 `README.md`·`CLAUDE.md` 같은 문서가 독에 뜬다.** 리소스로
+임포트되는 것이 아니라 **에디터에서 열어 볼 수 있게 해 주는 편의 기능**이고,
+에디터 캐시에 `TextFile` 로 기록된다.
+
+```
+$ cat .godot/editor/filesystem_cache10
+CLAUDE.md::TextFile::-1::1787889411::0::1::…
+```
+
+**빼는 경로** — `Editor > Editor Settings...` → 우측 상단 **`Advanced Settings` 를 켠다**
+→ `Docks > FileSystem` → `Textfile Extensions`
+
+```
+txt,md,cfg,ini,log,json,yml,yaml,toml,xml     ← 기본값
+txt,cfg,ini,log,json,yml,yaml,toml,xml        ← md 를 뺀 값
+```
+
+> 🛑 **`Advanced Settings` 를 켜지 않으면 항목이 보이지 않는다.** 소스에서
+> `_initial_set(...)` 의 세 번째 인자 `p_basic` 을 주지 않아 기본값 `false` —
+> 고급 항목으로 분류된다.
+
+| | |
+|---|---|
+| **얻는 것** | 프로젝트 안의 **모든 `.md` 가 한 번에 사라진다** |
+| **대가** | **에디터 전역 설정이라 다른 프로젝트에도 적용된다.** 그리고 Godot 에디터로 `.md` 를 열 수 없게 된다 |
+
+실측 — 파일 5개를 루트에 두고 스캔시킨 결과다.
+
+| 파일 | 독에 보이나 | 이유 |
+|---|---|---|
+| `NOTE.md` · `NOTE.txt` | ✅ 보임 | 화이트리스트에 있는 확장자 |
+| `NOTE.xyz` | 🚫 안 보임 | 목록에 없는 확장자 |
+| `NOTE` (확장자 없음) | 🚫 안 보임 | 확장자가 없다 |
+| `.HIDDEN.md` | 🚫 안 보임 | **점으로 시작** |
+
+다섯 개 다 디스크에는 그대로 있다. 에디터만 안 볼 뿐이다.
+
+#### 라리엔 3D 에서는
+
+| 대상 | 방법 |
+|---|---|
+| `game-assets/` · `game-server/` (서버 코드·원본 에셋) | 각 폴더 안에 빈 `.gdignore` |
+| `CLAUDE.md` | **이름을 바꿀 수 없다** — Claude Code 가 그 이름으로 읽는다. `md` 를 화이트리스트에서 뺀다 |
+| 이름이 자유로운 메모·치트시트 | 앞에 `.` 을 붙여도 된다 |
+
+⚠️ `game-server/` 는 **git 서브모듈**이라 `.gdignore` 를 만들면 그쪽 working tree 에
+untracked 파일이 생긴다. 커밋에 섞이지 않게 막아 둔다.
+
+```bash
+echo ".gdignore" >> .git/modules/game-server/info/exclude
+```
+
+**빌드 산출물이 `res://` 안에 있을 때는 `.gdignore` 만으로 부족하다** —
+게임 패키지에서 빼는 것은 `exclude_filter` 로 따로 해야 한다.
+→ [headless-workflow.md](headless-workflow.md) §6
 
 ---
 
