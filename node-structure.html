@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>노드 구조 — 인스펙터는 상속 사슬이다</title>
+<meta name="description" content="Create New Node 의 상속 사슬과 인스펙터의 그룹이 정확히 대응한다. Node3D 를 상속하는 120개 클래스가 Transform·Rotation·Scale 을 공유하는 이유.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F6F8FA; --card:#FFFFFF; --ink:#16202B; --muted:#5B6B7B;
+  --rule:#C7D0DA; --grid:rgba(22,32,43,.045); --code:#F1F3F5;
+  --accent:#D9480F; --blue:#1864AB; --ok:#2B8A3E;
+  --shadow:0 1px 2px rgba(22,32,43,.06),0 8px 24px -12px rgba(22,32,43,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+    --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+    --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+  --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+  --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px;color:var(--ink);
+  font-family:Chivo,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:16.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:80ch;margin:0 auto;padding:clamp(22px,4vw,48px) clamp(16px,4vw,28px) 90px;
+  display:flex;flex-direction:column;gap:34px}
+.back{text-decoration:none;color:var(--muted);font-size:14px;font-weight:700}
+.back:hover{color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(28px,5.5vw,44px);font-weight:900;line-height:1.12;margin:.25em 0 .3em;letter-spacing:-.025em}
+.lede{font-size:clamp(15.5px,2.1vw,18px);color:var(--muted);margin:0}
+h2{font-size:clamp(19px,3.2vw,25px);font-weight:900;margin:0 0 .5em;
+  padding-bottom:.3em;border-bottom:2px solid var(--ink);letter-spacing:-.015em}
+h3{font-size:17px;font-weight:700;margin:1.5em 0 .4em}
+section>p:first-of-type{margin-top:0}
+p{margin:.9em 0}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.tag{background:var(--card);border:1px solid var(--rule);border-radius:999px;
+  padding:4px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.tag b{color:var(--ok)}
+figure{margin:1.3em 0;background:var(--card);border:1px solid var(--rule);border-radius:14px;
+  padding:14px;box-shadow:var(--shadow)}
+figure img{display:block;width:100%;height:auto;border-radius:8px;cursor:zoom-in}
+figcaption{margin-top:11px;font-size:13.5px;color:var(--muted);line-height:1.6}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--rule);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:700;white-space:nowrap}
+tr:nth-child(even) td{background:var(--card)}
+td b{color:var(--accent)}
+code{background:var(--code);border:1px solid var(--rule);padding:.12em .38em;border-radius:4px;font-size:.87em}
+pre{background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.6;box-shadow:var(--shadow);margin:1.1em 0}
+pre code{background:none;border:0;padding:0}
+blockquote{margin:1.2em 0;padding:13px 17px;background:var(--card);
+  border-left:3px solid var(--accent);border-radius:0 10px 10px 0;box-shadow:var(--shadow)}
+blockquote>*:first-child{margin-top:0} blockquote>*:last-child{margin-bottom:0}
+.qa{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:16px 18px;box-shadow:var(--shadow);margin:1.1em 0}
+.qa dt{font-weight:700;margin-top:10px}
+.qa dt:first-child{margin-top:0}
+.qa dd{margin:3px 0 0;color:var(--muted);font-size:14.5px}
+.qa .yes{color:var(--ok);font-weight:900}
+.more{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:18px 20px;box-shadow:var(--shadow)}
+.more h3{margin:0 0 10px;font-size:15px}
+.more p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.blist{display:flex;flex-direction:column;gap:8px}
+.blink{display:flex;align-items:center;gap:9px;text-decoration:none;
+  border:1.5px solid var(--rule);border-radius:10px;padding:11px 14px;
+  font-size:14px;font-weight:700;color:var(--ink);background:var(--paper);
+  transition:border-color .12s ease,transform .12s ease}
+.blink:hover{border-color:var(--accent);transform:translateY(-1px)}
+.blink.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.blink svg{width:16px;height:16px;fill:currentColor;flex:none}
+.blink .sub{margin-left:auto;font-size:12px;font-weight:400;opacity:.7;font-family:"IBM Plex Mono",monospace}
+footer{border-top:1px solid var(--rule);padding-top:20px;font-size:13.5px;color:var(--muted)}
+footer a{color:var(--blue)}
+.k{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="back" href="index.html">← 목차</a>
+  <div class="eyebrow" style="margin-top:16px">Godot 4.7 · 노드 구조</div>
+  <h1>인스펙터는<br>상속 사슬이다</h1>
+  <p class="lede">
+    노드를 고를 때 본 <b>상속 사슬</b>과 인스펙터에 늘어선 <b>그룹</b>은
+    같은 것을 두 방향으로 보여주는 화면입니다.
+    이걸 알면 <b>어떤 속성이 왜 거기 있는지</b>가 전부 설명됩니다.
+  </p>
+  <div class="tags">
+    <span class="tag"><b>✓</b> 4.7.2.stable 에서 확인</span>
+    <span class="tag"><b>✓</b> <code>--doctool</code> 로 대조</span>
+    <span class="tag">요약본 · 상세는 아래 링크</span>
+  </div>
+</header>
+
+<section>
+  <h2>한 장으로 보기</h2>
+  <figure>
+    <a href="site/img/node-structure.jpg" target="_blank" rel="noopener">
+      <img src="site/img/node-structure.jpg"
+           alt="왼쪽 Create New Node 창의 CSGCylinder3D 상속 사슬과 오른쪽 인스펙터의 그룹이 화살표로 일대일 대응하는 화면">
+    </a>
+    <figcaption>
+      왼쪽은 <b>Create New Node</b> 창, 오른쪽은 <b>인스펙터</b>입니다.
+      왼쪽 아래 <code>Description</code> 의 상속 사슬 한 줄이,
+      오른쪽에서는 <b>위에서 아래로 늘어선 그룹 머리글</b>로 그대로 나타납니다.
+      (이미지를 클릭하면 원본 크기)
+    </figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>세 가지 질문에 답하면</h2>
+  <dl class="qa">
+    <dt>인스펙터 맨 위가 현재 노드고, 아래로 부모 클래스 속성이 이어지나요?</dt>
+    <dd><span class="yes">그렇습니다.</span> 맨 위가 그 노드만의 것이고, 내려갈수록 더 많은 노드가 공유하는 것입니다.</dd>
+    <dt><code>Node3D</code> 를 상속하면 전부 <code>Transform</code>·<code>Rotation</code>·<code>Scale</code> 을 갖나요?</dt>
+    <dd><span class="yes">그렇습니다.</span> 엔진에서 세어 보니 <b>120개 클래스</b>가 해당합니다.</dd>
+    <dt>그 값을 수정할 수 있나요?</dt>
+    <dd><span class="yes">그렇습니다.</span> 인스펙터에서도, 코드에서도 똑같이 다룹니다.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>두 화면이 어떻게 대응하나</h2>
+  <p>노드를 추가할 때 뜨는 창의 <code>Description</code> 첫 줄이 상속 사슬입니다.</p>
+  <pre><code>Class CSGCylinder3D &lt; CSGPrimitive3D &lt; CSGShape3D &lt; GeometryInstance3D
+      &lt; VisualInstance3D &lt; Node3D &lt; Node &lt; Object</code></pre>
+  <p><b>엔진에서 확인한 사슬도 정확히 같습니다.</b> 그리고 인스펙터가 이것을 뒤집어 늘어놓습니다.</p>
+  <pre><code>Create New Node 의 사슬                인스펙터의 그룹 (위 → 아래)
+────────────────────────              ─────────────────────────
+CSGCylinder3D          ─────────────→  ▸ CSGCylinder3D   ← 현재 노드 자신
+  &lt; CSGPrimitive3D     ─────────────→  ▸ CSGPrimitive3D
+  &lt; CSGShape3D         ─────────────→  ▸ CSGShape3D
+  &lt; GeometryInstance3D ─────────────→  ▸ GeometryInstance3D
+  &lt; VisualInstance3D   ─────────────→  ▸ VisualInstance3D
+  &lt; Node3D             ─────────────→  ▸ Node3D          ← Transform 이 여기
+  &lt; Node               ─────────────→  ▸ Node
+  &lt; Object                              (Object 는 표시되지 않는다)</code></pre>
+  <blockquote>
+    <p><span class="k">인스펙터에서 어떤 속성이 안 보이면, 그 노드가 그 클래스를 상속하지 않는 것입니다.</span>
+    반대로 낯선 그룹 이름이 보이면 <b>그것이 이 노드의 조상</b>입니다.</p>
+  </blockquote>
+</section>
+
+<section>
+  <h2><code>Node3D</code> 가 주는 것 — 9개</h2>
+  <table>
+    <tr><th>프로퍼티</th><th>기본값</th></tr>
+    <tr><td><b><code>position</code></b></td><td><code>Vector3(0, 0, 0)</code></td></tr>
+    <tr><td><b><code>rotation</code></b></td><td><code>Vector3(0, 0, 0)</code></td></tr>
+    <tr><td><b><code>scale</code></b></td><td><code>Vector3(1, 1, 1)</code></td></tr>
+    <tr><td><code>transform</code></td><td><code>Transform3D(1,0,0, 0,1,0, 0,0,1, 0,0,0)</code></td></tr>
+    <tr><td><code>rotation_edit_mode</code></td><td><code>0</code> (Euler)</td></tr>
+    <tr><td><code>rotation_order</code></td><td><code>2</code> (YXZ)</td></tr>
+    <tr><td><code>top_level</code></td><td><code>false</code></td></tr>
+    <tr><td><code>visible</code></td><td><code>true</code></td></tr>
+    <tr><td><code>visibility_parent</code></td><td><code>NodePath("")</code></td></tr>
+  </table>
+  <p>
+    인스펙터의 <code>Node3D &gt; Transform</code> 을 펼치면 나오는
+    <code>Position</code>·<code>Rotation</code>·<code>Scale</code>, 그 아래
+    <code>Rotation Edit Mode</code>·<code>Rotation Order</code>·<code>Top Level</code>·<code>Visibility</code> 가
+    <b>정확히 이 목록</b>입니다.
+  </p>
+</section>
+
+<section>
+  <h2>사슬 길이는 달라도 결과는 같다</h2>
+  <table>
+    <tr><th>노드</th><th>상속 사슬</th></tr>
+    <tr><td><code>Camera3D</code></td><td><code>Camera3D &lt; Node3D</code></td></tr>
+    <tr><td><code>CollisionShape3D</code></td><td><code>CollisionShape3D &lt; Node3D</code></td></tr>
+    <tr><td><code>MeshInstance3D</code></td><td><code>… &lt; GeometryInstance3D &lt; VisualInstance3D &lt; Node3D</code></td></tr>
+    <tr><td><code>CharacterBody3D</code></td><td><code>… &lt; PhysicsBody3D &lt; CollisionObject3D &lt; Node3D</code></td></tr>
+    <tr><td><code>DirectionalLight3D</code></td><td><code>… &lt; Light3D &lt; VisualInstance3D &lt; Node3D</code></td></tr>
+  </table>
+  <p>
+    <b>끝에 <code>Node3D</code> 가 있으면 결과는 같습니다.</b>
+    그래서 카메라를 옮기든 캐릭터를 옮기든 <b><code>Position</code> 을 고치는 방법은 하나</b>입니다.
+  </p>
+
+  <h3>🛑 반례 — <code>WorldEnvironment</code> 에는 <code>Transform</code> 이 없다</h3>
+  <pre><code>WorldEnvironment &lt; Node &lt; Object      ← Node3D 가 없다</code></pre>
+  <p>
+    <b>하늘·안개는 공간의 한 지점에 있는 것이 아니라 씬 전체에 걸리는 설정</b>이라
+    위치가 필요 없습니다. 인스펙터에도 <code>Transform</code> 그룹이 나오지 않습니다.
+    <span class="k">"3D 씬에 있으니 당연히 위치가 있겠지"가 아니라 상속 사슬이 답입니다.</span>
+  </p>
+</section>
+
+<section class="more">
+  <h3>📖 더 자세히 — 스킬 문서 원문</h3>
+  <p>
+    이 페이지는 <b>요약본</b>입니다. 확인 절차, 스크립트의 <code>extends</code> 와의 관계,
+    그 밖의 기본 개념은 저장소의 <code>basics.md</code> 에 있습니다.
+  </p>
+  <div class="blist">
+    <a class="blink primary" href="https://github.com/thruthesky/godot/blob/main/references/basics.md" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub 원문 — basics.md<span class="sub">references/basics.md</span>
+    </a>
+    <a class="blink" href="doc.html?d=basics&q=인스펙터는">
+      사이트에서 읽기<span class="sub">doc.html?d=basics</span>
+    </a>
+    <a class="blink" href="https://github.com/thruthesky/godot" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      스킬 저장소 전체<span class="sub">thruthesky/godot</span>
+    </a>
+  </div>
+</section>
+
+<footer>
+  상속 사슬과 프로퍼티 기본값은 <code>godot --headless --doctool</code> 로 4.7.2.stable 에서 추출해 대조했습니다.
+  <br><br>
+  <a href="index.html">← 문서 목차로</a>
+</footer>
+
+</div>
+</body>
+</html>

@@ -203,7 +203,7 @@ mark{background:var(--hi);color:inherit;border-radius:2px;padding:0 1px}
       <div class="stats">
         <span class="stat">문서 <b>32</b>편</span>
         <span class="stat">약 <b>30,000</b>줄</span>
-        <span class="stat">소제목 <b>1,637</b>개</span>
+        <span class="stat">소제목 <b>1,643</b>개</span>
         <span class="stat">최소 사양 <b>3GB RAM</b></span>
       </div>
       <div class="herolinks">
@@ -218,6 +218,12 @@ mark{background:var(--hi);color:inherit;border-radius:2px;padding:0 1px}
     <section class="group" id="g-essay">
       <div class="ghead"><h2>해설</h2><p>문서 밖에서 따로 풀어 쓴 글</p></div>
       <div class="cards">
+        <a class="card" href="node-structure.html">
+          <h3>인스펙터는 상속 사슬이다<span class="star">★</span></h3>
+          <p>Create New Node 의 상속 사슬과 인스펙터 그룹이 정확히 대응한다.
+             <code>Node3D</code> 를 상속하는 120개가 Transform 을 공유하는 이유</p>
+          <div class="meta"><span class="slug">node-structure.html</span><span>그림 1 · 표 3</span></div>
+        </a>
         <a class="card" href="isometric.html">
           <h3>아이소메트릭은 직교투영이 아니다<span class="star">★</span></h3>
           <p>고정 시점 게임이 골라야 하는 투영. 두 말이 어떻게 다르고,
@@ -274,7 +280,7 @@ const hit = (d, q) => {
 
 function buildNav(q, counts) {
   const rows = ['<div class="lbl">분류</div>'];
-  if (!q) rows.push('<a href="#g-essay"><span>해설</span><span class="n">1</span></a>');
+  if (!q) rows.push('<a href="#g-essay"><span>해설</span><span class="n">2</span></a>');
   DATA.groups.forEach((g, i) => {
     const n = counts[i];
     rows.push(`<a href="#g${i}" class="${n === 0 ? 'zero' : ''}">

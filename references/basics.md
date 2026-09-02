@@ -249,6 +249,107 @@ CharacterBody3D
 
 실전 예제와 전체 검증 수치는 [example.md](example.md) §9 에 있다.
 
+### 인스펙터는 **상속 사슬을 그대로 세로로 펼친 것**이다
+
+**질문 셋을 한 번에 답한다.**
+
+1. 인스펙터 맨 위가 현재 노드고, 그 아래로 부모 클래스들의 속성이 이어지는가 → **그렇다**
+2. `Node3D` 를 상속하면 전부 `Transform`·`Rotation`·`Scale` 을 갖는가 → **그렇다**
+3. 그 값을 수정할 수 있는가 → **그렇다**
+
+#### 두 화면이 같은 것을 보여준다
+
+노드를 추가할 때 뜨는 **Create New Node** 창의 `Description` 에 상속 사슬이 적혀 있다.
+
+```
+Class CSGCylinder3D < CSGPrimitive3D < CSGShape3D < GeometryInstance3D
+      < VisualInstance3D < Node3D < Node < Object
+```
+
+**엔진에서 확인한 사슬도 정확히 같다.**
+
+그리고 그 노드를 선택하면 **인스펙터가 이 사슬을 뒤집어 세로로 늘어놓는다.**
+
+```
+Create New Node 의 사슬                인스펙터의 그룹 (위 → 아래)
+────────────────────────              ─────────────────────────
+CSGCylinder3D          ─────────────→  ▸ CSGCylinder3D   ← 현재 노드 자신
+  < CSGPrimitive3D     ─────────────→  ▸ CSGPrimitive3D
+  < CSGShape3D         ─────────────→  ▸ CSGShape3D
+  < GeometryInstance3D ─────────────→  ▸ GeometryInstance3D
+  < VisualInstance3D   ─────────────→  ▸ VisualInstance3D
+  < Node3D             ─────────────→  ▸ Node3D          ← Transform 이 여기 있다
+  < Node               ─────────────→  ▸ Node
+  < Object                              (Object 는 표시되지 않는다)
+```
+
+**맨 위가 "이 노드만의 것", 아래로 갈수록 "더 많은 노드가 공유하는 것"** 이다.
+`Radius`·`Height` 는 원기둥에만 있지만, `Position` 은 3D 노드 전부가 갖는다.
+
+> 🔑 **인스펙터에서 어떤 속성이 안 보이면, 그 노드가 그 클래스를 상속하지 않는 것이다.**
+> 반대로 낯선 그룹 이름이 보이면 **그것이 이 노드의 조상**이다.
+
+#### `Node3D` 가 주는 것 — 엔진에서 확인한 9개
+
+| 프로퍼티 | 기본값 |
+|---|---|
+| **`position`** | `Vector3(0, 0, 0)` |
+| **`rotation`** | `Vector3(0, 0, 0)` |
+| **`scale`** | `Vector3(1, 1, 1)` |
+| `transform` | `Transform3D(1,0,0, 0,1,0, 0,0,1, 0,0,0)` |
+| `rotation_edit_mode` | `0` (Euler) |
+| `rotation_order` | `2` (YXZ) |
+| `top_level` | `false` |
+| `visible` | `true` |
+| `visibility_parent` | `NodePath("")` |
+
+인스펙터의 **`Node3D > Transform`** 을 펼치면 나오는 `Position`·`Rotation`·`Scale`
+그리고 그 아래 `Rotation Edit Mode`·`Rotation Order`·`Top Level`·`Visibility` 가
+정확히 이 목록이다.
+
+#### **120개** 클래스가 이것을 물려받는다
+
+엔진에서 세어 보니 `Node3D` 를 (간접 포함) 상속하는 클래스가 **120개**다.
+전부 `Position`·`Rotation`·`Scale` 을 갖고, **전부 수정할 수 있다.**
+
+| 노드 | 사슬 |
+|---|---|
+| `Camera3D` | `Camera3D < Node3D` |
+| `CollisionShape3D` | `CollisionShape3D < Node3D` |
+| `MeshInstance3D` | `MeshInstance3D < GeometryInstance3D < VisualInstance3D < Node3D` |
+| `CharacterBody3D` | `CharacterBody3D < PhysicsBody3D < CollisionObject3D < Node3D` |
+| `DirectionalLight3D` | `DirectionalLight3D < Light3D < VisualInstance3D < Node3D` |
+| `CSGBox3D` | `CSGBox3D < CSGPrimitive3D < CSGShape3D < GeometryInstance3D < VisualInstance3D < Node3D` |
+
+**사슬의 길이는 제각각이지만 끝에 `Node3D` 가 있으면 결과는 같다.**
+그래서 카메라를 옮기든 캐릭터를 옮기든 **`Position` 을 고치는 방법은 하나**다.
+
+#### 🛑 반례 — `WorldEnvironment` 에는 `Transform` 이 없다
+
+3D 씬 안에 있다고 전부 `Node3D` 인 것은 아니다.
+
+```
+WorldEnvironment < Node < Object      ← Node3D 가 없다
+```
+
+**하늘·안개는 공간의 한 지점에 있는 것이 아니라 씬 전체에 걸리는 설정**이라
+위치가 필요 없다. 그래서 인스펙터에도 `Transform` 그룹이 나오지 않는다.
+
+**"3D 씬에 있으니 당연히 위치가 있겠지"가 아니라, 상속 사슬이 답이다.**
+
+#### 상속 사슬을 확인하는 세 가지 방법
+
+| 방법 | 어디서 |
+|---|---|
+| **Create New Node 창** | 노드를 고르면 `Description` 첫 줄에 사슬이 나온다 |
+| **인스펙터의 그룹 머리글** | 위에서 아래로 읽으면 그대로 사슬이다 |
+| **온라인 문서** | 클래스 페이지 상단의 **Inherits:** 줄 |
+
+> 💡 **스크립트의 `extends` 도 같은 이야기다.** `extends CharacterBody3D` 라고 쓰면
+> 그 사슬 전체(`PhysicsBody3D`·`CollisionObject3D`·`Node3D`·`Node`)의 기능을
+> 한꺼번에 물려받는다. 그래서 `velocity` 도 `position` 도 선언 없이 쓸 수 있다.
+
+
 ### 다른 노드를 가리키는 세 가지 방법 — **`@export` 를 쓴다**
 
 카메라가 플레이어를 따라가려면 **카메라 스크립트가 플레이어 노드를 잡아야** 한다.
