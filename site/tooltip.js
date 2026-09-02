@@ -33,7 +33,8 @@
     '  background:var(--card,#fff);color:var(--ink,#16202B);border:1px solid var(--rule,#C7D0DA);',
     '  border-radius:10px;padding:11px 13px 10px;box-shadow:0 6px 28px -8px rgba(0,0,0,.32);',
     '  font-size:13.5px;line-height:1.62;opacity:0;visibility:hidden;transition:opacity .12s;',
-    '  font-family:inherit;text-align:left;white-space:normal;font-weight:400}',
+    '  font-family:inherit;text-align:left;white-space:normal;font-weight:400;',
+    '  max-height:min(62vh,420px);overflow-y:auto;overscroll-behavior:contain}',
     '#gltip.on{opacity:1;visibility:visible}',
     '#gltip .h{display:flex;align-items:baseline;gap:7px;margin-bottom:5px;flex-wrap:wrap}',
     '#gltip .n{font-weight:700;font-size:14.5px;font-family:"IBM Plex Mono",ui-monospace,monospace}',
@@ -138,8 +139,10 @@
     var tw = tip.offsetWidth, th = tip.offsetHeight;
     var x = r.left + r.width / 2 - tw / 2;
     x = Math.max(10, Math.min(x, document.documentElement.clientWidth - tw - 10));
+    var vh = document.documentElement.clientHeight;
     var above = r.top > th + 14;
     var y = above ? r.top - th - 9 : r.bottom + 9;
+    y = Math.max(8, Math.min(y, vh - th - 8));   // 화면 밖으로 나가지 않게 가둔다
     tip.style.left = (x + window.scrollX) + 'px';
     tip.style.top = (y + window.scrollY) + 'px';
   }
