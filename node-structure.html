@@ -87,6 +87,21 @@ blockquote>*:first-child{margin-top:0} blockquote>*:last-child{margin-bottom:0}
 .blink.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .blink svg{width:16px;height:16px;fill:currentColor;flex:none}
 .blink .sub{margin-left:auto;font-size:12px;font-weight:400;opacity:.7;font-family:"IBM Plex Mono",monospace}
+.insp{background:#1B2228;border:1px solid #2B3742;border-radius:10px;overflow:hidden;
+  font-size:13.5px;margin:1.1em 0;color:#DFE7ED;box-shadow:var(--shadow)}
+.insp .g{background:#242D35;padding:8px 13px;font-weight:900;font-size:13px;
+  display:flex;align-items:center;gap:8px;border-top:1px solid #2B3742}
+.insp .g:first-child{border-top:0}
+.insp .g .who{margin-left:auto;font-size:11px;font-weight:400;color:#8A9AA8;
+  font-family:"IBM Plex Mono",monospace}
+.insp .p{padding:6px 13px 6px 26px;color:#A9B6C2;border-top:1px solid #212A31;
+  display:flex;gap:10px;align-items:baseline}
+.insp .p .v{margin-left:auto;color:#6E7E8C;font-family:"IBM Plex Mono",monospace;font-size:12px}
+.insp .cur{color:#FF7A45}
+.funnel{font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.75;
+  background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;box-shadow:var(--shadow);margin:1.1em 0}
+.bar{display:inline-block;height:9px;background:var(--accent);border-radius:2px;vertical-align:middle;opacity:.75}
 footer{border-top:1px solid var(--rule);padding-top:20px;font-size:13.5px;color:var(--muted)}
 footer a{color:var(--blue)}
 .k{color:var(--accent);font-weight:700}
@@ -205,6 +220,151 @@ CSGCylinder3D          ─────────────→  ▸ CSGCylind
     위치가 필요 없습니다. 인스펙터에도 <code>Transform</code> 그룹이 나오지 않습니다.
     <span class="k">"3D 씬에 있으니 당연히 위치가 있겠지"가 아니라 상속 사슬이 답입니다.</span>
   </p>
+</section>
+
+<section>
+  <h2>읽어보기 — <code>MeshInstance3D</code> 의 인스펙터</h2>
+  <p>
+    <code>MeshInstance3D</code> 를 선택하면 그룹이 다섯 개 나옵니다.
+    <b>각 그룹은 그 클래스가 새로 보탠 것만</b> 담습니다.
+    아래는 실제 인스펙터를 그대로 옮긴 것입니다.
+  </p>
+
+  <div class="insp">
+    <div class="g"><span class="cur">▣</span> MeshInstance3D <span class="who">무엇을 그릴 것인가</span></div>
+    <div class="p">Mesh <span class="v">&lt;empty&gt;</span></div>
+    <div class="p">Skeleton</div>
+    <div class="g">▢ GeometryInstance3D <span class="who">어떻게 그릴 것인가</span></div>
+    <div class="p">Geometry <span class="v">cast_shadow · material_override</span></div>
+    <div class="p">Global Illumination <span class="v">gi_mode</span></div>
+    <div class="p">Visibility Range <span class="v">lod_bias</span></div>
+    <div class="g">⋮⋮ VisualInstance3D <span class="who">어느 레이어에</span></div>
+    <div class="p">Layers <span class="v">layers</span></div>
+    <div class="p">Sorting <span class="v">sorting_offset</span></div>
+    <div class="g">○ Node3D <span class="who">어디에 놓을 것인가</span></div>
+    <div class="p">Transform <span class="v">position · rotation · scale</span></div>
+    <div class="p">Visibility <span class="v">visible</span></div>
+    <div class="g">○ Node <span class="who">트리의 일원으로서</span></div>
+    <div class="p">Process <span class="v">process_mode</span></div>
+    <div class="p">Physics Interpolation</div>
+    <div class="p">Auto Translate</div>
+    <div class="p">Editor Description</div>
+  </div>
+
+  <p>
+    <b>아래로 갈수록 추상적이고 위로 갈수록 구체적</b>입니다.
+    <code>Node</code> 는 "트리에 있다", <code>Node3D</code> 는 "공간에 있다",
+    <code>VisualInstance3D</code> 는 "화면에 그려진다",
+    <code>GeometryInstance3D</code> 는 "형상을 그린다",
+    <code>MeshInstance3D</code> 는 "<b>이 메시를</b> 그린다".
+  </p>
+
+  <h3>🛑 추가했는데 왜 아무것도 안 보이나</h3>
+  <p><b><code>Mesh</code> 가 <code>&lt;empty&gt;</code> 이기 때문입니다.</b> 그릴 형상이 없으니 그릴 것도 없습니다.</p>
+  <pre><code>갓 만든 MeshInstance3D
+  mesh       = &lt;Object#null&gt;
+  get_aabb() = [P: (0,0,0), S: (0,0,0)]      ← 차지하는 공간이 0
+
+BoxMesh 를 넣으면
+  get_aabb() = [P: (-0.5,-0.5,-0.5), S: (1,1,1)]
+  삼각형 12개 · 정점 36개</code></pre>
+  <blockquote>
+    <p><span class="k"><code>MeshInstance3D</code> 는 "메시를 담는 그릇"이지 형상 자체가 아닙니다.</span>
+    같은 그릇이 어떤 메시를 담느냐에 따라 상자도 되고 사람도 됩니다.</p>
+  </blockquote>
+
+  <h3><code>mesh</code> 는 물려받은 것인가 — <b>고유합니다</b></h3>
+  <p>각 클래스가 <b>자기가 선언한</b> 프로퍼티만 뽑아 확인했습니다.</p>
+  <table>
+    <tr><th>클래스</th><th>자기가 선언한 <code>mesh</code></th></tr>
+    <tr><td><b><code>MeshInstance3D</code></b></td><td><b>✅ 있다</b></td></tr>
+    <tr><td><code>GeometryInstance3D</code></td><td>❌</td></tr>
+    <tr><td><code>VisualInstance3D</code></td><td>❌</td></tr>
+    <tr><td><code>Node3D</code></td><td>❌</td></tr>
+    <tr><td><code>Node</code></td><td>❌</td></tr>
+  </table>
+  <p><b><code>mesh</code> 는 <code>MeshInstance3D</code> 가 처음 도입한 것</b>이라 인스펙터에서도 맨 위 그룹에 놓입니다. 위치는 우연이 아닙니다.</p>
+</section>
+
+<section>
+  <h2>Mesh · 삼각형 · Collision</h2>
+  <table>
+    <tr><th>용어</th><th>한 줄</th></tr>
+    <tr><td><b>Mesh(메시)</b></td><td><b>삼각형을 모아 만든 3D 형상 데이터.</b> 노드가 아니라 <b>리소스</b>라서 여러 노드가 공유한다</td></tr>
+    <tr><td><b>삼각형</b></td><td>3D 형상의 <b>최소 단위</b>. GPU 는 삼각형만 그린다 — 상자 하나가 <b>12개</b>(실측)</td></tr>
+    <tr><td><b>Collision</b></td><td><b>부딪히는 모양.</b> 보이는 메시와 <b>별개</b>이고, 없으면 그냥 통과한다</td></tr>
+  </table>
+  <p>
+    <span class="k">보이는 것과 부딪히는 것은 다른 물건입니다.</span>
+    <code>MeshInstance3D</code> 는 보이기만 하고 부딪히지 않습니다.
+    부딪히게 하려면 <code>StaticBody3D</code> + <code>CollisionShape3D</code> 를 따로 둡니다.
+  </p>
+  <div class="blist">
+    <a class="blink" href="doc.html?d=rendering-3d">메시·머티리얼·렌더링 상세<span class="sub">rendering-3d.md</span></a>
+    <a class="blink" href="doc.html?d=physics-3d">콜리전과 물리<span class="sub">physics-3d.md</span></a>
+    <a class="blink" href="doc.html?d=lowend-3gb-60fps">삼각형 수와 성능<span class="sub">lowend-3gb-60fps.md</span></a>
+    <a class="blink" href="doc.html?d=dictionary">용어집<span class="sub">dictionary.md</span></a>
+  </div>
+</section>
+
+<section>
+  <h2><code>MeshInstance3D</code> 와 <code>CSGBox3D</code> 를 나란히</h2>
+  <pre><code>MeshInstance3D &lt;                        GeometryInstance3D &lt; VisualInstance3D &lt; Node3D &lt; Node
+CSGBox3D &lt; CSGPrimitive3D &lt; CSGShape3D &lt; GeometryInstance3D &lt; VisualInstance3D &lt; Node3D &lt; Node
+                                        └──────────── 여기부터 같다 ────────────┘</code></pre>
+  <p>
+    <b>공통 조상은 <code>GeometryInstance3D</code> 부터</b>입니다.
+    그래서 둘 다 그림자·LOD·레이어·Transform 을 같은 방식으로 다룹니다.
+    <b>다른 것은 위쪽 두세 칸뿐</b>입니다.
+  </p>
+  <table>
+    <tr><th></th><th><code>MeshInstance3D</code></th><th><code>CSGBox3D</code></th></tr>
+    <tr><td>형상을 어디서</td><td><b><code>mesh</code> 에 담아 준 리소스</b></td><td><b><code>size</code> 로 그 자리에서 계산</b></td></tr>
+    <tr><td>콜리전</td><td>없다 (따로 만든다)</td><td><b><code>use_collision</code></b> 으로 켠다</td></tr>
+    <tr><td>형상 합치기</td><td>안 된다</td><td><b><code>operation</code></b> 으로 더하고 뺀다</td></tr>
+    <tr><td>비용</td><td>싸다</td><td><b>런타임 CPU 계산</b> — 최종물로 쓰지 않는다</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>🛑 "대부분의 노드가 이 구조인가" — 아니다</h2>
+  <p>
+    <code>Node</code> 는 공통 조상이 맞지만 <b>아래로 갈수록 급격히 좁아집니다.</b>
+    엔진의 클래스 <b>1,074개</b>를 세어 본 결과입니다.
+  </p>
+  <div class="funnel">
+Node                 283개  <span class="bar" style="width:280px"></span> 100%
+Node3D               120개  <span class="bar" style="width:119px"></span>  42%
+VisualInstance3D      43개  <span class="bar" style="width:43px"></span>  15%
+GeometryInstance3D    18개  <span class="bar" style="width:18px"></span>   6%
+  </div>
+  <p><b><code>GeometryInstance3D</code> 까지 내려가는 것은 6% 뿐입니다.</b> 게다가 <code>Node</code> 바로 아래에서 <b>갈래가 갈립니다.</b></p>
+  <pre><code>Node ─┬─ CanvasItem ──┬─ Node2D ── Sprite2D …        127개  (2D·UI)
+      │               └─ Control ── Button …
+      ├─ Node3D ──── VisualInstance3D ── …           120개  (3D)
+      ├─ Viewport …                                   11개
+      └─ Timer · HTTPRequest · WorldEnvironment …      각 0개</code></pre>
+  <p><b>2D·UI 갈래(<code>CanvasItem</code>)가 127개로 3D 갈래(120개)보다 오히려 많습니다.</b></p>
+
+  <h3>그래서 "대부분 비슷한 속성을 갖나" — 공통은 위쪽에만</h3>
+  <table>
+    <tr><th>속성</th><th>어느 클래스가</th><th>몇 개가 갖나</th></tr>
+    <tr><td><code>name</code> · <code>process_mode</code> · <code>owner</code></td><td><code>Node</code></td><td><b>283개 전부</b></td></tr>
+    <tr><td><code>position</code> · <code>rotation</code> · <code>scale</code></td><td><code>Node3D</code></td><td><b>120개</b></td></tr>
+    <tr><td><code>layers</code> · <code>sorting_offset</code></td><td><code>VisualInstance3D</code></td><td><b>43개</b></td></tr>
+    <tr><td><code>cast_shadow</code> · <code>visibility_range_*</code></td><td><code>GeometryInstance3D</code></td><td><b>18개</b></td></tr>
+  </table>
+  <blockquote>
+    <p>
+      <b>"모든 노드가 비슷하다"가 아니라 "위로 갈수록 공통이 많아진다"</b> 가 맞습니다.
+      <code>Button</code> 과 <code>MeshInstance3D</code> 가 공유하는 것은 <b><code>Node</code> 수준의 것뿐</b>입니다.
+    </p>
+    <p style="margin-bottom:0">
+      <span class="k">그래서 상속 사슬을 읽는 것이 곧 "이 노드가 무엇을 할 수 있는가"를 읽는 것입니다.</span>
+      사슬에 <code>Node3D</code> 가 없으면 위치가 없고,
+      <code>VisualInstance3D</code> 가 없으면 화면에 그려지지 않습니다.
+    </p>
+  </blockquote>
 </section>
 
 <section class="more">

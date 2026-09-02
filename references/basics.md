@@ -337,6 +337,145 @@ WorldEnvironment < Node < Object      ← Node3D 가 없다
 
 **"3D 씬에 있으니 당연히 위치가 있겠지"가 아니라, 상속 사슬이 답이다.**
 
+#### 각 계층이 **무엇을 보태는가** — `MeshInstance3D` 로 읽기
+
+`MeshInstance3D` 를 선택하면 인스펙터에 그룹이 다섯 개 나온다.
+**각 그룹은 그 클래스가 새로 보탠 것만** 담는다(엔진에서 프로퍼티를 추출해 대조했다).
+
+| 인스펙터 그룹 | 그 클래스가 보태는 것 | 뜻 |
+|---|---|---|
+| **`MeshInstance3D`** | `mesh` · `skeleton` · `skin` | **무엇을 그릴 것인가** |
+| `GeometryInstance3D` | `cast_shadow` · `material_override` · `visibility_range_*` · `gi_*` · `lod_bias` | 그리는 **방식** — 그림자·LOD·거리 |
+| `VisualInstance3D` | `layers` · `sorting_offset` | **어느 레이어**에 그릴 것인가 |
+| `Node3D` | `position` · `rotation` · `scale` · `transform` · `visible` | **어디에 놓을 것인가** |
+| `Node` | `process_mode` · `editor_description` · `name` · `owner` | 씬 트리의 **일원으로서의 것** |
+
+**아래로 갈수록 추상적이고 위로 갈수록 구체적**이다.
+`Node` 는 "트리에 있다", `Node3D` 는 "공간에 있다", `VisualInstance3D` 는 "화면에 그려진다",
+`GeometryInstance3D` 는 "형상을 그린다", `MeshInstance3D` 는 "이 메시를 그린다".
+
+#### 🛑 `MeshInstance3D` 를 추가하면 왜 아무것도 안 보이나
+
+**`Mesh` 가 `<empty>` 이기 때문이다.** 그릴 형상이 없으니 그릴 것도 없다.
+
+**엔진에서 확인한 것** — 갓 만든 `MeshInstance3D` 는 이렇다.
+
+```
+mesh       = <Object#null>
+get_aabb() = [P: (0,0,0), S: (0,0,0)]      ← 차지하는 공간이 0
+```
+
+`BoxMesh` 를 넣으면 그 자리에서 바뀐다.
+
+```
+mesh       = <BoxMesh#…>
+get_aabb() = [P: (-0.5,-0.5,-0.5), S: (1,1,1)]
+삼각형 12개 · 정점 36개
+```
+
+> 🔑 **`MeshInstance3D` 는 "메시를 담는 그릇"이지 형상 자체가 아니다.**
+> 그릇만 놓아서는 아무 일도 일어나지 않는다.
+
+**넣는 법** — 인스펙터 `Mesh` 칸 → `<empty>` 클릭 → `New BoxMesh` / `New CapsuleMesh` /
+`New PlaneMesh` … 또는 `.obj`·`.glb` 에서 가져온 메시를 지정한다.
+**같은 `MeshInstance3D` 가 어떤 메시를 담느냐에 따라 상자도 되고 사람도 된다.**
+
+#### `mesh` 는 물려받은 것인가, 고유한 것인가 — **고유하다**
+
+`ClassDB` 로 각 클래스가 **자기가 선언한** 프로퍼티만 뽑아 확인했다.
+
+| 클래스 | 자기가 선언한 `mesh` |
+|---|---|
+| **`MeshInstance3D`** | ✅ **있다** |
+| `GeometryInstance3D` | ❌ |
+| `VisualInstance3D` | ❌ |
+| `Node3D` | ❌ |
+| `Node` | ❌ |
+
+**`mesh` 는 `MeshInstance3D` 가 처음 도입한 것**이고, 그래서 인스펙터에서도
+**맨 위 `MeshInstance3D` 그룹**에 놓인다. 위치는 우연이 아니다.
+
+#### Mesh · 삼각형 · Collision 을 한 줄씩
+
+| 용어 | 한 줄 |
+|---|---|
+| **Mesh(메시)** | **삼각형을 모아 만든 3D 형상 데이터.** 노드가 아니라 **리소스**라서 여러 노드가 공유한다 |
+| **삼각형** | 3D 형상의 **최소 단위**. GPU 는 삼각형만 그린다 — 상자 하나가 면 6개 × 2 = **12개**(실측) |
+| **Collision(콜리전)** | **부딪히는 모양.** 보이는 메시와 **별개**이고, 없으면 그냥 통과한다 |
+
+**보이는 것과 부딪히는 것은 다른 물건이다.** `MeshInstance3D` 는 보이기만 하고
+부딪히지 않는다. 부딪히게 하려면 `StaticBody3D` + `CollisionShape3D` 를 따로 둔다.
+
+- 메시·텍스처·머티리얼 상세 → [rendering-3d.md](rendering-3d.md), [dictionary.md](dictionary.md)
+- 삼각형 수와 성능 → [lowend-3gb-60fps.md](lowend-3gb-60fps.md) §1
+- 콜리전이 성립하는 조건 → 위의 **"씬 트리가 정하는 것과 정하지 않는 것"**, [physics-3d.md](physics-3d.md)
+- 메시에서 콜리전을 자동 생성 → [physics-3d.md](physics-3d.md)
+
+#### `MeshInstance3D` 와 `CSGBox3D` 를 나란히 놓으면
+
+```
+MeshInstance3D <                        GeometryInstance3D < VisualInstance3D < Node3D < Node < Object
+CSGBox3D < CSGPrimitive3D < CSGShape3D < GeometryInstance3D < VisualInstance3D < Node3D < Node < Object
+                                        └──────────────── 여기부터 같다 ────────────────┘
+```
+
+**공통 조상은 `GeometryInstance3D` 부터**다. 그래서 둘 다 그림자·LOD·레이어·Transform 을
+같은 방식으로 다룬다. 다른 것은 **위쪽 두세 칸뿐**이다.
+
+| | `MeshInstance3D` | `CSGBox3D` |
+|---|---|---|
+| 형상을 어디서 | **`mesh` 에 담아 준 리소스** | **`size` 로 그 자리에서 계산** |
+| 콜리전 | 없다 (따로 만든다) | **`use_collision`** 으로 켤 수 있다 |
+| 형상 합치기 | 안 된다 | **`operation`** 으로 더하고 뺀다 |
+| 비용 | 싸다 (미리 만든 것을 그린다) | **런타임 CPU 계산** — 최종물로 쓰지 않는다 |
+
+#### 🛑 "대부분의 노드가 이 구조인가" — **아니다**
+
+`Node` 는 공통 조상이 맞지만, **아래로 갈수록 급격히 좁아진다.**
+엔진의 클래스 1,074개를 세어 본 결과다.
+
+| 클래스 | 이것을 상속하는 클래스 수 | `Node` 자손 중 비율 |
+|---|---|---|
+| `Node` | **283** | 100 % |
+| `Node3D` | **120** | **42 %** |
+| `VisualInstance3D` | **43** | **15 %** |
+| `GeometryInstance3D` | **18** | **6 %** |
+
+**`GeometryInstance3D` 까지 내려가는 것은 6% 뿐이다.**
+
+게다가 `Node` 바로 아래에서 **갈래가 갈린다.**
+
+| `Node` 를 직접 상속 | 그 아래 자손 |
+|---|---|
+| **`CanvasItem`** (2D·UI) | **127개** ← `Node3D` 보다 많다 |
+| **`Node3D`** (3D) | **120개** |
+| `Viewport` | 11개 |
+| `Timer` · `HTTPRequest` · `AudioStreamPlayer` · `WorldEnvironment` … | 0개 |
+
+```
+Node ─┬─ CanvasItem ──┬─ Node2D ── Sprite2D …        127개  (2D·UI)
+      │               └─ Control ── Button …
+      ├─ Node3D ──── VisualInstance3D ── …           120개  (3D)
+      ├─ Viewport …                                   11개
+      └─ Timer · HTTPRequest · WorldEnvironment …      각 0개
+```
+
+#### 그래서 "대부분 비슷한 속성을 갖나" — **공통은 위쪽에만 있다**
+
+| 속성 | 몇 개가 갖나 |
+|---|---|
+| `name` · `process_mode` · `owner` (**`Node`**) | **283개 전부** |
+| `position` · `rotation` · `scale` (**`Node3D`**) | **120개** — 버튼·타이머·`WorldEnvironment` 에는 없다 |
+| `layers` · `sorting_offset` (**`VisualInstance3D`**) | **43개** |
+| `cast_shadow` · `visibility_range_*` (**`GeometryInstance3D`**) | **18개** |
+
+**"모든 노드가 비슷하다"가 아니라 "위로 갈수록 공통이 많아진다"** 가 맞다.
+`Button` 과 `MeshInstance3D` 가 공유하는 것은 **`Node` 수준의 것뿐**이다.
+
+> 🔑 **그래서 상속 사슬을 읽는 것이 곧 "이 노드가 무엇을 할 수 있는가"를 읽는 것이다.**
+> 사슬에 `Node3D` 가 없으면 위치가 없고, `VisualInstance3D` 가 없으면 화면에 그려지지 않는다.
+
+
 #### 상속 사슬을 확인하는 세 가지 방법
 
 | 방법 | 어디서 |
