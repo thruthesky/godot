@@ -4207,6 +4207,10 @@ root
       └─ RightShoulder → RightArm → RightForeArm → RightHand
 ```
 
+> ⚠️ **뼈 22개와 23개가 둘 다 나오는 이유** — 리깅 도구가 넣는 `neutral_bone` 이
+> 하나 더 있어서 `Skeleton3D` 의 본은 **23개**지만, 실제로 움직이는 `mixamorig_*` 은
+> **22개**라 애니메이션 채널은 22개 기준으로 만들어진다.
+
 **부모가 움직이면 자식이 따라 움직인다.** 노드 트리(§1)와 완전히 같은 원리다.
 골반을 돌리면 다리·척추·팔·머리가 통째로 따라간다. 그래서 애니메이션은
 "모든 정점의 위치"를 저장할 필요 없이 **뼈 22개의 자세만** 저장하면 된다.
@@ -4289,14 +4293,22 @@ skins/use_named_skins=true
 
 #### 번역 결과 — 이런 노드 트리가 된다
 
+**아래는 실제로 임포트해서 찍은 것이다**(Godot 4.7.2).
+
 ```
 Player (CharacterBody3D)          ← 우리 스크립트가 붙은 곳
 ├─ CollisionShape3D               ← 부딪히는 몸 (§9)
 └─ character (Node3D)             ← .glb 인스턴스. 여기서부터는 임포터가 만든 것
-   ├─ AnimationPlayer             ★ .glb 의 animations 가 전부 여기로 들어온다
-   └─ Skeleton3D                  ★ .glb 의 뼈 22개가 여기로
-      └─ MeshInstance3D           ★ 메시(피부)
+   ├─ root (Node3D)               ⚠️ 이 중간 노드의 이름은 .glb 마다 다르다
+   │  └─ Skeleton3D               ★ .glb 의 뼈 23개가 여기로
+   │     └─ MeshInstance3D        ★ 메시(피부)
+   └─ AnimationPlayer             ★ .glb 의 animations 가 전부 여기로 들어온다
 ```
+
+> 🛑 **`AnimationPlayer` 는 `Skeleton3D` 의 형제가 아니다.** 씬 루트의 직계 자식이고,
+> 중간 노드(`root`)의 **형제**다. 그리고 **그 중간 노드의 이름은 파일마다 다르다** —
+> Blender 의 오브젝트 이름이 그대로 넘어오기 때문에 `root` 일 수도 `Armature` 일
+> 수도 있다. 10.4 에서 **고정 경로 대신 타입으로 찾는 이유**가 바로 이것이다.
 
 | `.glb` 안의 것 | Godot 노드 |
 |---|---|
@@ -4308,21 +4320,147 @@ Player (CharacterBody3D)          ← 우리 스크립트가 붙은 곳
 **"애니메이션은 어디서 오나"의 답이 이것이다.**
 `.glb` 안의 애니메이션 배열 → 임포트 → **`AnimationPlayer` 노드 하나.**
 
-#### 🔑 에디터에서 직접 눈으로 확인하는 법
+#### 🛑 실측 — 본 이름의 `:` 가 `_` 로 바뀐다
 
-씬에 넣은 `.glb` 인스턴스는 기본적으로 **속이 접혀 있어** 안이 보이지 않는다.
+**본을 코드로 찾을 때 반드시 걸리는 함정이다.**
+
+| | 이름 |
+|---|---|
+| `.glb` 안 | `mixamorig:Hips` |
+| **Godot 임포트 후** | **`mixamorig_Hips`** |
+
+**왜 바뀌는가** — 애니메이션 트랙의 경로가 이런 형식이기 때문이다(실측).
 
 ```
-Scene 독에서 character 노드 우클릭
-   → "Editable Children"(자식 편집 가능) 체크
+root/Skeleton3D:mixamorig_Hips
+└──── 노드 경로 ───┘│└─ 본 이름 ─┘
+                   콜론이 구분자다
 ```
 
-그러면 `AnimationPlayer` 와 `Skeleton3D` 가 트리에 펼쳐진다.
-**`AnimationPlayer` 를 선택하면 화면 아래에 애니메이션 패널이 열리고,
-`idle`·`walk` 를 골라 ▶ 를 눌러 그 자리에서 재생해 볼 수 있다.**
+`:` 는 `NodePath` 에서 **"여기부터는 속성 이름"** 을 뜻하는 예약 문자라, 본 이름에
+그대로 두면 경로가 깨진다. 그래서 임포터가 `_` 로 치환한다.
 
-트랙 목록에 `mixamorig:Hips`, `mixamorig:LeftUpLeg` 같은 **뼈 이름이 줄줄이
-나오는 것**을 보면 §10.2 의 설명이 눈으로 확인된다.
+```gdscript
+skel.find_bone("mixamorig:Hips")   # 🛑 -1 이 나온다
+skel.find_bone("mixamorig_Hips")   # ✅
+```
+
+#### 실측 — 임포터가 트랙을 65% 버린다
+
+`.import` 의 `animation/remove_immutable_tracks` 는 **기본이 `true`** 라 모르는 사이에
+적용되고 있다. 같은 파일을 두 설정으로 재임포트해 `idle` 의 트랙을 세어 봤다.
+
+| 설정 | `idle` 의 트랙 수 | 내역 |
+|---|---|---|
+| `false` | **66개** | Position 22 + Rotation 22 + Scale 22 — **glTF 채널 수 그대로** |
+| **`true`** (기본) | **23개** | **Position 1 + Rotation 22** — Scale 은 전부 사라졌다 |
+
+트랙별 키 개수를 보면 이유가 드러난다.
+
+```
+mixamorig_Hips        Position  키 30개   ← 변한다  → 남는다
+mixamorig_Hips        Scale     키  1개   ← 안 변한다 → 제거
+mixamorig_LeftUpLeg   Position  키  1개   ← 안 변한다 → 제거
+mixamorig_LeftUpLeg   Rotation  키 28개   ← 변한다  → 남는다
+```
+
+🔑 **뼈는 회전만 한다.** 관절은 길이가 변하지 않으니 위치·크기가 고정이고,
+**골반(`Hips`) 하나만 위치가 변한다**(걸을 때의 체중 이동). 10.2 에서 "채널 66개"
+라고 한 것은 **파일 안의 이야기**이고, **엔진에 올라온 뒤에는 23개**다.
+
+#### 실측 — 임포트 직후의 기본값
+
+**10.4 의 `_ready()` 가 왜 그 세 줄을 쓰는지가 이 표에 있다.**
+
+| 항목 | 임포트 직후 | 뜻 |
+|---|---|---|
+| `Animation.loop_mode` | **`0` (`LOOP_NONE`)** — 전부 | 🛑 안 켜면 idle 이 2.03초에 얼어붙는다 |
+| `callback_mode_process` | **`1` (`..._IDLE`)** | 렌더 프레임 갱신 → 이동과 어긋난다 |
+| `Animation.step` | **`0.0333`** (=1/30) | `.import` 의 `animation/fps=30` |
+
+```
+AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_  PHYSICS=0  IDLE=1  MANUAL=2
+Animation.  LOOP_NONE=0   LOOP_LINEAR=1   LOOP_PINGPONG=2
+```
+
+#### 🛑 씬 트리에 `AnimationPlayer` 가 보이지 않는다 — 정상이다
+
+**여기서 대부분 한 번 막힌다.** 씬에 `.glb` 를 넣으면 Scene 독에는 이것만 보인다.
+
+```
+Player  (CharacterBody3D)
+├─ CollisionShape3D
+└─ character          🎬     ← 펼침 화살표(▶)조차 없다
+```
+
+이름 오른쪽의 **영화 슬레이트 아이콘(🎬)** 이 **"이 노드는 별도 씬 파일의 인스턴스"**
+라는 표시다. 바로 위에서 본 대로 `.glb` 는 `PackedScene` — 즉 **씬 인스턴스**이고,
+**Godot 은 인스턴스된 씬의 내부를 기본적으로 감춘다.** 내부 노드는 **그 파일의 소유**라
+이쪽 씬에서 함부로 건드리지 못하게 막는 것이다.
+
+**`.glb` 만의 특성이 아니다** — 직접 만든 `.tscn` 을 인스턴싱해도 똑같이 접힌다(§3).
+
+> 🛑 **Inspector 에는 원래 나오지 않는다.** Inspector 는 **선택한 노드 하나의 속성**을
+> 보여주는 곳이지 자식 목록을 보여주는 곳이 아니다. `character` 를 고르면 `Node3D` 의
+> 속성(Transform · Visibility · Process …)만 나오는 것이 맞다.
+
+**펼치는 법:**
+
+```
+Scene 독에서 character 우클릭 → "Editable Children"(자식 편집 가능) 체크
+```
+
+> ⚠️ 켜 두면 하위 노드의 변경이 **이쪽 씬 파일에 저장된다.** 구경만 할 거면
+> 확인한 뒤 다시 끈다.
+
+#### 🛑 펼쳤는데도 애니메이션이 안 보인다
+
+**여기서 두 번째로 막힌다.** `AnimationPlayer` 를 선택해도 Inspector 에는
+`Current Animation`·`Speed Scale` 같은 **속성만** 나오고 목록이 없어 보인다.
+**보는 방법은 세 가지다.**
+
+**① 가장 빠르다 — Inspector 맨 첫 줄의 `Current Animation` 드롭다운**
+
+```
+Inspector
+  AnimationPlayer
+    Current Animation   [        ∨ ]   ← 여기를 클릭
+```
+
+누르면 `idle`·`walk`·`run`… 이 그대로 나오고, 고르면 **뷰포트의 캐릭터가 즉시 그
+자세로 바뀐다.** T-포즈가 풀리면 `.glb` 가 정상이라는 뜻이다. 재생은 되지 않는다.
+
+**② 재생·트랙까지 — 하단 Animation 패널**
+
+**이 패널이 닫혀 있어서 "애니메이션이 없다"고 오해하는 경우가 대부분이다.**
+
+```
+화면 맨 아래 탭 줄:  Output │ Debugger │ Audio │ Animation │ Shader Editor
+                                                 └─ 이것을 클릭
+```
+
+| 상황 | 대처 |
+|---|---|
+| 탭 줄이 안 보인다 | **뷰포트와 화면 아래 경계선을 위로 드래그**해 패널을 키운다 |
+| `Animation` 탭이 없다 | `AnimationPlayer` 를 **먼저 선택**해야 생긴다 |
+| 눌렀는데 비어 있다 | 고른 것이 `Skeleton3D` 가 아니라 `AnimationPlayer` 가 맞는지 |
+
+열리면 왼쪽 위에서 `walk` 를 고르고 **▶**. 아래에 **트랙 23개**가 늘어선다.
+
+```
+root/Skeleton3D:mixamorig_Hips          ◆──◆──◆──◆──◆   ← 키프레임 점들
+root/Skeleton3D:mixamorig_LeftUpLeg     ◆────◆────◆
+root/Skeleton3D:mixamorig_Spine         ◆──◆────◆──◆
+```
+
+**§10.2 에서 말한 "뼈의 시간별 자세표"가 바로 이 화면이다.**
+
+**③ 실제 동작 — 게임을 실행한다(F5 / macOS ⌘B)**
+
+🛑 **에디터는 `_ready()` 를 실행하지 않는다.** ①② 는 어디까지나 **에디터가 미리보기로
+자세를 씌워 주는 것**이고, `play("idle")` 이 진짜로 걸리는 것은 실행할 때다.
+그래서 **에디터에서 캐릭터가 T-포즈로 서 있는 것도 정상이다** — 리깅된 기본
+자세(rest pose)를 그대로 보여 주고 있을 뿐이다.
 
 ---
 
@@ -4440,24 +4578,55 @@ func _physics_process(delta: float) -> void:
 > 잘 이동하지만 `idle` 자세 그대로 미끄러져 다닌다. 반대로 ⓐ 를 지우면
 > 제자리에서 열심히 걷기만 한다.
 
-#### `_play()` 에 반드시 필요한 가드
+#### `_play()` 의 가드 — 실측으로 확인한 진짜 효과
 
 ```gdscript
 ## 같은 애니면 다시 걸지 않는다.
 func _play(name: String) -> void:
     if _anim.current_animation == name:
-        return                            # ★ 이 줄이 없으면 캐릭터가 얼어붙는다
+        return
     if not _anim.has_animation(name):
         push_warning("애니메이션 없음: %s (있는 것: %s)" % [name, _anim.get_animation_list()])
         return
     _anim.play(name, blend_time)
 ```
 
-`_physics_process` 는 **초당 60번** 돈다. 저 `return` 이 없으면 걷는 동안
-`play("walk")` 가 초당 60번 불리고, `play()` 는 **매번 0초로 되감기 때문에**
-캐릭터는 걷기 첫 프레임에서 부들거리며 멈춰 있는 것처럼 보인다.
+`_physics_process` 는 **초당 60번** 돈다. 그러면 저 `return` 이 없을 때
+`play("walk")` 가 초당 60번 불리는데 — **무슨 일이 일어나는가?**
 
-**`play()` 는 "재생을 시작하라"는 명령이지 "재생을 유지하라"는 명령이 아니다.**
+**재 보면 아무 일도 일어나지 않는다**(4.7.2 실측).
+
+```
+가드 없이 매 프레임 play("walk", 0.15) × 30프레임 → 재생위치 0.5000초
+가드 두고 같은 0.5초 진행                          → 재생위치 0.5000초
+LeftUpLeg 자세 — 두 경우가 소수점까지 완전히 동일
+```
+
+🔑 **이미 재생 중인 것과 같은 이름이면 `play()` 는 아무것도 하지 않는다.**
+"매 프레임 `play()` 하면 되감겨 얼어붙는다" 는 것은 **Godot 3 시절의 이야기이고
+4 에서는 성립하지 않는다.**
+
+**그래도 가드는 남긴다** — 매 프레임의 문자열 비교와 블렌드 준비를 건너뛰고,
+"같은 애니면 손대지 않는다" 는 의도가 코드에 드러나기 때문이다.
+**다만 없다고 화면이 깨지지는 않는다.**
+
+#### 🛑 진짜 함정은 정반대다 — `play()` 로는 되감기지 않는다
+
+```
+attack 을 0.6초까지 재생한 뒤 play("attack") 다시 호출
+   → 재생위치 0.600초   🛑 처음부터 다시 재생되지 않는다
+```
+
+**공격 버튼을 연타해도 진행 중인 재생이 그대로 이어진다.** 1회성 애니를 확실히
+처음부터 재생하려면 **명시적으로 되감아야 한다.**
+
+| 방법 | 결과 |
+|---|---|
+| `play()` 만 | **0.600초 — 되감기지 않음** |
+| `stop()` → `play()` | **0.000초** ✅ 대신 블렌드 출발 자세도 지워져 조금 딱딱해진다 |
+| `seek(0.0, true)` | **0.000초** ✅ 블렌드를 살리고 싶을 때 |
+
+**`play()` 는 "재생을 시작하라"는 명령이지 "처음부터 다시 틀어라"가 아니다.**
 한 번 걸어 두면 `AnimationPlayer` 가 알아서 끝까지, 루프면 무한히 돌린다 —
 **자동인 부분은 여기뿐이다.**
 
@@ -4476,6 +4645,18 @@ _anim.play(name, blend_time)      # blend_time = 0.15 (초)
 | **`0.1 ~ 0.2`** | **일반적인 캐릭터 이동에 적당하다** |
 | `0.5` 이상 | 흐물거린다. 반응이 느리게 느껴진다 |
 
+**실측 — 가중치는 `blend_time` 동안 선형으로 옮겨 간다.** `blend_time = 0.6` 으로
+idle → run 전환하며, 같은 시각의 **순수 idle 자세**와 **순수 run 자세** 사이 어디에
+있는지 쟀다(`LeftUpLeg` 기준).
+
+```
+ t=0.00초 → run 쪽으로   0%
+ t=0.15초 → run 쪽으로  18%
+ t=0.30초 → run 쪽으로  45%      ← 절반 지점에서 거의 정확히 절반
+ t=0.45초 → run 쪽으로  73%
+ t=0.60초 → run 쪽으로 100%      ← blend_time 에 정확히 도달
+```
+
 #### 1회성 애니 — 시작과 끝을 코드가 관리한다
 
 ```gdscript
@@ -4483,6 +4664,7 @@ var _busy := false        # 공격 재생 중 — 이동 애니가 덮어쓰지 
 
 func _on_attack_pressed() -> void:
     _busy = true
+    _anim.stop()                            # 🛑 이게 없으면 연타가 무시된다(위 실측)
     _anim.play(ANIM_ATTACK, blend_time)     # 루프가 아니므로 한 번 재생하고 끝난다
 
 func _on_animation_finished(anim_name: StringName) -> void:
@@ -4495,6 +4677,27 @@ func _on_animation_finished(anim_name: StringName) -> void:
 **`_busy` 를 푸는 것만으로 복귀가 끝난다.** `_physics_process` 의 ⓑ 가 다음 프레임에
 알아서 `walk` 또는 `idle` 을 고르기 때문이다. "공격이 끝났으니 idle 을 틀어라"라고
 직접 쓸 필요가 없다 — **상태를 풀면 매 프레임 도는 판단이 알아서 메꾼다.**
+
+#### 실측 — `animation_finished` 는 루프 애니에서 영영 오지 않는다
+
+```
+attack (루프 없음) 1.5초 진행 → 받은 신호: ["attack"]   ✅
+walk   (루프)      3.0초 진행 → 받은 신호: []           🛑 두 바퀴를 돌아도 안 온다
+```
+
+**그래서 10.4 에서 `attack`·`death` 를 루프 목록에 넣지 않은 것은 취향이 아니라 필수다.**
+루프를 걸면 `_busy` 가 영원히 `true` 로 남아 **캐릭터가 공격 자세로 굳는다.**
+
+#### 실측 — 루프 없는 애니가 끝나면 마지막 자세로 멈춘다
+
+```
+death (2.43초) 를 3.3초까지 진행
+   → is_playing() = false,  current_animation = ""   (빈 문자열)
+   → 마지막 프레임 자세, 즉 쓰러진 채로 유지된다
+```
+
+🔑 **`current_animation` 이 빈 문자열이 되므로** 나중에 `_play(ANIM_IDLE)` 을 부르면
+가드를 정상적으로 통과한다 — 부활 처리가 별도 초기화 없이 동작하는 이유다.
 
 ---
 
@@ -4511,6 +4714,20 @@ func _on_animation_finished(anim_name: StringName) -> void:
 Mixamo 같은 곳의 애니메이션은 **제자리(in-place)** 로 만들어져 있다.
 `walk` 를 틀면 캐릭터는 **러닝머신 위에서처럼 그 자리에서 걷는 동작만** 한다.
 실제 전진은 전적으로 `velocity` 와 `move_and_slide()` 의 몫이다.
+
+**실측으로 확인한다.** `walk` 를 1.4초(한 바퀴) 재생하며 씬 루트와 골반 본을 함께 찍었다.
+
+```
+ t=0.0초   루트 (0,0,0)   Hips 본 Z = -0.0074
+ t=0.2초   루트 (0,0,0)   Hips 본 Z = +0.0211
+ t=0.4초   루트 (0,0,0)   Hips 본 Z = -0.0126
+ t=0.8초   루트 (0,0,0)   Hips 본 Z = +0.0217
+ t=1.2초   루트 (0,0,0)   Hips 본 Z = -0.0263
+```
+
+**루트는 1mm 도 움직이지 않고, 골반만 ±2.6cm 안에서 앞뒤로 흔들린다.**
+"애니메이션이 캐릭터를 옮긴다"는 인상은 **그 자리에서 걷는 동작**과 **물리가 만드는
+전진**이 겹쳐 보이기 때문에 생긴다.
 
 #### 그래서 발이 미끄러진다 — foot sliding
 
@@ -4603,7 +4820,11 @@ Scene 독 → character 우클릭 → Editable Children
 |---|---|---|
 | **T-포즈로 서 있기만 한다** | 애니 이름이 `.glb` 안의 것과 다르다 | `get_animation_list()` 로 실제 이름 확인 후 상수 수정 |
 | **idle 이 잠깐 나오고 얼어붙는다** | `loop_mode` 가 기본값(루프 없음) | `_ready` 에서 `LOOP_LINEAR` 로 설정 (10.4 ①) |
-| **걷는 동작이 부들거리며 멈춘다** | 매 프레임 `play()` 를 다시 호출 | `_play()` 에 `current_animation` 가드 (10.5) |
+| **씬 트리에 `AnimationPlayer` 가 없다** | 인스턴스된 씬은 내부가 접힌다 (정상) | `.glb` 노드 우클릭 → **Editable Children** (10.3) |
+| **펼쳤는데 애니 목록이 안 보인다** | 하단 **Animation 패널**이 닫혀 있다 | 아래 `Animation` 탭 · Inspector 의 `Current Animation` (10.3) |
+| **에디터에서 T-포즈로 서 있다** | 에디터는 `_ready()` 를 실행하지 않는다 (정상) | 실행해서 확인한다 (10.3) |
+| **공격 버튼 연타가 무시된다** | 🛑 `play()` 는 같은 애니를 **되감지 않는다** | `stop()` 또는 `seek(0.0, true)` (10.5) |
+| **`find_bone("mixamorig:Hips")` 가 −1** | 임포트하며 `:` 가 `_` 로 치환된다 | `mixamorig_Hips` 로 찾는다 (10.3) |
 | **발이 지면에서 미끄러진다** | 이동 속도와 애니 보폭 불일치 | `walk_speed` 조정 · `speed_scale` · Root Motion (10.6) |
 | **공격 자세로 굳는다** | `animation_finished` 미연결 또는 공격 애니에 루프가 걸림 | 신호 연결 확인 · 루프 목록에서 제외 (10.4 ③) |
 | **이동은 되는데 자세가 안 바뀐다** | `_physics_process` 의 애니 선택 블록이 없다 | 10.5 ⓑ 를 추가 |
