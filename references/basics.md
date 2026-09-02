@@ -2036,7 +2036,7 @@ light_scene.tscn  LightScene (Node3D)         ← light_scene.gd
 | 원하는 것 | 방법 |
 |---|---|
 | **두 씬을 함께 돌린다** | 메인 씬 안에 다른 씬을 **인스턴싱**한다 (아래 ①) |
-| **그 씬만 돌린다** | 메인 씬을 바꾸거나 <kbd>F6</kbd> 로 현재 씬만 실행 (아래 ②③) |
+| **그 씬만 돌린다** | 메인 씬을 바꾸거나 **현재 씬 실행**(macOS <kbd>Cmd</kbd>+<kbd>R</kbd> · Windows·Linux <kbd>F6</kbd>) (아래 ②③) |
 | **항상 살아 있어야 한다** | **오토로드(Autoload)** 로 등록 (아래 ④) |
 
 **① 메인 씬 안에 인스턴싱한다 (가장 흔한 정답)**
@@ -2044,6 +2044,30 @@ light_scene.tscn  LightScene (Node3D)         ← light_scene.gd
 씬 독에서 부모가 될 노드를 선택하고 **Instantiate Child Scene**
 (체인 모양 아이콘, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> · Windows·Linux 는 `Ctrl+Shift+A`) 으로 `.tscn` 을 고른다.
 파일 독에서 씬 트리로 **드래그 앤 드롭** 해도 같다. 코드로 넣는 방법은 §3 참고.
+
+#### 🛑 실행 단축키는 macOS 에서 다르다 — F5·F6 이 아니다
+
+**Godot 은 macOS 에서 실행 단축키를 재정의한다.** 문서·튜토리얼이 F5/F6 으로 적혀 있어도
+Mac 에서는 그 키가 아니다.
+
+| 동작 | Windows · Linux | **macOS** |
+|---|---|---|
+| Run Project (메인 씬) | <kbd>F5</kbd> | **<kbd>Cmd</kbd>+<kbd>B</kbd>** |
+| **Run Current Scene** | <kbd>F6</kbd> | **<kbd>Cmd</kbd>+<kbd>R</kbd>** |
+| Stop | <kbd>F8</kbd> | **<kbd>Cmd</kbd>+<kbd>.</kbd>** |
+
+⚠️ **Magic Keyboard 는 F1~F12 가 기본이 미디어 키다.** F 키를 쓰려면 <kbd>fn</kbd> 을
+함께 눌러야 한다(`fn`+`F6`). 그래서 Mac 에서는 위 표의 Cmd 조합을 쓰는 편이 낫다.
+
+**마우스만으로 실행하려면** — 에디터 **오른쪽 위** 재생 버튼 묶음에서
+**필름 슬레이트 아이콘(🎬)** 이 "현재 씬 실행" 이다(▶ 는 메인 씬 실행).
+아이콘에 커서를 올리면 그 환경의 실제 단축키가 툴팁에 나온다.
+
+**터미널에서 특정 씬만 실행** — 단축키·에디터와 무관하게 가장 확실하다:
+
+```bash
+godot --path . scenes/demo/player_demo.tscn
+```
 
 **② 메인 씬 자체를 바꾼다**
 
