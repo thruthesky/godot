@@ -71,6 +71,16 @@
 - [ ] 카메라를 놓고 실행해 보기
 - [ ] 씬을 나누고 인스턴싱으로 조립하기
 
+### 6단계 — 캐릭터를 살아 움직이게 (이 문서 §10)
+
+- [ ] **애니메이션이 `.glb` 파일 안에 들어 있다**는 것 — 어디서 오는가
+- [ ] 애니메이션의 실체가 **"뼈의 시간별 자세표"** 라는 것. 움직이는 그림이 아니다
+- [ ] `.glb` 가 Godot 에서 **씬(`PackedScene`)** 이 되고, 애니가 **`AnimationPlayer`** 로 들어온다는 것
+- [ ] 🛑 **애니메이션은 자동으로 재생되지 않는다** — 코드가 매 프레임 직접 고른다는 것
+- [ ] 🛑 **애니메이션이 캐릭터를 이동시키지 않는다** — 이동은 `move_and_slide()` 의 몫
+- [ ] 같은 애니를 매 프레임 `play()` 하면 **왜 얼어붙는가**
+- [ ] `loop_mode` 를 안 켜면 **왜 idle 이 2초 만에 멈추는가**
+
 > **순서대로 다 읽고 시작할 필요는 없다.** 1단계만 이해하면 바로 만들기 시작해도 되고,
 > 막히는 곳에서 해당 단계를 펴 보는 편이 실제로는 더 빨리 는다.
 >
@@ -4060,7 +4070,579 @@ pc.tscn 의 Camera3D transform = (0, 0, 1.6885)
 
 ---
 
-## 10. 다음에 무엇을 읽나
+## 10. 캐릭터 애니메이션 — 화살표 키만 눌렀는데 왜 걷는가
+
+§9 의 주인공은 **캡슐**이었다. 캡슐은 아무리 잘 움직여도 팔다리가 없다.
+그 자리에 **사람 모양 3D 모델**을 넣으면 곧바로 다음 질문이 생긴다.
+
+> **"애니메이션은 대체 어디서 오는 건가?
+> 프로그램은 화살표 키로 위치만 바꾸는데, 어떻게 걷는 동작이 저절로 나오지?"**
+
+이 절은 그 질문 하나를 **파일 안쪽부터 화면까지** 끝까지 따라간다.
+`.glb` 파일을 실제로 열어서 무엇이 들어 있는지 보고, Godot 이 그것을 어떤 노드로
+바꾸는지 보고, 코드의 어느 한 줄이 "키 입력"과 "걷는 동작"을 잇는지 짚는다.
+
+> 이 절은 **개념과 최소 코드**만 다룬다. `AnimationTree`·상태 머신·블렌드
+> 스페이스·Root Motion 같은 본격적인 도구는 [animation-3d.md](animation-3d.md)
+> 로 간다. **먼저 여기를 이해하고 그 문서로 넘어가는 순서를 권한다** —
+> `AnimationTree` 는 결국 `AnimationPlayer` 를 자동으로 조종하는 장치이기 때문이다.
+
+---
+
+### 10.0 시작하기 전에 — 오해 세 가지를 먼저 지운다
+
+이 셋을 그대로 두고 읽으면 나머지가 전부 어긋난다.
+
+| | 흔한 오해 | 실제 |
+|---|---|---|
+| ① | 애니메이션은 **"움직이는 그림"** 이다 | **뼈의 시간별 자세를 적은 숫자표**다. 그림이 아니다 |
+| ② | 애니메이션을 틀면 **캐릭터가 앞으로 나간다** | **제자리에서 걷는다.** 이동은 `move_and_slide()` 가 따로 시킨다 |
+| ③ | 키를 누르면 **엔진이 알아서** 걷기 애니를 튼다 | **코드가 매 프레임 직접 고른다.** 자동인 것은 "고른 뒤 계속 돌리는 것"뿐이다 |
+
+특히 ③ 이 중요하다. **이동 코드와 애니메이션 코드는 완전히 별개**이고,
+`if` 문 몇 줄이 둘을 이어 준다. 그 줄을 지우면 캐릭터는 여전히 화살표 키로
+잘 이동하지만 **차렷 자세 그대로 미끄러져 다닌다.**
+
+---
+
+### 10.1 애니메이션은 `.glb` 파일 안에 들어 있다
+
+캐릭터를 씬에 넣을 때 우리는 보통 이렇게 쓴다.
+
+```gdscript
+[node name="character" parent="Player" instance=ExtResource("2_te5a3")]
+```
+
+여기서 `ExtResource("2_te5a3")` 가 가리키는 것이 `res://.../character.glb` 다.
+
+**`.glb` 는 이미지 파일 같은 "그림 한 장"이 아니라, 캐릭터에 필요한 모든 것을
+한 파일에 담은 상자다.**
+
+| `.glb` 안에 들어 있는 것 | 뜻 |
+|---|---|
+| **메시(mesh)** | 눈에 보이는 형상. 정점과 삼각형 |
+| **머티리얼·텍스처** | 그 형상에 입히는 색·무늬 |
+| **스켈레톤(skeleton)** | 안에 든 **뼈대**. 사람이면 골반·척추·팔다리 |
+| **스킨(skin)** | 메시의 각 정점이 **어느 뼈에 얼마나 붙어 있는지** |
+| **애니메이션(animations)** | 🔑 **뼈를 시간에 따라 어떻게 움직일지 적은 표** |
+
+`.gltf` 와 `.glb` 는 같은 규격이고 **`.gltf` 는 JSON 텍스트 + 별도 파일들,
+`.glb` 는 그 전부를 하나로 묶은 바이너리**라는 차이뿐이다. 배포에는 `.glb` 를 쓴다.
+
+#### 실측 — 파일을 직접 열어서 확인한다
+
+추측하지 않는다. 파이썬 몇 줄이면 `.glb` 안의 목록을 그대로 볼 수 있다.
+(`.glb` 는 앞부분에 JSON 청크가 그대로 들어 있어 별도 라이브러리가 필요 없다.)
+
+```python
+# glb_peek.py — .glb 안에 무엇이 들어 있는지 찍어 본다
+import json, struct, sys
+
+with open(sys.argv[1], 'rb') as f:
+    magic, ver, length = struct.unpack('<4sII', f.read(12))   # 헤더 12바이트
+    clen, ctype = struct.unpack('<I4s', f.read(8))            # 첫 청크 = JSON
+    js = json.loads(f.read(clen).decode('utf-8'))
+
+print("애니메이션:", [a.get('name') for a in js.get('animations', [])])
+print("스킨:", len(js.get('skins', [])),
+      "| 본 개수:", [len(s['joints']) for s in js.get('skins', [])])
+print("메시:", [m.get('name') for m in js.get('meshes', [])])
+```
+
+리깅과 애니메이션이 끝난 캐릭터 하나를 넣으면 이렇게 나온다.
+
+```
+애니메이션: ['idle', 'walk', 'run', 'attack', 'death', 'RESET']
+스킨: 1 | 본 개수: [23]
+메시: ['tripo_mesh_ddb4bdd0-...']
+```
+
+**`idle`·`walk`·`run` 같은 이름이 바로 코드에서 `play("walk")` 로 부르게 될 그 이름이다.**
+`.glb` 안에 이 이름이 없으면 코드가 아무리 정확해도 캐릭터는 T-포즈로 서 있기만 한다.
+
+> 🔑 **`RESET` 은 특별한 애니메이션이다.** "아무것도 하지 않은 기본 자세" 한 프레임을
+> 담아 두는 관례적인 이름이고, 블렌딩의 기준점이 된다. 자세한 것은
+> [animation-3d.md §3](animation-3d.md) 을 본다.
+
+#### 이 파일은 어떻게 만들어지나
+
+Godot 은 3D 모델을 **만드는** 도구가 아니다. `.glb` 는 바깥에서 구워 온다.
+
+```
+① 형상을 만든다        Blender · 또는 텍스트→3D 생성 도구
+        ↓  (뼈가 없는 껍데기 상태)
+② 리깅(rigging)        형상 안에 뼈대를 넣고, 정점을 뼈에 묶는다
+        ↓  (움직일 수 있게 되었지만 아직 동작은 없다)
+③ 애니메이션을 붙인다   Mixamo 등에서 idle·walk·run·attack·death 를 가져와 적용
+        ↓
+④ .glb 로 내보낸다      메시 + 뼈 + 애니 + 텍스처가 한 파일로
+        ↓
+⑤ Godot 의 res:// 안에 넣는다
+```
+
+> 🛑 **모델의 크기·원점·축이 잘못되었으면 Godot 에서 스케일·위치로 보정하지 않는다.**
+> ②④ 단계로 돌아가 고친 뒤 다시 내보낸다. Godot 쪽 보정은 그 모델을 쓰는
+> **모든 곳에서 반복**되지만, 원본을 고치면 한 번으로 끝난다.
+
+---
+
+### 10.2 애니메이션 데이터의 실체 — "뼈의 시간별 자세표"
+
+여기가 이 절에서 가장 중요한 부분이다.
+
+#### 먼저 뼈대를 본다
+
+앞의 `glb_peek.py` 를 조금 늘려 노드 목록을 찍어 보면, `.glb` 안의 뼈들이
+**부모-자식으로 이어진 나무**라는 것이 보인다.
+
+```
+root
+├─ tripo_node_...            ← 메시(피부). skin 으로 아래 뼈들에 묶여 있다
+└─ mixamorig:Hips            ← 뿌리 뼈 (골반)
+   ├─ mixamorig:LeftUpLeg  → LeftLeg  → LeftFoot  → LeftToeBase
+   ├─ mixamorig:RightUpLeg → RightLeg → RightFoot → RightToeBase
+   └─ mixamorig:Spine → Spine1 → Spine2
+      ├─ LeftShoulder  → LeftArm  → LeftForeArm  → LeftHand
+      ├─ Neck → Head
+      └─ RightShoulder → RightArm → RightForeArm → RightHand
+```
+
+**부모가 움직이면 자식이 따라 움직인다.** 노드 트리(§1)와 완전히 같은 원리다.
+골반을 돌리면 다리·척추·팔·머리가 통째로 따라간다. 그래서 애니메이션은
+"모든 정점의 위치"를 저장할 필요 없이 **뼈 22개의 자세만** 저장하면 된다.
+
+`mixamorig:` 라는 접두사는 Mixamo 규격 본 이름이다. 이름이 규격을 따르면
+**다른 캐릭터의 애니메이션을 그대로 가져다 쓸 수 있다**(리타게팅).
+
+#### 애니메이션 하나 = 채널 수십 개
+
+`idle` 애니메이션 하나를 열어 보면 이렇다.
+
+```
+[idle] 길이 2.03초
+채널 66개 = 뼈 22개 × 3종류
+   translation 22개    ← 뼈 22개의 위치가 시간에 따라 어떻게 변하는가
+   rotation    22개    ← 뼈 22개의 회전이 시간에 따라 어떻게 변하는가
+   scale       22개    ← 뼈 22개의 크기가 시간에 따라 어떻게 변하는가
+대상 노드: mixamorig:Hips, mixamorig:LeftUpLeg, mixamorig:Spine, ...
+```
+
+**즉 `walk` 애니메이션이란 결국 이런 숫자표다.**
+
+```
+시각      LeftUpLeg 회전        RightUpLeg 회전       Spine 회전
+0.000초   (-0.12, 0, 0, 0.99)   ( 0.15, 0, 0, 0.98)   (0.01, ...)
+0.033초   (-0.09, 0, 0, 0.99)   ( 0.12, 0, 0, 0.99)   (0.01, ...)
+0.066초   (-0.05, 0, 0, 1.00)   ( 0.08, 0, 0, 1.00)   (0.02, ...)
+...
+```
+
+**엔진이 하는 일은 "현재 재생 시각에 해당하는 줄을 찾아 뼈에 써 넣는 것"뿐이다.**
+표에 없는 중간 시각은 앞뒤 값을 **보간(interpolate)** 해서 채운다. 그래서
+초당 30개 키프레임만 있어도 60fps·144fps 어디서든 부드럽게 나온다.
+
+#### 뼈가 움직이면 피부가 따라오는 이유 — 스키닝
+
+메시의 각 정점은 **"나는 LeftForeArm 에 0.7, LeftArm 에 0.3 만큼 묶여 있다"**
+같은 가중치를 갖고 있다. 이것이 `.glb` 안의 **skin** 이다.
+
+```
+뼈가 새 자세로 이동
+        ↓
+각 정점이 자기가 묶인 뼈들의 이동량을 가중 평균해서 따라 이동   ← 스키닝(skinning)
+        ↓
+팔꿈치가 접히면 그 주변 정점이 자연스럽게 딸려 접힌다
+```
+
+**스키닝은 GPU 가 매 프레임 자동으로 한다. 코드가 관여하지 않는다.**
+우리가 신경 쓸 것은 그 앞 단계 — **"어느 애니메이션을, 언제 틀 것인가"** 뿐이다.
+
+> 🔑 **이것이 저사양에서 본 개수를 줄이는 이유다.** 뼈가 많을수록 매 프레임
+> 갱신할 행렬이 늘고, 정점마다 참조할 뼈도 늘어난다. 예제의 캐릭터도 리깅
+> 원본의 본 52개를 **22개로 감축**해서 구운 것이다.
+
+---
+
+### 10.3 Godot 이 `.glb` 를 **씬으로** 바꿔 준다
+
+`.glb` 를 `res://` 안에 넣으면 Godot 이 임포트하면서 **자기가 다룰 수 있는 노드들로
+번역**한다. 이 번역 규칙을 알면 "애니메이션이 어디 있는지"가 바로 보인다.
+
+`.glb` 옆에 자동 생성되는 `.import` 파일을 열어 보면 이렇게 되어 있다.
+
+```ini
+importer="scene"                 ← 🔑 "씬 임포터" 로 처리한다
+type="PackedScene"               ← 🔑 결과물은 PackedScene, 즉 씬이다
+path="res://.godot/imported/character.glb-....scn"
+
+[params]
+nodes/apply_root_scale=true
+nodes/root_scale=1.0
+animation/import=true            ← 🔑 애니메이션도 함께 가져온다
+animation/fps=30                 ← 키프레임을 초당 몇 개로 굽는가
+meshes/generate_lods=true        ← 거리별 저해상도 메시를 자동 생성
+skins/use_named_skins=true
+```
+
+**`type="PackedScene"` — 이 한 줄이 핵심이다.** `.glb` 는 Godot 안에서
+**이미지가 아니라 씬**이다. `.tscn` 과 똑같이 인스턴싱해서 쓴다(§3).
+
+#### 번역 결과 — 이런 노드 트리가 된다
+
+```
+Player (CharacterBody3D)          ← 우리 스크립트가 붙은 곳
+├─ CollisionShape3D               ← 부딪히는 몸 (§9)
+└─ character (Node3D)             ← .glb 인스턴스. 여기서부터는 임포터가 만든 것
+   ├─ AnimationPlayer             ★ .glb 의 animations 가 전부 여기로 들어온다
+   └─ Skeleton3D                  ★ .glb 의 뼈 22개가 여기로
+      └─ MeshInstance3D           ★ 메시(피부)
+```
+
+| `.glb` 안의 것 | Godot 노드 |
+|---|---|
+| `animations: [idle, walk, run, ...]` | **`AnimationPlayer`** 하나 + 그 안의 `Animation` 리소스 여러 개 |
+| `skins` 의 joints (뼈들) | **`Skeleton3D`** 하나 |
+| `meshes` | **`MeshInstance3D`** |
+| 머티리얼·텍스처 | `StandardMaterial3D` 등 |
+
+**"애니메이션은 어디서 오나"의 답이 이것이다.**
+`.glb` 안의 애니메이션 배열 → 임포트 → **`AnimationPlayer` 노드 하나.**
+
+#### 🔑 에디터에서 직접 눈으로 확인하는 법
+
+씬에 넣은 `.glb` 인스턴스는 기본적으로 **속이 접혀 있어** 안이 보이지 않는다.
+
+```
+Scene 독에서 character 노드 우클릭
+   → "Editable Children"(자식 편집 가능) 체크
+```
+
+그러면 `AnimationPlayer` 와 `Skeleton3D` 가 트리에 펼쳐진다.
+**`AnimationPlayer` 를 선택하면 화면 아래에 애니메이션 패널이 열리고,
+`idle`·`walk` 를 골라 ▶ 를 눌러 그 자리에서 재생해 볼 수 있다.**
+
+트랙 목록에 `mixamorig:Hips`, `mixamorig:LeftUpLeg` 같은 **뼈 이름이 줄줄이
+나오는 것**을 보면 §10.2 의 설명이 눈으로 확인된다.
+
+---
+
+### 10.4 코드가 `AnimationPlayer` 를 잡는다
+
+이제부터가 우리가 쓰는 코드다.
+
+```gdscript
+extends CharacterBody3D
+
+## 애니메이션 이름 — .glb 안의 이름과 정확히 같아야 한다.
+## 🛑 이 이름이 어긋나면 캐릭터가 T-포즈로 서 있기만 한다.
+const ANIM_IDLE   := "idle"
+const ANIM_WALK   := "walk"
+const ANIM_RUN    := "run"
+const ANIM_ATTACK := "attack"
+const ANIM_DEATH  := "death"
+
+var _anim: AnimationPlayer
+
+
+func _ready() -> void:
+    _anim = _find_animation_player(self)
+    if _anim == null:
+        push_error("AnimationPlayer 를 찾지 못했다 — .glb 가 리깅되지 않았을 수 있다")
+        set_physics_process(false)
+        return
+
+    # ① 🛑 .glb 로 들어온 애니메이션은 기본이 '루프 없음'이다.
+    #    이걸 안 켜면 idle 이 2.03초 재생하고 그대로 얼어붙는다.
+    for name in [ANIM_IDLE, ANIM_WALK, ANIM_RUN]:
+        if _anim.has_animation(name):
+            _anim.get_animation(name).loop_mode = Animation.LOOP_LINEAR
+
+    # ② 캐릭터 애니메이션은 물리 프레임에 맞춘다.
+    #    렌더 프레임에 두면 이동과 발이 미묘하게 어긋난다.
+    _anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS
+
+    # ③ 1회성 애니(attack·death)가 끝난 시점을 알기 위한 신호 (§5)
+    _anim.animation_finished.connect(_on_animation_finished)
+
+    _play(ANIM_IDLE)
+```
+
+#### `_find_animation_player` — 왜 고정 경로를 쓰지 않는가
+
+```gdscript
+## .glb 안 어디에 있든 AnimationPlayer 를 찾는다.
+func _find_animation_player(node: Node) -> AnimationPlayer:
+    if node is AnimationPlayer:
+        return node
+    for child in node.get_children():
+        var found := _find_animation_player(child)
+        if found != null:
+            return found
+    return null
+```
+
+`$character/AnimationPlayer` 라고 써도 지금은 동작한다. 그런데 **캐릭터 모델을
+다른 `.glb` 로 교체하는 순간 루트 노드 이름이 바뀌어** 그 경로가 조용히 깨진다.
+`.glb` 는 우리가 손으로 만든 씬이 아니라 **바깥에서 구워 온 것**이라 내부 구조를
+우리가 통제하지 못한다. 그래서 **이름이 아니라 타입으로 찾는다.**
+
+> §4 의 "다른 노드를 가리키는 세 가지 방법"과 같은 문제다. 노드 경로는 **이름에
+> 의존하는 약한 연결**이고, 이름이 우리 손에 없을 때는 더욱 그렇다.
+
+#### 위 ①②③ 이 각각 무엇을 막는가
+
+| | 안 하면 생기는 증상 |
+|---|---|
+| ① `loop_mode = LOOP_LINEAR` | **idle 이 2초 재생되고 얼어붙는다.** 가장 흔히 겪는 첫 증상 |
+| ② `..._MODE_PROCESS_PHYSICS` | 이동은 물리(60Hz), 애니는 렌더(가변) 로 돌아 **발이 미끄러져 보인다** |
+| ③ `animation_finished` 연결 | 공격 애니가 끝난 걸 몰라 **공격 자세로 굳는다** |
+
+> 🔑 **`attack`·`death` 는 일부러 루프 목록에서 뺐다.** 한 번만 재생돼야
+> `animation_finished` 신호가 날아온다. 루프를 걸면 그 신호는 영영 오지 않는다.
+
+---
+
+### 10.5 🛑 자동으로 재생되는 것이 아니다 — 코드가 매 프레임 고른다
+
+**여기가 "키를 눌렀는데 왜 걷는가"의 진짜 답이다.**
+
+```gdscript
+func _physics_process(delta: float) -> void:
+    # ── ⓐ 이동 (§9 와 완전히 같다. 애니메이션과 무관하다) ──────────────
+    var input := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+    var dir := Vector3(input.x, 0.0, input.y)
+
+    var speed := run_speed if _running else walk_speed
+    velocity.x = dir.x * speed
+    velocity.z = dir.z * speed
+    velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
+    move_and_slide()                      # ← 캐릭터가 실제로 이동하는 것은 이 줄이다
+
+    # 이동 방향으로 몸을 돌린다. Godot 의 정면은 -Z 이므로 yaw = atan2(-x, -z)
+    if dir.length_squared() > 0.001:
+        var target_yaw := atan2(-dir.x, -dir.z)
+        rotation.y = rotate_toward(rotation.y, target_yaw, turn_speed * delta)
+
+    # ── ⓑ 애니메이션 선택 ★ 이동과 애니를 잇는 유일한 지점 ───────────
+    if _busy:
+        return                            # 공격 재생 중이면 덮어쓰지 않는다
+    if dir.length_squared() > 0.001:
+        _play(ANIM_RUN if _running else ANIM_WALK)
+    else:
+        _play(ANIM_IDLE)
+```
+
+**ⓐ 와 ⓑ 는 서로 아무것도 공유하지 않는다.** `move_and_slide()` 는 애니메이션의
+존재를 모르고, `_play()` 는 캐릭터가 어디 있는지 모른다.
+**둘을 잇는 것은 `if dir.length_squared() > 0.001` 이라는 판단 한 줄뿐이다.**
+
+> 🛑 **ⓑ 를 통째로 지워 보면 확실히 이해된다.** 캐릭터는 여전히 화살표 키로
+> 잘 이동하지만 `idle` 자세 그대로 미끄러져 다닌다. 반대로 ⓐ 를 지우면
+> 제자리에서 열심히 걷기만 한다.
+
+#### `_play()` 에 반드시 필요한 가드
+
+```gdscript
+## 같은 애니면 다시 걸지 않는다.
+func _play(name: String) -> void:
+    if _anim.current_animation == name:
+        return                            # ★ 이 줄이 없으면 캐릭터가 얼어붙는다
+    if not _anim.has_animation(name):
+        push_warning("애니메이션 없음: %s (있는 것: %s)" % [name, _anim.get_animation_list()])
+        return
+    _anim.play(name, blend_time)
+```
+
+`_physics_process` 는 **초당 60번** 돈다. 저 `return` 이 없으면 걷는 동안
+`play("walk")` 가 초당 60번 불리고, `play()` 는 **매번 0초로 되감기 때문에**
+캐릭터는 걷기 첫 프레임에서 부들거리며 멈춰 있는 것처럼 보인다.
+
+**`play()` 는 "재생을 시작하라"는 명령이지 "재생을 유지하라"는 명령이 아니다.**
+한 번 걸어 두면 `AnimationPlayer` 가 알아서 끝까지, 루프면 무한히 돌린다 —
+**자동인 부분은 여기뿐이다.**
+
+#### `blend_time` — 자세가 툭 끊기지 않게
+
+```gdscript
+_anim.play(name, blend_time)      # blend_time = 0.15 (초)
+```
+
+두 번째 인자는 **크로스페이드 시간**이다. `idle` → `walk` 로 바꿀 때 0.15초 동안
+두 자세를 섞어 준다. `0` 으로 두면 자세가 순간이동하듯 툭 바뀌어 어색하다.
+
+| 값 | 느낌 |
+|---|---|
+| `0.0` | 딱딱하게 끊긴다 |
+| **`0.1 ~ 0.2`** | **일반적인 캐릭터 이동에 적당하다** |
+| `0.5` 이상 | 흐물거린다. 반응이 느리게 느껴진다 |
+
+#### 1회성 애니 — 시작과 끝을 코드가 관리한다
+
+```gdscript
+var _busy := false        # 공격 재생 중 — 이동 애니가 덮어쓰지 않게
+
+func _on_attack_pressed() -> void:
+    _busy = true
+    _anim.play(ANIM_ATTACK, blend_time)     # 루프가 아니므로 한 번 재생하고 끝난다
+
+func _on_animation_finished(anim_name: StringName) -> void:
+    if anim_name == ANIM_DEATH:
+        return                              # 쓰러진 채로 둔다
+    if anim_name == ANIM_ATTACK:
+        _busy = false                       # 다음 프레임에 이동/대기 애니로 자연히 돌아간다
+```
+
+**`_busy` 를 푸는 것만으로 복귀가 끝난다.** `_physics_process` 의 ⓑ 가 다음 프레임에
+알아서 `walk` 또는 `idle` 을 고르기 때문이다. "공격이 끝났으니 idle 을 틀어라"라고
+직접 쓸 필요가 없다 — **상태를 풀면 매 프레임 도는 판단이 알아서 메꾼다.**
+
+---
+
+### 10.6 🛑 애니메이션은 캐릭터를 이동시키지 않는다
+
+초보자가 가장 자주 헷갈리는 부분이라 따로 못 박는다.
+
+| 무엇이 | 누가 담당하나 |
+|---|---|
+| 캐릭터가 **공간에서 이동**한다 | `velocity` + **`move_and_slide()`** — 물리 |
+| 캐릭터가 **몸을 돌린다** | `rotation.y` — 우리 코드 |
+| **팔다리가 움직인다** | **`AnimationPlayer`** — 뼈만 움직인다 |
+
+Mixamo 같은 곳의 애니메이션은 **제자리(in-place)** 로 만들어져 있다.
+`walk` 를 틀면 캐릭터는 **러닝머신 위에서처럼 그 자리에서 걷는 동작만** 한다.
+실제 전진은 전적으로 `velocity` 와 `move_and_slide()` 의 몫이다.
+
+#### 그래서 발이 미끄러진다 — foot sliding
+
+```gdscript
+@export var walk_speed: float = 2.0     # 이 숫자와
+                                        # walk 애니의 보폭·재생속도가 안 맞으면
+                                        # 발이 지면에서 주르륵 미끄러진다
+```
+
+`walk_speed` 를 5.0 으로 올려 놓고 `walk` 애니를 그대로 두면 **스케이트를 타듯**
+보인다. 맞추는 방법은 두 가지다.
+
+| 방법 | 어떻게 |
+|---|---|
+| **속도를 애니에 맞춘다** (쉽다) | 애니가 자연스러워 보이는 속도값을 찾아 `walk_speed` 를 고정 |
+| **애니 재생속도를 속도에 맞춘다** | `_anim.speed_scale = velocity.length() / 기준속도` |
+
+> 🔑 **근본적으로 푸는 방법은 Root Motion 이다** — 애니메이션에 담긴 실제 이동량을
+> 읽어 그만큼 캐릭터를 옮기는 방식이라 원리적으로 미끄러지지 않는다. 대신 이동을
+> 애니가 지배하게 되어 네트워크 동기화·조작감이 까다로워진다.
+> [animation-3d.md §9](animation-3d.md) 에서 다룬다.
+
+---
+
+### 10.7 전체 흐름 한 장
+
+```
+[Blender · Mixamo]  뼈의 시간별 자세를 키프레임으로 구움
+        ↓
+   character.glb    메시 + 뼈 22개 + 애니 6종(idle·walk·run·attack·death·RESET)
+        ↓            Godot 임포트 — .import 의 animation/import=true
+   씬(PackedScene)   character ├─ AnimationPlayer   ← 애니 6종이 여기 들어온다
+                              └─ Skeleton3D → MeshInstance3D
+        ↓
+┌─ 매 물리 프레임 (60Hz) ────────────────────────────────────────────┐
+│  화살표 키 → Input.get_vector() → dir                              │
+│      ├─ velocity 설정 → move_and_slide()  ······ 캐릭터가 실제 이동  │
+│      ├─ rotation.y 보간 ························ 몸을 진행방향으로  │
+│      └─ if dir 있음 → _play("walk")  ★ 이동과 애니를 잇는 유일한 줄 │
+└────────────────────────────────────────────────────────────────────┘
+        ↓  (여기서부터는 엔진이 자동으로 한다)
+   AnimationPlayer   현재 재생 시각의 자세를 표에서 읽어 뼈 22개에 써 넣는다
+        ↓
+   Skeleton3D        뼈의 최종 자세 확정 (부모 → 자식 순으로 누적)
+        ↓
+   GPU 스키닝        각 정점이 자기가 묶인 뼈를 따라 변형
+        ↓
+      화면
+```
+
+---
+
+### 10.8 직접 확인해 보는 법
+
+**막히면 추측하지 않는다.** 애니메이션 문제는 확인 방법이 명확하다.
+
+#### ① 코드에 어떤 애니가 보이는지 찍어 본다
+
+```gdscript
+func _ready() -> void:
+    var ap := _find_animation_player(self)
+    print("찾은 AnimationPlayer: ", ap)
+    print("가지고 있는 애니메이션: ", ap.get_animation_list())
+    for n in ap.get_animation_list():
+        var a := ap.get_animation(n)
+        print("  %s — 길이 %.2f초, 트랙 %d개, 루프 %s"
+            % [n, a.length, a.get_track_count(), a.loop_mode])
+```
+
+**이 출력이 비어 있으면 코드 문제가 아니라 `.glb` 문제다.** 10.1 의 파이썬으로
+파일 자체를 확인한다.
+
+#### ② 에디터에서 눈으로 본다
+
+```
+Scene 독 → character 우클릭 → Editable Children
+   → AnimationPlayer 선택 → 하단 애니메이션 패널에서 ▶ 재생
+```
+
+#### ③ 파일 자체를 의심할 때
+
+10.1 의 `glb_peek.py` 로 `.glb` 안의 `animations` 배열을 직접 본다.
+**여기에 이름이 없으면 리깅·굽기 단계로 돌아가야 한다.** Godot 에서 할 수 있는 일이 없다.
+
+---
+
+### 10.9 자주 막히는 곳
+
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| **T-포즈로 서 있기만 한다** | 애니 이름이 `.glb` 안의 것과 다르다 | `get_animation_list()` 로 실제 이름 확인 후 상수 수정 |
+| **idle 이 잠깐 나오고 얼어붙는다** | `loop_mode` 가 기본값(루프 없음) | `_ready` 에서 `LOOP_LINEAR` 로 설정 (10.4 ①) |
+| **걷는 동작이 부들거리며 멈춘다** | 매 프레임 `play()` 를 다시 호출 | `_play()` 에 `current_animation` 가드 (10.5) |
+| **발이 지면에서 미끄러진다** | 이동 속도와 애니 보폭 불일치 | `walk_speed` 조정 · `speed_scale` · Root Motion (10.6) |
+| **공격 자세로 굳는다** | `animation_finished` 미연결 또는 공격 애니에 루프가 걸림 | 신호 연결 확인 · 루프 목록에서 제외 (10.4 ③) |
+| **이동은 되는데 자세가 안 바뀐다** | `_physics_process` 의 애니 선택 블록이 없다 | 10.5 ⓑ 를 추가 |
+| **`AnimationPlayer` 를 못 찾는다** | `.glb` 에 애니가 없거나 리깅이 안 됨 | 10.8 ③ 으로 파일 확인 |
+| **애니와 이동이 미묘하게 어긋난다** | 애니가 렌더 프레임에서 갱신됨 | `callback_mode_process` 를 PHYSICS 로 (10.4 ②) |
+
+---
+
+### 10.10 여기서 부족해지면 — `AnimationTree` 로 간다
+
+지금까지의 방식(`AnimationPlayer` + `if` 문)은 **애니메이션이 5~6종이고 전환 규칙이
+단순할 때** 충분하다. 데모·프로토타입은 대부분 여기서 끝난다.
+
+**다음 요구가 생기면 손으로 관리하기 어려워진다.**
+
+| 요구 | `if` 문으로는 |
+|---|---|
+| 걷기 ↔ 달리기를 **속도에 따라 연속적으로** 섞고 싶다 | 두 애니를 동시에 가중치로 섞을 방법이 없다 |
+| 상체는 공격, 하체는 달리기를 **동시에** | 불가능 |
+| 상태가 15개로 늘고 전이 규칙이 복잡해졌다 | `if` 가 걷잡을 수 없이 늘어난다 |
+| 애니가 **실제 이동량을 결정**해야 한다 (Root Motion) | 지원되지 않는다 |
+
+그때 **`AnimationTree`** 로 옮긴다. `AnimationPlayer` 를 없애는 것이 아니라,
+**그 위에 얹어 자동으로 조종하는 층**을 하나 더 두는 것이다.
+
+```
+AnimationTree           ← 상태 머신 · 블렌드 스페이스로 "무엇을 얼마나 섞을지" 결정
+      ↓  조종
+AnimationPlayer         ← 애니메이션 창고 (지금까지 우리가 직접 다룬 것)
+      ↓
+  Skeleton3D → 화면
+```
+
+→ [animation-3d.md](animation-3d.md) 로 간다.
+**§1(3계층 구조) → §2(AnimationPlayer) → §5(상태 머신) → §6(블렌드 스페이스)** 순서를 권한다.
+
+---
+
+## 11. 다음에 무엇을 읽나
 
 | 하고 싶은 것 | 문서 |
 |---|---|
@@ -4069,6 +4651,7 @@ pc.tscn 의 Camera3D transform = (0, 0, 1.6885)
 | 노드·씬 깊이 있게 (참조·시그널·오토로드·풀링) | [nodes-scenes.md](nodes-scenes.md) |
 | 3D 좌표·회전·카메라 | [3d-core.md](3d-core.md) |
 | 캐릭터를 움직이고 부딪히게 | **§9(전체 코드 해설)** · [physics-3d.md](physics-3d.md) |
+| **캐릭터에 걷기·공격 동작을 붙이기** | **§10(GLB 애니메이션이 도는 원리)** · [animation-3d.md](animation-3d.md) |
 | 맵 만들기 | [level-design.md](level-design.md) |
 | 에디터 없이 터미널로 작업 | [headless-workflow.md](headless-workflow.md) |
 
