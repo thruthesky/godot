@@ -4455,12 +4455,78 @@ root/Skeleton3D:mixamorig_Spine         ◆──◆────◆──◆
 
 **§10.2 에서 말한 "뼈의 시간별 자세표"가 바로 이 화면이다.**
 
-**③ 실제 동작 — 게임을 실행한다(F5 / macOS ⌘B)**
+**③ 씬을 거치지 않고 — Advanced Import Settings**
 
-🛑 **에디터는 `_ready()` 를 실행하지 않는다.** ①② 는 어디까지나 **에디터가 미리보기로
+`.glb` **파일 자체**를 들여다본다. 씬에 올리기 전에도 쓸 수 있다.
+
+```
+1. FileSystem 독에서 character.glb 를 한 번 클릭
+2. Scene 독 위의 탭 중 "Import" 를 클릭
+3. 패널 아래쪽 "Advanced..." 버튼          ← 엔진 확인된 라벨
+4. "Advanced Import Settings for 'character.glb'" 창이 열린다
+5. 왼쪽 트리에서 애니메이션을 고르면 미리보기와 설정이 나온다
+```
+
+**④ 코드로 찍는다 — 화면에서 못 찾겠을 때 가장 확실하다**
+
+```gdscript
+print("애니 목록: ", _anim.get_animation_list())
+# → 애니 목록: ["RESET", "attack", "death", "idle", "run", "walk"]
+
+for n in _anim.get_animation_list():
+    var a := _anim.get_animation(n)
+    print("  %-8s 길이 %.2f초  트랙 %d개  루프 %d" % [n, a.length, a.get_track_count(), a.loop_mode])
+# →   idle     길이 2.03초  트랙 23개  루프 0
+#     walk     길이 1.40초  트랙 23개  루프 0   …
+```
+
+**목록이 비어 있으면 코드 문제가 아니라 `.glb` 문제다.** 10.1 의 파이썬으로
+파일 자체를 확인한다.
+
+**⑤ 실제 동작 — 게임을 실행한다(F5 / macOS ⌘B)**
+
+🛑 **에디터는 `_ready()` 를 실행하지 않는다.** ①②③ 은 어디까지나 **에디터가 미리보기로
 자세를 씌워 주는 것**이고, `play("idle")` 이 진짜로 걸리는 것은 실행할 때다.
 그래서 **에디터에서 캐릭터가 T-포즈로 서 있는 것도 정상이다** — 리깅된 기본
 자세(rest pose)를 그대로 보여 주고 있을 뿐이다.
+
+#### 🛑 임포트된 애니는 에디터에서 **읽기 전용**이다
+
+애니 패널을 열고 트랙을 고쳐 보려다 막히는 지점이다.
+**엔진 바이너리에 들어 있는 안내 문구가 그대로 설명해 준다**(엔진 확인).
+
+```
+Animation is read-only.
+Can't change loop mode on animation instanced from an imported scene.
+To change this animation's loop mode, navigate to the scene's
+Advanced Import settings and select the animation.
+```
+
+**임포트로 만들어진 애니메이션은 `.glb` 에 속한 자원이라 에디터가 편집을 막는다.**
+파일을 다시 임포트하면 덮어써질 것이므로, 에디터에서 고쳐 봐야 남지 않기 때문이다.
+
+**그래서 루프를 켜는 길이 둘로 갈린다.**
+
+| | ⓐ Advanced Import Settings | ⓑ 코드 (`_ready()`) |
+|---|---|---|
+| 저장되는가 | ✅ **`.import` 에 남는다** | 🛑 **남지 않는다.** 실행할 때마다 다시 켠다 |
+| 캐릭터가 늘어나면 | **파일마다 손으로** | **코드 한 벌로 전부** |
+
+10.4 의 예제가 ⓑ 를 쓰는 이유는 **캐릭터가 여러 종류일 때 코드 한 벌로 끝나기**
+때문이다. 캐릭터가 하나뿐이라면 ⓐ 가 더 깔끔하다.
+
+**실측 — 코드로는 정말 바뀐다.**
+
+```
+Animation 리소스 경로 : res://character.glb::Animation_2o1u4
+변경 전 loop_mode = 0  →  변경 후 loop_mode = 1               ✅
+walk(1.40초) 를 3초간 재생 → 재생위치 0.200초, is_playing = true
+                             animation_finished 신호 = []      ← 두 바퀴를 돌았다
+```
+
+🔑 **리소스 경로의 `::` 를 눈여겨본다.** `.glb` **안에 들어 있는** 내장 리소스라는
+표시이며, 그래서 **바꿔도 파일에 저장되지 않는다.** 매번 `_ready()` 에서 다시
+켜야 하는 이유가 이것이다.
 
 ---
 
@@ -4823,6 +4889,7 @@ Scene 독 → character 우클릭 → Editable Children
 | **씬 트리에 `AnimationPlayer` 가 없다** | 인스턴스된 씬은 내부가 접힌다 (정상) | `.glb` 노드 우클릭 → **Editable Children** (10.3) |
 | **펼쳤는데 애니 목록이 안 보인다** | 하단 **Animation 패널**이 닫혀 있다 | 아래 `Animation` 탭 · Inspector 의 `Current Animation` (10.3) |
 | **에디터에서 T-포즈로 서 있다** | 에디터는 `_ready()` 를 실행하지 않는다 (정상) | 실행해서 확인한다 (10.3) |
+| **애니 트랙을 고칠 수 없다 / 루프를 못 켠다** | 임포트된 애니는 에디터에서 **읽기 전용** | `Advanced...` 또는 코드로 켠다 (10.3) |
 | **공격 버튼 연타가 무시된다** | 🛑 `play()` 는 같은 애니를 **되감지 않는다** | `stop()` 또는 `seek(0.0, true)` (10.5) |
 | **`find_bone("mixamorig:Hips")` 가 −1** | 임포트하며 `:` 가 `_` 로 치환된다 | `mixamorig_Hips` 로 찾는다 (10.3) |
 | **발이 지면에서 미끄러진다** | 이동 속도와 애니 보폭 불일치 | `walk_speed` 조정 · `speed_scale` · Root Motion (10.6) |
