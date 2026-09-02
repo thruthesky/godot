@@ -61,6 +61,10 @@ aside{position:sticky;top:0;height:100vh;overflow-y:auto;
 .ghbtn .path{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ghbtn .ext{margin-left:auto;color:var(--muted);font-size:12px;flex:none}
+.tiphint{margin:14px 0 0;padding:11px 14px;border:1px dashed var(--rule);border-radius:10px;
+  background:var(--card);font-size:14px;line-height:1.65;color:var(--muted)}
+.tiphint b{color:var(--ink)}
+.tiphint u{text-decoration:none;border-bottom:1px dashed var(--accent);color:var(--ink)}
 .herolinks{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
 .btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;
   border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:700;
@@ -202,10 +206,16 @@ mark{background:var(--hi);color:inherit;border-radius:2px;padding:0 1px}
       </p>
       <div class="stats">
         <span class="stat">문서 <b>32</b>편</span>
-        <span class="stat">약 <b>30,900</b>줄</span>
-        <span class="stat">소제목 <b>1,650</b>개</span>
+        <span class="stat">약 <b>31,100</b>줄</span>
+        <span class="stat">소제목 <b>1,625</b>개</span>
+        <span class="stat">용어 도움말 <b>375</b>개</span>
         <span class="stat">최소 사양 <b>3GB RAM</b></span>
       </div>
+      <p class="tiphint" data-no-gl>
+        <b>💡 모르는 단어에 마우스를 올려 보세요.</b>
+        문서·해설·코드 어디서든 <u>점선이 그어진 단어</u>에 마우스를 올리면 뜻이 바로 뜹니다.
+        엔진 클래스는 상속 사슬까지 함께 보여 줍니다. 오른쪽 아래 버튼으로 표시량을 바꾸거나 끌 수 있습니다.
+      </p>
       <div class="herolinks">
         <a class="btn primary" href="https://github.com/thruthesky/godot" target="_blank" rel="noopener">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub 저장소에서 보기 ↗
@@ -322,6 +332,7 @@ function render(q) {
   });
 
   list.innerHTML = parts.join('');
+  if (window.GlossaryTip) { window.GlossaryTip.reset(); window.GlossaryTip.apply(list); }
   buildNav(q, counts);
   $('#g-essay').style.display = q ? 'none' : '';
   emptyEl.classList.toggle('on', shown === 0);
@@ -372,5 +383,7 @@ snav.addEventListener('click', e => {
   if (e.target.closest('a') && innerWidth <= 900) { side.classList.remove('open'); scrim.classList.remove('on'); }
 });
 </script>
+<script src="site/glossary.js"></script>
+<script src="site/tooltip.js"></script>
 </body>
 </html>

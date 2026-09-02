@@ -121,6 +121,8 @@ mark{background:var(--hi);color:inherit;border-radius:2px;padding:0 2px}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
+<script src="site/glossary.js"></script>
+<script src="site/tooltip.js"></script>
 <script>
 const P = new URLSearchParams(location.search);
 const SLUG = (P.get('d') || 'basics').replace(/[^a-z0-9-]/g, '');
@@ -172,6 +174,9 @@ fetch('references/' + SLUG + '.md')
       });
     }, { rootMargin: '-70px 0px -75% 0px' });
     heads.forEach(h => io.observe(h));
+
+    // 용어에 호버 도움말을 단다 (목차를 만든 뒤에 한다)
+    if (window.GlossaryTip) { window.GlossaryTip.reset(); window.GlossaryTip.boot(art); }
 
     if (Q) { document.getElementById('find').value = Q; highlight(Q); }
   })
