@@ -1,6 +1,6 @@
 ---
 name: godot
-description: 최신 Godot 으로 3D 게임을 개발할 때 따라야 할 개발 규범과 검증 도구를 제공하며, **Godot 을 배우는 학습 자료이기도 합니다** — 노드·씬·인스턴싱·리소스·생명주기·에디터 사용법 같은 엔진 기본 개념을 설명합니다. GDScript, 노드·씬·.tscn, Node3D 좌표계, Jolt Physics, CharacterBody3D, 머티리얼·라이팅·셰이더, AnimationTree, 내비게이션, 입력·UI, glTF 임포트, 오디오, 멀티플레이어, 성능 최적화, project.godot 포맷, LSP 정적 검증, EditorPlugin, Android·iOS·macOS·Windows 빌드를 다룹니다. 다음 상황에서 반드시 사용하세요 - (1) GDScript 작성·수정(작성 후 LSP 진단 필수), (2) 씬·노드·.tscn 편집, (3) 캐릭터 이동·충돌·물리, (4) 머티리얼·조명·셰이더, (5) 애니메이션 블렌딩, (6) 길찾기·적 AI, (7) 성능 최적화, (8) 테스트 빌드·설치·실행·릴리즈 빌드(export template·APK·AAB·adb·Xcode·서명·공증), (9) project.godot 설정 변경, (10) 최신 버전 신기능·마이그레이션·엔진 업그레이드, (11) 에디터 도구·플러그인, (12) 에디터 없이 터미널만으로 작업하거나 실기기(아이폰·안드로이드)에 설치·실행할 때, (13) 맵·레벨을 만들거나 블록아웃·CSG·GridMap 으로 맵 구조를 짤 때, (14) Godot 용어의 뜻을 확인할 때, (15) Asset Store 에서 애드온·에셋을 받거나 플러그인을 켜고 끌 때, (16) Godot 기본 개념·사용법을 배우거나 설명할 때(노드가 뭔지, 씬이 뭔지, 인스턴싱이 뭔지, 에디터 어디를 누르는지). **(17) HUD·메뉴·버튼·인벤토리 같은 화면 UI 를 만들거나 디자인할 때(체력바, 스킬 버튼, 메인 메뉴, 일시정지, 설정 화면, Theme 로 디자인 통일, 화면을 눌렀는데 캐릭터가 안 움직이는 문제).** **🛑 성능·조명·저사양 관련 질문이면 references/performance-mobile.md §0(최소 지원 사양 3GB RAM Android)을 먼저 읽으세요.** 키워드 - 저사양 안드로이드, 3GB RAM, 최소 지원 사양, 모바일 MMORPG, Galaxy A12, SM-A125N, PowerVR, GE8320, 60fps, 프레임 드랍, fill rate, 픽셀 셰이딩, 정점 컬러 굽기, vertex color, UNSHADED, 조명 없음, 라이트맵 느림, 빌드 타임 베이킹, build time bake, 프로시저럴 생성, procedural, 머티리얼 병합, 청크, 드로우콜 줄이기, 스켈레톤 갱신, 본 수 줄이기, 스킨드 메시, SIGSEGV, WorkerThread, 분산 로딩, 셰이더 예열, Mesh LOD, 메시 LOD, LOD Bias, lod_bias, Threshold Pixels, meshoptimizer, visibility_range, visibility_range_begin, visibility_range_end, HLOD, 가시 범위, visibility_parent, fade_mode, 오클루전 컬링, occlusion culling, OccluderInstance3D, Bake Occluders, Embree, 해상도 스케일링, resolution scaling, scaling_3d_mode, scaling_3d_scale, Bilinear, FSR, FSR2, VRS, variable rate shading, 가변 셰이딩, Populate Surface, 절두체 컬링, frustum culling, Godot, 고도, GDScript, gdshader, tscn, tres, Node3D, CharacterBody3D, Jolt, AnimationTree, NavigationAgent3D, StandardMaterial3D, LSP, 3D 게임, 라리엔, VirtualJoystick, 가상 조이스틱, GPUParticles3D, 게임패드, PCK, 패치 배포, 빌드, 테스트 빌드, 릴리즈 빌드, 내보내기, export, export template, 익스포트 템플릿, export_presets.cfg, --export-debug, --export-release, APK, AAB, adb install, logcat, keystore, 키스토어, Gradle, GABE, ipa, Xcode, xcodebuild, TestFlight, 공증, codesign, Steam Deck, 원클릭 배포, 스텐실, stencil, stencil_mode, 외곽선, X-ray, 벽 뚫어보기, duplicate_deep, 깊은 복사, RichTextLabel, BBCode, 콜리전 셰이프, 델타 인코딩, BoneConstraint3D, AimModifier3D, CopyTransformModifier3D, 본 제약, 물리 보간, physics_interpolation, NavigationServer2D, 비동기 내비게이션, SDL3, bent normal, 스펙큘러 오클루전, SMAA, F16, 반정밀도, Import 독, 배치 임포트, 에디터 없이 작업, headless, 헤드리스, install.sh, 실기기 설치, 실기기 실행, 아이폰 실행, 안드로이드 실행, Remote Deploy, 리모트 디플로이, devicectl, xctrace, UDID, device-id, Team ID, app_store_team_id, export_project_only, gdignore, .gdignore, Cmd+B, 실행 버튼, 기본 개념, 기초, 입문, 공부, 학습, 배우기, pass, 패스, 빈 함수, 빈 블록, 자리표시자, Expected indented block, return, 반환, Receiver Method, 수신 메서드, 콜백, callback, 이벤트 핸들러, event handler, _on_, connection, tscn 연결, CONNECT_PERSIST, 연결 아이콘, Connect a Signal to a Method, 궤도 회전, orbit, 팬, pan, 프리룩, freelook, 카메라 회전, 뷰포트 회전, 시그널, Signal, signal, 시그널 발산, emit, emit_signal, connect, disconnect, is_connected, Callable, 콜러블, 옵저버, Observer, 관찰자 패턴, 결합도, 느슨한 결합, 이벤트, event, 내장 시그널, 엔진 시그널, 커스텀 시그널, body_entered, area_entered, pressed, CONNECT_ONE_SHOT, CONNECT_DEFERRED, ERR_INVALID_PARAMETER, 중복 연결, Node 독, Signals 탭, await, 시그널 대기, 에디터 조작, 뷰포트 조작, 궤도 회전, orbit, 팬, pan, 줌, 프리룩, freelook, 가운데 버튼, 휠 클릭, 3버튼 마우스, Magic Mouse, 매직마우스, 매직 마우스, Magic Keyboard, 매직 키보드, 왼손잡이, 왼손 마우스, 단축키 변경, 키 변경, Shortcuts, Editor Settings, 에디터 설정, emulate_3_button_mouse, Emulate 3 Button Mouse, Navigation Scheme, Maya 방식, orbit_mouse_button, pan_mouse_button, zoom_mouse_button, spatial_editor, freelook_forward, WASD, IJKL, 보조 클릭, Secondary click, 우클릭, InputMap, 인풋맵, 액션, action, 리바인딩, rebinding, 키 재설정, action_add_event, action_erase_events, physical_keycode, keycode, 자판 배열, QWERTY, 접근성, 노드, Node, 씬, Scene, 인스턴싱, Instancing, instantiate, PackedScene, preload, load, Instantiate Child Scene, Cmd+Shift+A, Ctrl+Shift+A, Editable Children, Make Local, 리소스, Resource, 생명주기, _ready, _process, extends, 에디터 화면, Scene 독, Inspector, FileSystem, Output, res://, user://, 용어집, 용어, dictionary, CSG, Constructive Solid Geometry, 구성적 입체 기하, CSGShape3D, CSGCombiner3D, CSGBox3D, CSGPolygon3D, use_collision, bake_static_mesh, bake_collision_shape, Union, Intersection, Subtraction, 불리언 연산, 블록아웃, blockout, 그레이박싱, greyboxing, 화이트박싱, 회색 상자, 레벨 디자인, 맵 구조, 맵 만들기, 맵 제작, 레벨 제작, level design, GridMap, MeshLibrary, cell_size, bake_navigation, 모듈러, 타일, glTF, glb, 프롭, 소품, 터레인, terrain, HeightMapShape3D, Terrain3D, 씬 골격, main.tscn, Main Scene, 메인 씬, Level 교체, 맵 전환, load_threaded_request, load_threaded_get_status, THREAD_LOAD_LOADED, 비동기 로딩, 로딩 화면, SpawnPoints, Marker3D, WorldEnvironment, Add Sun to Scene, Add Environment to Scene, DirectionalLight3D, 씬 뼈대, 자식 노드 추가, Cmd+A, Ctrl+A, F2, Use Collision, Camera3D, 카메라 배치, 쿼터뷰, 카메라 각도, fov, Preview, Current, Align Transform with View, CameraRig, CSGBox3D, 상자 6개, 방 좌표, 좌표표, 벽 두께, Doorway, 문 뚫기, Cmd+D, 복제, 방, room, 보스방, 복도, 광장, 실내, 야외, 사냥터, 던전, 피치, pitch, 요, yaw, 롤, roll, 회전 3축, 오일러, rotation_degrees, 노멀, normal, 법선, 플랫 셰이딩, 스무스 셰이딩, flat shading, smooth shading, smooth_faces, autosmooth, smoothing_angle, 텍스처, texture, UV, UV 언랩, UV unwrap, UV1, UV2, 언랩, 맵, map, 알베도, albedo, albedo_color, albedo_texture, 컬러맵, 러프니스맵, roughness, 메탈릭, metallic, ORM, PBR, 아틀라스, atlas, 텍스처 아틀라스, 타일링, tiling, 해상도, resolution, 128px, 256px, 512px, 2K, 4K, ASTC, 텍스처 용량, 번들 용량, 파일 크기, 벡터 그래픽, SVG, 픽셀, pixel, 노멀맵, normal map, normal_enabled, normal_texture, normal_scale, 하이폴리, high-poly, 로우폴리, low-poly, 폴리곤, polygon, 베이킹, baking, 굽기, bake, 삼각형 수, 트라이앵글, ZBrush, OpenGL 규약, DirectX 규약, G 채널 반전, Asset Store, 에셋 스토어, AssetLib, 애셋 라이브러리, 애드온, addon, addons, 플러그인, plugin.cfg, editor_plugins, enabled, PackedStringArray, autoload, 오토로드, add_autoload_singleton, EditorPlugin, godot-ai, godot_ai, Godot AI, mcp__godot-ai, node_create, scene_open, editor_screenshot, project_run, logs_read, enabledMcpjsonServers, mcp.json, MCP 서버, HUD, 헤드업 디스플레이, 메뉴, 메인 메뉴, 일시정지, 설정 화면, 버튼, 체력바, HP바, 게이지, 미니맵, 인벤토리, 인벤토리 UI, 장비창, 대화창, 화면 UI, UI 디자인, UI 만들기, UI 조립, 화면 배치, Control, Container, VBoxContainer, HBoxContainer, MarginContainer, CenterContainer, GridContainer, PanelContainer, ScrollContainer, AspectRatioContainer, TabContainer, CanvasLayer, layer, Theme, 테마, theme_type_variation, 타입 배리에이션, StyleBox, StyleBoxFlat, 스타일박스, 앵커, anchor, 오프셋, offset, 프리셋, preset, PRESET_FULL_RECT, Full Rect, Layout 버튼, size_flags, SIZE_EXPAND_FILL, custom_minimum_size, custom_maximum_size, separation, mouse_filter, MOUSE_FILTER_STOP, MOUSE_FILTER_PASS, MOUSE_FILTER_IGNORE, 터치가 안 먹힘, UI 가 입력을 먹음, focus_mode, focus_neighbor, Button, TextureButton, BaseButton, action_mode, pressed 시그널, Label, RichTextLabel, ProgressBar, TextureProgressBar, radial_fill_degrees, 쿨다운 UI, TextureRect, NinePatchRect, Panel, Access as Unique Name, 유니크 이름, %노드, process_mode, PROCESS_MODE_WHEN_PAUSED, get_tree().paused, 일시정지 함정, 세이프 에어리어, safe area, get_display_safe_area, get_display_cutouts, 노치, 홈 인디케이터, 터치 크기, 48dp, 엄지 영역, 세로 화면, портрет, portrait, SCREEN_PORTRAIT, orientation, 1080x1920, 화면 방향, 해상도 대응, stretch, canvas_items, expand, Label3D, 월드 스페이스 UI, 머리 위 이름표, 미니맵 회전, 폰트, 한글 폰트, CJK, 글자가 네모, 네모로 나옴, 두부, tofu, SystemFont, FontFile, FontVariation, fallbacks, 폰트 폴백, 서브셋, subset, Noto Sans KR, MSDF, multichannel signed distance field, default_font_generate_mipmaps, 폰트 밉맵, 폰트 크기, LabelSettings, 외곽선, outline_size, content_scale_factor, stretch mode, stretch aspect, canvas_items, keep_width, expand, scale_mode, fractional, integer, 기준 해상도, base resolution, 정사각형 기준, Layout 메뉴 잠김, 앵커 vs 컨테이너, 컨테이너 중첩, 중첩 깊이, ScrollContainer, follow_focus, scroll_deadzone, drag_threshold, emulate_mouse_from_touch, 터치 드래그, 재사용 컴포넌트, 컴포넌트화, class_name, tool 스크립트, Engine.is_editor_hint, is_node_ready, Editable Children, UI 애니메이션, Tween, set_ease, set_trans, EASE_OUT, TRANS_CUBIC, kill, 트윈 겹침, offset_transform, offset_transform_enabled, offset_transform_visual_only, 오프셋 변환, 버튼 흔들기, 화면 전환, 페이드, ColorRect, 씬 전환, 접근성, accessibility, AccessKit, 스크린 리더, screen reader, accessibility_name, 아이콘 버튼, 대비, 색약, keep_aspect, KEEP_HEIGHT, KEEP_WIDTH, 세로 화면 시야, 카메라 종횡비, 테마 아틀라스, UI 드로우콜, 라이선스, 서브모듈, **(18) 처음 배우는 사람에게 3D 씬을 처음부터 만들어 보이거나 따라 하게 할 때(빈 프로젝트 → 바닥·벽·플레이어 → 화살표 키로 이동) — references/example.md 가 정본**, **(19) 사용자가 `/godot init` 이라고 지시하면 .claude/commands/ 에 godot 슬래시 명령들을 설치한다**. **🛑 이 스킬 문서만 보고 답하지 않는다 — 스킬은 출발점이지 울타리가 아니다. 스킬에 없다고 "없다·모른다"고 답하지 말고 엔진 실측(doctool·헤드리스 실행·소스)·공식 문서·웹 검색으로 찾아 확인한 뒤 답하고, 사전학습 지식은 답이 아니라 어디를 확인할지 정하는 가설로만 쓴다. 알아낸 것은 해당 reference 에 남긴다.** 키워드 - init, godot init, 초기화, 슬래시 명령 설치, 명령어 생성, commands 설치, example, 예제, 기본 예제, 첫 씬, 처음 만들기, 튜토리얼, 따라하기, 실습, 바닥 만들기, 벽 만들기, 캐릭터 움직이기, 화살표 키 이동, 걸어다니기, 쿼터뷰 카메라, 블록아웃 예제
+description: 최신 Godot 으로 3D 게임을 개발할 때 따라야 할 개발 규범과 검증 도구를 제공하며, **Godot 을 배우는 학습 자료이기도 합니다** — 노드·씬·인스턴싱·리소스·생명주기·에디터 사용법 같은 엔진 기본 개념을 설명합니다. GDScript, 노드·씬·.tscn, Node3D 좌표계, Jolt Physics, CharacterBody3D, 머티리얼·라이팅·셰이더, AnimationTree, 내비게이션, 입력·UI, glTF 임포트, 오디오, 멀티플레이어, 성능 최적화, project.godot 포맷, LSP 정적 검증, EditorPlugin, Android·iOS·macOS·Windows 빌드를 다룹니다. 다음 상황에서 반드시 사용하세요 - (1) GDScript 작성·수정(작성 후 LSP 진단 필수), (2) 씬·노드·.tscn 편집, (3) 캐릭터 이동·충돌·물리, (4) 머티리얼·조명·셰이더, (5) 애니메이션 블렌딩, (6) 길찾기·적 AI, (7) 성능 최적화, (8) 테스트 빌드·설치·실행·릴리즈 빌드(export template·APK·AAB·adb·Xcode·서명·공증), (9) project.godot 설정 변경, (10) 최신 버전 신기능·마이그레이션·엔진 업그레이드, (11) 에디터 도구·플러그인, (12) 에디터 없이 터미널만으로 작업하거나 실기기(아이폰·안드로이드)에 설치·실행할 때, (13) 맵·레벨을 만들거나 블록아웃·CSG·GridMap 으로 맵 구조를 짤 때, (14) Godot 용어의 뜻을 확인할 때, (15) Asset Store 에서 애드온·에셋을 받거나 플러그인을 켜고 끌 때, (16) Godot 기본 개념·사용법을 배우거나 설명할 때(노드가 뭔지, 씬이 뭔지, 인스턴싱이 뭔지, 에디터 어디를 누르는지). **(17) HUD·메뉴·버튼·인벤토리 같은 화면 UI 를 만들거나 디자인할 때(체력바, 스킬 버튼, 메인 메뉴, 일시정지, 설정 화면, Theme 로 디자인 통일, 화면을 눌렀는데 캐릭터가 안 움직이는 문제).** **🛑 성능·조명·저사양 관련 질문이면 references/performance-mobile.md §0(최소 지원 사양 3GB RAM Android)을 먼저 읽으세요.** 키워드 - 저사양 안드로이드, 3GB RAM, 최소 지원 사양, 모바일 MMORPG, Galaxy A12, SM-A125N, PowerVR, GE8320, 60fps, 프레임 드랍, 디버그 패널, debug panel, 디버그 오버레이, debug overlay, 성능 패널, 성능 오버레이, 성능 표시, FPS 표시, 드로우콜 표시, 프로파일 화면, Performance.get_monitor, TIME_FPS, RENDER_TOTAL_DRAW_CALLS_IN_FRAME, RENDER_TOTAL_PRIMITIVES_IN_FRAME, RENDER_TOTAL_OBJECTS_IN_FRAME, RENDER_VIDEO_MEM_USED, RENDER_TEXTURE_MEM_USED, MEMORY_STATIC, OBJECT_NODE_COUNT, OBJECT_ORPHAN_NODE_COUNT, 고아 노드, 누수 감지, perf-log, 예산 대비 표시, fill rate, 픽셀 셰이딩, 정점 컬러 굽기, vertex color, UNSHADED, 조명 없음, 라이트맵 느림, 빌드 타임 베이킹, build time bake, 프로시저럴 생성, procedural, 머티리얼 병합, 청크, 드로우콜 줄이기, 스켈레톤 갱신, 본 수 줄이기, 스킨드 메시, SIGSEGV, WorkerThread, 분산 로딩, 셰이더 예열, Mesh LOD, 메시 LOD, LOD Bias, lod_bias, Threshold Pixels, meshoptimizer, visibility_range, visibility_range_begin, visibility_range_end, HLOD, 가시 범위, visibility_parent, fade_mode, 오클루전 컬링, occlusion culling, OccluderInstance3D, Bake Occluders, Embree, 해상도 스케일링, resolution scaling, scaling_3d_mode, scaling_3d_scale, Bilinear, FSR, FSR2, VRS, variable rate shading, 가변 셰이딩, Populate Surface, 절두체 컬링, frustum culling, Godot, 고도, GDScript, gdshader, tscn, tres, Node3D, CharacterBody3D, Jolt, AnimationTree, NavigationAgent3D, StandardMaterial3D, LSP, 3D 게임, 라리엔, VirtualJoystick, 가상 조이스틱, GPUParticles3D, 게임패드, PCK, 패치 배포, 빌드, 테스트 빌드, 릴리즈 빌드, 내보내기, export, export template, 익스포트 템플릿, export_presets.cfg, --export-debug, --export-release, APK, AAB, adb install, logcat, keystore, 키스토어, Gradle, GABE, ipa, Xcode, xcodebuild, TestFlight, 공증, codesign, Steam Deck, 원클릭 배포, 스텐실, stencil, stencil_mode, 외곽선, X-ray, 벽 뚫어보기, duplicate_deep, 깊은 복사, RichTextLabel, BBCode, 콜리전 셰이프, 델타 인코딩, BoneConstraint3D, AimModifier3D, CopyTransformModifier3D, 본 제약, 물리 보간, physics_interpolation, NavigationServer2D, 비동기 내비게이션, SDL3, bent normal, 스펙큘러 오클루전, SMAA, F16, 반정밀도, Import 독, 배치 임포트, 에디터 없이 작업, headless, 헤드리스, install.sh, 실기기 설치, 실기기 실행, 아이폰 실행, 안드로이드 실행, Remote Deploy, 리모트 디플로이, devicectl, xctrace, UDID, device-id, Team ID, app_store_team_id, export_project_only, gdignore, .gdignore, Cmd+B, 실행 버튼, 기본 개념, 기초, 입문, 공부, 학습, 배우기, pass, 패스, 빈 함수, 빈 블록, 자리표시자, Expected indented block, return, 반환, Receiver Method, 수신 메서드, 콜백, callback, 이벤트 핸들러, event handler, _on_, connection, tscn 연결, CONNECT_PERSIST, 연결 아이콘, Connect a Signal to a Method, 궤도 회전, orbit, 팬, pan, 프리룩, freelook, 카메라 회전, 뷰포트 회전, 시그널, Signal, signal, 시그널 발산, emit, emit_signal, connect, disconnect, is_connected, Callable, 콜러블, 옵저버, Observer, 관찰자 패턴, 결합도, 느슨한 결합, 이벤트, event, 내장 시그널, 엔진 시그널, 커스텀 시그널, body_entered, area_entered, pressed, CONNECT_ONE_SHOT, CONNECT_DEFERRED, ERR_INVALID_PARAMETER, 중복 연결, Node 독, Signals 탭, await, 시그널 대기, 에디터 조작, 뷰포트 조작, 궤도 회전, orbit, 팬, pan, 줌, 프리룩, freelook, 가운데 버튼, 휠 클릭, 3버튼 마우스, Magic Mouse, 매직마우스, 매직 마우스, Magic Keyboard, 매직 키보드, 왼손잡이, 왼손 마우스, 단축키 변경, 키 변경, Shortcuts, Editor Settings, 에디터 설정, emulate_3_button_mouse, Emulate 3 Button Mouse, Navigation Scheme, Maya 방식, orbit_mouse_button, pan_mouse_button, zoom_mouse_button, spatial_editor, freelook_forward, WASD, IJKL, 보조 클릭, Secondary click, 우클릭, InputMap, 인풋맵, 액션, action, 리바인딩, rebinding, 키 재설정, action_add_event, action_erase_events, physical_keycode, keycode, 자판 배열, QWERTY, 접근성, 노드, Node, 씬, Scene, 인스턴싱, Instancing, instantiate, PackedScene, preload, load, Instantiate Child Scene, Cmd+Shift+A, Ctrl+Shift+A, Editable Children, Make Local, 리소스, Resource, 생명주기, _ready, _process, extends, 에디터 화면, Scene 독, Inspector, FileSystem, Output, res://, user://, 용어집, 용어, dictionary, CSG, Constructive Solid Geometry, 구성적 입체 기하, CSGShape3D, CSGCombiner3D, CSGBox3D, CSGPolygon3D, use_collision, bake_static_mesh, bake_collision_shape, Union, Intersection, Subtraction, 불리언 연산, 블록아웃, blockout, 그레이박싱, greyboxing, 화이트박싱, 회색 상자, 레벨 디자인, 맵 구조, 맵 만들기, 맵 제작, 레벨 제작, level design, GridMap, MeshLibrary, cell_size, bake_navigation, 모듈러, 타일, glTF, glb, 프롭, 소품, 터레인, terrain, HeightMapShape3D, Terrain3D, 씬 골격, main.tscn, Main Scene, 메인 씬, Level 교체, 맵 전환, load_threaded_request, load_threaded_get_status, THREAD_LOAD_LOADED, 비동기 로딩, 로딩 화면, SpawnPoints, Marker3D, WorldEnvironment, Add Sun to Scene, Add Environment to Scene, DirectionalLight3D, 씬 뼈대, 자식 노드 추가, Cmd+A, Ctrl+A, F2, Use Collision, Camera3D, 카메라 배치, 쿼터뷰, 카메라 각도, fov, Preview, Current, Align Transform with View, CameraRig, CSGBox3D, 상자 6개, 방 좌표, 좌표표, 벽 두께, Doorway, 문 뚫기, Cmd+D, 복제, 방, room, 보스방, 복도, 광장, 실내, 야외, 사냥터, 던전, 피치, pitch, 요, yaw, 롤, roll, 회전 3축, 오일러, rotation_degrees, 노멀, normal, 법선, 플랫 셰이딩, 스무스 셰이딩, flat shading, smooth shading, smooth_faces, autosmooth, smoothing_angle, 텍스처, texture, UV, UV 언랩, UV unwrap, UV1, UV2, 언랩, 맵, map, 알베도, albedo, albedo_color, albedo_texture, 컬러맵, 러프니스맵, roughness, 메탈릭, metallic, ORM, PBR, 아틀라스, atlas, 텍스처 아틀라스, 타일링, tiling, 해상도, resolution, 128px, 256px, 512px, 2K, 4K, ASTC, 텍스처 용량, 번들 용량, 파일 크기, 벡터 그래픽, SVG, 픽셀, pixel, 노멀맵, normal map, normal_enabled, normal_texture, normal_scale, 하이폴리, high-poly, 로우폴리, low-poly, 폴리곤, polygon, 베이킹, baking, 굽기, bake, 삼각형 수, 트라이앵글, ZBrush, OpenGL 규약, DirectX 규약, G 채널 반전, Asset Store, 에셋 스토어, AssetLib, 애셋 라이브러리, 애드온, addon, addons, 플러그인, plugin.cfg, editor_plugins, enabled, PackedStringArray, autoload, 오토로드, add_autoload_singleton, EditorPlugin, godot-ai, godot_ai, Godot AI, mcp__godot-ai, node_create, scene_open, editor_screenshot, project_run, logs_read, enabledMcpjsonServers, mcp.json, MCP 서버, HUD, 헤드업 디스플레이, 메뉴, 메인 메뉴, 일시정지, 설정 화면, 버튼, 체력바, HP바, 게이지, 미니맵, 인벤토리, 인벤토리 UI, 장비창, 대화창, 화면 UI, UI 디자인, UI 만들기, UI 조립, 화면 배치, Control, Container, VBoxContainer, HBoxContainer, MarginContainer, CenterContainer, GridContainer, PanelContainer, ScrollContainer, AspectRatioContainer, TabContainer, CanvasLayer, layer, Theme, 테마, theme_type_variation, 타입 배리에이션, StyleBox, StyleBoxFlat, 스타일박스, 앵커, anchor, 오프셋, offset, 프리셋, preset, PRESET_FULL_RECT, Full Rect, Layout 버튼, size_flags, SIZE_EXPAND_FILL, custom_minimum_size, custom_maximum_size, separation, mouse_filter, MOUSE_FILTER_STOP, MOUSE_FILTER_PASS, MOUSE_FILTER_IGNORE, 터치가 안 먹힘, UI 가 입력을 먹음, focus_mode, focus_neighbor, Button, TextureButton, BaseButton, action_mode, pressed 시그널, Label, RichTextLabel, ProgressBar, TextureProgressBar, radial_fill_degrees, 쿨다운 UI, TextureRect, NinePatchRect, Panel, Access as Unique Name, 유니크 이름, %노드, process_mode, PROCESS_MODE_WHEN_PAUSED, get_tree().paused, 일시정지 함정, 세이프 에어리어, safe area, get_display_safe_area, get_display_cutouts, 노치, 홈 인디케이터, 터치 크기, 48dp, 엄지 영역, 세로 화면, портрет, portrait, SCREEN_PORTRAIT, orientation, 1080x1920, 화면 방향, 해상도 대응, stretch, canvas_items, expand, Label3D, 월드 스페이스 UI, 머리 위 이름표, 미니맵 회전, 폰트, 한글 폰트, CJK, 글자가 네모, 네모로 나옴, 두부, tofu, SystemFont, FontFile, FontVariation, fallbacks, 폰트 폴백, 서브셋, subset, Noto Sans KR, MSDF, multichannel signed distance field, default_font_generate_mipmaps, 폰트 밉맵, 폰트 크기, LabelSettings, 외곽선, outline_size, content_scale_factor, stretch mode, stretch aspect, canvas_items, keep_width, expand, scale_mode, fractional, integer, 기준 해상도, base resolution, 정사각형 기준, Layout 메뉴 잠김, 앵커 vs 컨테이너, 컨테이너 중첩, 중첩 깊이, ScrollContainer, follow_focus, scroll_deadzone, drag_threshold, emulate_mouse_from_touch, 터치 드래그, 재사용 컴포넌트, 컴포넌트화, class_name, tool 스크립트, Engine.is_editor_hint, is_node_ready, Editable Children, UI 애니메이션, Tween, set_ease, set_trans, EASE_OUT, TRANS_CUBIC, kill, 트윈 겹침, offset_transform, offset_transform_enabled, offset_transform_visual_only, 오프셋 변환, 버튼 흔들기, 화면 전환, 페이드, ColorRect, 씬 전환, 접근성, accessibility, AccessKit, 스크린 리더, screen reader, accessibility_name, 아이콘 버튼, 대비, 색약, keep_aspect, KEEP_HEIGHT, KEEP_WIDTH, 세로 화면 시야, 카메라 종횡비, 테마 아틀라스, UI 드로우콜, 라이선스, 서브모듈, **(18) 처음 배우는 사람에게 3D 씬을 처음부터 만들어 보이거나 따라 하게 할 때(빈 프로젝트 → 바닥·벽·플레이어 → 화살표 키로 이동) — references/example.md 가 정본**, **(19) 사용자가 `/godot init` 이라고 지시하면 .claude/commands/ 에 godot 슬래시 명령들을 설치하고, 프로젝트 루트에 `./install.sh` 심볼릭 링크를 건다**. **🛑 이 스킬 문서만 보고 답하지 않는다 — 스킬은 출발점이지 울타리가 아니다. 스킬에 없다고 "없다·모른다"고 답하지 말고 엔진 실측(doctool·헤드리스 실행·소스)·공식 문서·웹 검색으로 찾아 확인한 뒤 답하고, 사전학습 지식은 답이 아니라 어디를 확인할지 정하는 가설로만 쓴다. 알아낸 것은 해당 reference 에 남긴다.** 키워드 - init, godot init, 초기화, 슬래시 명령 설치, 명령어 생성, commands 설치, install.sh 심볼릭 링크, symlink, ln -s, 루트 install.sh, ./install.sh, example, 예제, 기본 예제, 첫 씬, 처음 만들기, 튜토리얼, 따라하기, 실습, 바닥 만들기, 벽 만들기, 캐릭터 움직이기, 화살표 키 이동, 걸어다니기, 쿼터뷰 카메라, 블록아웃 예제
 ---
 
 # Godot — 3D 게임 개발·학습 스킬
@@ -93,13 +93,16 @@ description: 최신 Godot 으로 3D 게임을 개발할 때 따라야 할 개발
 > godot --headless --doctool /tmp/gddoc     # 클래스 정의 XML 전체 추출
 > ```
 
-## `/godot init` — 프로젝트에 슬래시 명령을 설치한다
+## `/godot init` — 프로젝트에 슬래시 명령과 `./install.sh` 를 설치한다
 
-사용자가 **`/godot init`** 이라고 지시하면, 이 스킬이 들고 있는 명령 파일들을
-**대상 프로젝트의 `.claude/commands/` 로 복사**한다. 그 뒤로는 `/godot-example` 처럼
-짧게 부를 수 있다.
+사용자가 **`/godot init`** 이라고 지시하면 두 가지를 한다.
 
-### 설치하는 것
+1. 이 스킬이 들고 있는 **명령 파일들을 대상 프로젝트의 `.claude/commands/` 로 복사**한다 —
+   그 뒤로는 `/godot-example` 처럼 짧게 부를 수 있다
+2. 대상 프로젝트 **루트에 `./install.sh` 심볼릭 링크**를 건다 —
+   `.claude/skills/godot/scripts/install.sh` 를 가리키며, 긴 경로 없이 `./install.sh` 로 부른다
+
+### 설치하는 것 ① 슬래시 명령 — **복사한다**
 
 | 원본 (이 스킬 안) | 설치 위치 | 무엇을 하는 명령인가 |
 |---|---|---|
@@ -108,17 +111,45 @@ description: 최신 Godot 으로 3D 게임을 개발할 때 따라야 할 개발
 새 명령을 늘릴 때는 `commands/` 에 파일을 추가하고 이 표에 한 줄을 더한다.
 **표에 없는 파일은 설치하지 않는다.**
 
+### 설치하는 것 ② `./install.sh` — **심볼릭 링크를 건다. 복사하지 않는다**
+
+| 원본 (이 스킬 안) | 설치 위치 | 형태 |
+|---|---|---|
+| `scripts/install.sh` | `<대상>/install.sh` | 🛑 **심볼릭 링크** — `.claude/skills/godot/scripts/install.sh` 를 가리킨다 |
+
+**왜 복사가 아니라 링크인가** — 복사하면 스킬을 고쳐도 프로젝트의 사본은 옛날 그대로 남고,
+프로젝트마다 갈라진 사본이 쌓인다. 링크는 **스킬을 고치면 모든 프로젝트에 즉시 반영**된다.
+스크립트는 preset 이름·패키지 ID·산출물 경로를 `export_presets.cfg` 에서 직접 읽으므로
+**프로젝트별로 고칠 것이 없다** — 그래서 링크로 충분하다.
+
+```bash
+./install.sh            # 장치 목록을 보여주고 골라서 빌드·설치·실행
+./install.sh --list     # 목록만
+./install.sh 1 --console  # 1번 장치에 설치하고 로그를 터미널에 붙인다
+```
+
 ### 절차
 
 ```bash
-# 1. 이 스킬의 commands 폴더를 확인한다
-ls .claude/skills/godot/commands/
-
-# 2. 대상의 commands 폴더를 만든다 (없으면)
-mkdir -p <대상>/.claude/commands
-
-# 3. 복사한다
+# ── ① 슬래시 명령 ────────────────────────────────────────────
+ls .claude/skills/godot/commands/          # 원본 확인
+mkdir -p <대상>/.claude/commands           # 없으면 만든다
 cp .claude/skills/godot/commands/godot-example.md <대상>/.claude/commands/
+
+# ── ② ./install.sh 심볼릭 링크 ───────────────────────────────
+cd <대상>
+
+# 원본이 실제로 있는지 먼저 확인한다 — 없으면 깨진 링크가 된다
+[ -f .claude/skills/godot/scripts/install.sh ] || echo "스킬이 없다. 링크를 걸지 않는다"
+
+# 이미 있으면 손대지 않는다
+if [ -e install.sh ] || [ -L install.sh ]; then
+  ls -l install.sh                          # 무엇이 있는지 보여주고 사람에게 물어본다
+else
+  ln -s .claude/skills/godot/scripts/install.sh install.sh
+fi
+
+./install.sh --list                          # 검증 — 장치 목록이 나오면 성공
 ```
 
 인자로 경로가 오면(`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 **현재 프로젝트**에 설치한다.
@@ -127,10 +158,21 @@ cp .claude/skills/godot/commands/godot-example.md <대상>/.claude/commands/
 
 | 규칙 | 이유 |
 |---|---|
-| **같은 이름의 파일이 이미 있으면 덮어쓰지 않는다** | 사용자가 고쳐 둔 명령을 날린다. 차이를 보여주고 물어본다 |
+| **같은 이름의 파일이 이미 있으면 덮어쓰지 않는다** | 사용자가 고쳐 둔 명령·스크립트를 날린다. 차이를 보여주고 물어본다 |
+| 🛑 **`ln -sf` 를 쓰지 않는다** | 루트에 있던 **진짜 `install.sh` 파일을 말없이 지운다.** 존재를 먼저 확인하고 없을 때만 건다 |
+| 🛑 **링크는 반드시 상대경로로 건다** (`ln -s .claude/skills/...`) | 절대경로(`/Users/…`)로 걸면 **폴더를 옮기거나 다른 사람이 클론하면 깨진다** |
+| **`.claude/skills/godot/scripts/install.sh` 가 실제로 있는지 먼저 확인한다** | 스킬이 없는 프로젝트에 걸면 **깨진 링크**만 남는다 |
+| 링크를 만든 뒤 **`./install.sh --list` 로 검증한다** | 링크가 걸렸다는 것과 동작한다는 것은 다르다 |
 | 설치 후 **무엇이 생겼고 어떻게 부르는지** 알린다 | 파일만 복사하고 끝내면 쓸 줄 모른다 |
 | 새 명령은 **`commands/` 에 원본을 두고** 복사한다 | 내용이 두 곳으로 갈라지지 않게 한다 |
 | 슬래시 명령은 **재시작 후 인식**될 수 있다 | 목록에 안 보이면 세션을 다시 열라고 안내한다 |
+
+**심볼릭 링크는 git 에 그대로 커밋된다.** 스킬을 서브모듈로 같은 경로에 두는 저장소라면
+클론한 쪽에서도 그대로 동작한다. 스킬이 없는 환경(또는 심링크를 못 쓰는 Windows)에서는
+링크 대신 `bash .claude/skills/godot/scripts/install.sh` 를 직접 부른다.
+
+**`install.sh` 는 실행 위치에서 위로 올라가며 `project.godot` 을 찾는다.**
+링크로 실행해도 프로젝트 루트를 정확히 잡으며, `export_presets.cfg` 가 없으면 거기서 멈춘다.
 
 ---
 
@@ -216,6 +258,7 @@ GitHub 이슈·PR, Asset Store. **다만 웹에서 본 것도 그대로 옮기�
 |---|---|
 | `Camera3D` 의 `fov`·투영·`SpringArm3D` 사용법 | **카메라 각도는 회전 3축 전부 고정**(피치 −45°·yaw 0°·roll 0°), 줌만 0.5~2배 |
 | `LightmapGI` 굽는 방법·설정 | **동적 조명은 존재하지 않는다** — 낮/밤·날씨·동적 그림자 전면 금지 |
+| glTF 임포트 옵션(`root_scale`·축 변환)이 무엇을 하는가 | 🛑 **보정 용도로는 쓰지 않는다.** `.glb` 가 정본이고, 값이 틀렸으면 Blender 로 돌아간다 |
 | 드로우콜을 줄이는 기법 | **예산은 300** (텍스처 200MB · 메모리 1,120MB) |
 | `visibility_range`·`MultiMesh` API | **거리 3구간 배분**(AOI 82개 → 8/20/54) |
 
@@ -395,6 +438,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 
 | 규칙 | 이유 |
 |------|------|
+| 🛑🛑 **임포트한 에셋(`.glb`·`.fbx`)을 Godot 에서 보정하지 않는다** | 모델의 **크기·자세·축 방향·원점·본 구조**가 틀렸으면 **파일 자체가 틀린 것**이다. Godot 은 파일에 적힌 것을 그대로 믿고 쓴다. `.import` 의 `root_scale`·노드 `scale`/`rotation`/`position`·`_ready()` 보정·`EditorScenePostImport` 보정·역스케일 래퍼 **전부 금지** — 전부 가능하지만 전부 부채다. **DCC(Blender)로 돌아가 고친 뒤 재익스포트한다.** 보정은 쓰는 곳마다 반복되고 콜리전·본 길이·애니 이동량·부착점·임포스터 굽기가 그 값을 전제로 쌓여 **되돌릴 수 없게 된다** |
 | 물리 관련 코드는 `_physics_process(delta)`에만 쓴다 | 물리 서버는 고정 틱(기본 60Hz)으로 돈다. `_process`에서 바디를 움직이면 지터·터널링이 생긴다 |
 | 3D 회전은 `rotation`(오일러) 대신 `Transform3D`/`Basis`/`Quaternion`으로 다룬다 | 오일러는 짐벌락·회전 순서 의존·보간 왜곡을 일으킨다 |
 | 전방 벡터는 `-transform.basis.z`다 | Godot 3D는 **-Z가 forward**, +Y가 up, +X가 right |
@@ -900,8 +944,11 @@ CJK 폰트가 15~20MB 라 SSOT 번들 용량 규칙과 정면으로 부딪치는
 `MultiMesh` 가 선택이 아닌 이유, 폴리곤을 아끼지 않아도 되는 이유가 전부 실측으로 있다.
 
 "측정 없이 최적화하지 않는다"는 원칙과 최적화 5단계 순서를 먼저 세운다. 해상도 테스트로
-CPU/GPU 병목을 가르는 방법, `Performance` 모니터 전체 목록과 디버그 오버레이 완성 코드
-(고아 노드로 누수 감지 포함), 프로파일러와 Visual Profiler 읽는 법, 드로우콜 상한과 줄이는
+CPU/GPU 병목을 가르는 방법, `Performance` 모니터 전체 목록, **화면에 성능을 띄울 때
+반드시 세트로 고정해서 표시하는 디버그 패널 항목(FPS·드로우콜·삼각형·렌더 오브젝트·VRAM·
+텍스처·프로세스 메모리·CPU·캐릭터·노드)과 완성 코드**(예산 대비 색칠, 텍스처 메모리
+언더플로·워밍업 함정, `--perf-log` 터미널 측정, 고아 노드로 누수 감지 포함),
+프로파일러와 Visual Profiler 읽는 법, 드로우콜 상한과 줄이는
 5가지 방법, 오버드로우, 메시 LOD와 `visibility_range`(HLOD)·`VisibleOnScreenEnabler3D`,
 오클루전 컬링이 효과 있는 경우와 없는 경우, `MultiMeshInstance3D` 풀밭 완성 코드와 셰이더
 연동·한계, 조명 비용 순위와 모바일 조명 전략·그림자 축소, CPU 최적화(타이머 분할·캐시·

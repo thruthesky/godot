@@ -207,60 +207,269 @@ Performance.PHYSICS_3D_ISLAND_COUNT
 Performance.AUDIO_OUTPUT_LATENCY
 ```
 
-### 디버그 오버레이 (완성 코드)
+### 🛑 디버그 패널 — **표시 항목은 세트로 고정한다**
 
-```gdscript
-# res://scenes/debug/perf_overlay.gd
-extends CanvasLayer
+> **성능을 화면에 띄울 때는 아래 항목을 전부, 이 순서로 띄운다.**
+> 마음에 드는 것 몇 개만 고르지 않는다.
 
-@onready var label: Label = $Label
+**이유는 하나다 — 성능 문제는 값 하나로 판정되지 않고 오직 조합으로만 판정된다.**
+"FPS 16" 은 원인을 말해 주지 않는다. 같은 화면의 드로우콜·삼각형·캐릭터 수·
+`process` 시간이 함께 있어야 어디가 병목인지 갈린다. 항목을 빼면 **그 조합이 깨지고
+측정이 추측으로 바뀐다.**
 
-var _accum: float = 0.0
+#### 표시하는 항목 (고정 세트)
 
-func _ready() -> void:
-    process_mode = Node.PROCESS_MODE_ALWAYS
-    visible = OS.is_debug_build()
+| # | 화면 표기 | 값 | 함께 보여줄 예산 |
+|---|---|---|---|
+| — | **`성능`  (SSOT §3 저사양 3GB 예산)** | 머리글 — 어떤 기준의 예산인지 밝힌다 | |
+| 1 | **FPS** | `TIME_FPS` + **최저 · 평균** | 60 / 30 (클수록 좋다) |
+| 2 | **드로우콜** | `RENDER_TOTAL_DRAW_CALLS_IN_FRAME` | **`/ 300`** |
+| 3 | **삼각형** | `RENDER_TOTAL_PRIMITIVES_IN_FRAME` | 천 단위 콤마 |
+| 4 | **렌더 오브젝트** | `RENDER_TOTAL_OBJECTS_IN_FRAME` | |
+| 5 | **VRAM** | `RENDER_VIDEO_MEM_USED` | **`/ 200 MB`** |
+| 6 | **↳ 텍스처** | `RENDER_TEXTURE_MEM_USED` | 값이 깨지면 **`측정 불가`** (아래 함정) |
+| 7 | **프로세스 메모리** | `MEMORY_STATIC` | **`/ 1120 MB`** |
+| 8 | **CPU** | `TIME_PROCESS` · `TIME_PHYSICS_PROCESS` (ms) | |
+| 9 | **캐릭터** | 게임 쪽에서 받는다 (`get_agent_count()`) | **`/ 82` (AOI 천장)** |
+| 10 | **노드** | `OBJECT_NODE_COUNT` | |
+| — | `F1 최저 FPS 초기화 · ESC 종료` | 조작 안내 | |
 
-func _input(event: InputEvent) -> void:
-    if event is InputEventKey:
-        var k := event as InputEventKey
-        if k.pressed and k.keycode == KEY_F3 and not k.echo:
-            visible = not visible
+**숫자만 띄우지 않고 반드시 예산과 나란히 놓는다.** `드로우콜 186` 은 좋은지 나쁜지
+알 수 없고, `186 / 300` 은 즉시 판단이 된다. **예산의 80% 를 넘으면 노랑, 넘으면 빨강**
+으로 칠한다(FPS 는 클수록 좋으므로 반대로).
 
-func _process(delta: float) -> void:
-    if not visible:
-        return
-    _accum += delta
-    if _accum < 0.25:
-        return
-    _accum = 0.0
+#### 세트로 봐야 판정이 되는 예
 
-    var draw_calls := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
-    var prims := Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
-    var proc_ms := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
-    var phys_ms := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
-    var vram := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
-    var mem := Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0
-    var orphans := Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
-    var bodies := Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS)
+| 화면에 보이는 조합 | 판정 |
+|---|---|
+| FPS 낮음 + **드로우콜이 예산 안** | 드로우콜은 원인이 아니다. 삼각형·픽셀·`process` 를 본다 |
+| FPS 낮음 + **드로우콜 예산 초과** | CPU 제출 병목 — MultiMesh·머티리얼 병합으로 줄인다 |
+| FPS 낮음 + **`process` 가 프레임 시간의 대부분** | 스크립트 병목 — 프로파일러 Self Time 을 본다 |
+| FPS 낮음 + process·physics 둘 다 작음 | **GPU 병목** — 해상도 절반 테스트로 확인한다 |
+| **캐릭터 수에 비례해** FPS 가 떨어짐 | 스켈레톤 갱신·드로우콜 — 임포스터·LOD 로 내린다 |
+| 노드 수가 **계속 증가** | 누수 — 뗀 노드를 `free()` 하지 않았다 |
 
-    label.text = """FPS      : %d
-draw call: %d
-삼각형    : %s
-process  : %.2f ms
-physics  : %.2f ms
-VRAM     : %.1f MB
-RAM      : %.1f MB
-고아 노드 : %d
-활성 바디 : %d""" % [
-        Engine.get_frames_per_second(), draw_calls,
-        String.num_uint64(int(prims)), proc_ms, phys_ms,
-        vram, mem, orphans, bodies
-    ]
+#### 붙이는 자리 — 노드 구조
+
+```
+UI            CanvasLayer
+└─ DebugPanel     PanelContainer   ← 배경. 없으면 밝은 지면 위에서 글씨가 안 읽힌다
+   └─ DebugOverlay  RichTextLabel  ← 이 스크립트
 ```
 
-**`OBJECT_ORPHAN_NODE_COUNT`가 계속 증가하면 메모리 누수다.**
-트리에서 뗀 노드를 `free()`하지 않았거나 순환 참조가 있다.
+| 노드 | 설정 | 이유 |
+|---|---|---|
+| `DebugPanel` | `theme_override_styles/panel` = **StyleBoxFlat** — `bg_color = Color(0,0,0,0.55)`, `content_margin` 10~12, `corner_radius` 6 | 반투명 검정이 있어야 어떤 배경 위에서도 읽힌다 |
+| `DebugPanel` | 🛑 **`mouse_filter = 2`(IGNORE)** | **패널이 터치를 먹으면 캐릭터가 안 움직인다.** 화면 UI 의 대표적 함정 |
+| `DebugOverlay` | `bbcode_enabled = true` · `fit_content = true` · `scroll_active = false` | 색을 칠하려면 BBCode, 내용만큼만 커지게 하려면 `fit_content` |
+| `DebugOverlay` | `crowd` 를 인스펙터에서 **캐릭터를 세는 노드**에 연결 | 연결하지 않으면 캐릭터 수가 0 으로 나온다 |
+
+#### 완성 코드
+
+**이 프로젝트의 정본은 `res://scenes/demo/mecath/debug_overlay.gd` 이고,
+`map_test_play.tscn` 과 `mecath_crowd_demo.tscn` 이 같은 스크립트를 공유한다.**
+다른 프로젝트로 가져갈 때는 **맨 위 예산 상수 4개만** 그 프로젝트의 예산으로 바꾼다.
+
+```gdscript
+## 성능 디버그 오버레이 — FPS·드로우콜·메모리를 SSOT 예산과 나란히 보여준다.
+##
+## 붙는 자리: Mecath_Crowd_Demo > UI > DebugOverlay (RichTextLabel)
+##
+## 🛑 숫자만 띄우지 않고 **예산과 함께** 보여주는 이유 —
+##    "드로우콜 180" 은 그 자체로 좋은지 나쁜지 알 수 없다.
+##    SSOT §3 의 저사양 상한(300)과 나란히 놓아야 판단이 된다.
+##    예산을 넘으면 빨강, 80% 를 넘으면 노랑으로 표시한다.
+extends RichTextLabel
+
+## SSOT §3 성능·용량 예산 (저사양 3GB 기준)
+const BUDGET_DRAW_CALLS := 300        ## 드로우콜 상한
+const BUDGET_VRAM_MB := 200.0         ## 텍스처(VRAM)
+const BUDGET_PROCESS_MB := 1120.0     ## 게임 프로세스 메모리
+const BUDGET_AOI := 82                ## SNAP MTU 기준 근거리 표시 천장
+
+## 갱신 주기(초). 매 프레임 갱신하면 숫자가 떨려 읽을 수 없다.
+@export var refresh_interval: float = 0.25
+
+## 캐릭터 수를 물어볼 대상(Crowd 노드). 인스펙터에서 연결한다.
+@export var crowd: Node3D
+
+## 시작 직후는 셰이더 컴파일·리소스 로드로 FPS 가 1까지 떨어진다.
+## 그 값을 '최저' 로 잡으면 이후 측정이 전부 무의미해지므로 이 시간만큼 건너뛴다.
+@export var warmup_time: float = 2.0
+
+var _uptime := 0.0
+var _accum := 0.0
+var _fps_min := 9999.0
+var _fps_avg := 0.0
+var _samples := 0
+
+## 터미널에도 찍을지. 실행 인자에 --perf-log 를 주면 켜진다.
+##
+## 🔑 화면 오버레이만으로는 측정이 어렵다 — 스크린샷을 찍어 눈으로 읽어야 하고,
+##    캡처 코드를 끼워 넣으면 그 코드가 CPU 시간에 섞여 값이 왜곡된다(실측).
+##    씬을 그대로 실행하고 터미널로 받는 것이 가장 정확하다.
+##
+##    godot --path . scenes/demo/mecath/mecath_crowd_demo.tscn -- --perf-log
+var _log_console := false
+var _log_accum := 0.0
+
+
+func _ready() -> void:
+	_log_console = "--perf-log" in OS.get_cmdline_user_args()
+	bbcode_enabled = true
+	# 🔑 배경 없이 흰 글씨만 두면 밝은 지면 위에서 읽히지 않는다.
+	add_theme_color_override("default_color", Color(1, 1, 1))
+	add_theme_constant_override("outline_size", 4)
+	add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+
+
+func _process(delta: float) -> void:
+	_uptime += delta
+	var fps := Performance.get_monitor(Performance.TIME_FPS)
+	if fps > 0.0 and _uptime >= warmup_time:
+		_fps_min = min(_fps_min, fps)
+		_fps_avg += fps
+		_samples += 1
+
+	_accum += delta
+	if _accum >= refresh_interval:
+		_accum = 0.0
+		_refresh(fps)
+
+	if _log_console:
+		_log_accum += delta
+		if _log_accum >= 2.0:
+			_log_accum = 0.0
+			_print_console(fps)
+
+
+func _print_console(fps: float) -> void:
+	var agents := 0
+	if crowd and crowd.has_method("get_agent_count"):
+		agents = crowd.get_agent_count()
+	print("[perf] 캐릭터 %3d | FPS %5.1f (최저 %.0f · 평균 %.1f) | 드로우콜 %3d/%d | 삼각형 %6d | process %5.2fms | VRAM %.1fMB | 메모리 %.1fMB" % [
+		agents, fps, _fps_min, (_fps_avg / _samples) if _samples > 0 else 0.0,
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)), BUDGET_DRAW_CALLS,
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+		Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0])
+
+
+func _refresh(fps: float) -> void:
+	var draw_calls := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	var prims := int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+	var objs := int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+	var vram_mb := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+	# 🛑 RENDER_TEXTURE_MEM_USED 는 드라이버가 값을 주지 않으면 언더플로된 거대값이
+	#    나온다(macOS/Metal 실측 — 17592186043619.8 MB). 예산(200MB)의 100배를 넘으면
+	#    측정 불가로 본다.
+	var tex_raw := Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0
+	var tex_ok := tex_raw >= 0.0 and tex_raw < BUDGET_VRAM_MB * 100.0
+	var tex_mb := tex_raw if tex_ok else 0.0
+	var mem_mb := Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0
+	var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	var t_proc := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	var t_phys := Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	var avg := (_fps_avg / _samples) if _samples > 0 else 0.0
+	var agents := 0
+	if crowd and crowd.has_method("get_agent_count"):
+		agents = crowd.get_agent_count()
+
+	var lines := PackedStringArray()
+	lines.append("[b]성능[/b]   (SSOT §3 저사양 3GB 예산)")
+	var lo := "[color=#888]—[/color]" if _samples == 0 else _tint("%.0f" % _fps_min, _fps_min, 60.0, 30.0, true)
+	lines.append("FPS          %s   최저 %s · 평균 %.0f"
+		% [_tint("%.0f" % fps, fps, 60.0, 30.0, true), lo, avg])
+	lines.append("드로우콜     %s / %d"
+		% [_tint(str(draw_calls), float(draw_calls), BUDGET_DRAW_CALLS * 0.8, BUDGET_DRAW_CALLS, false),
+		   BUDGET_DRAW_CALLS])
+	lines.append("삼각형       %s" % _comma(prims))
+	lines.append("렌더 오브젝트 %d" % objs)
+	lines.append("VRAM         %s / %.0f MB"
+		% [_tint("%.1f" % vram_mb, vram_mb, BUDGET_VRAM_MB * 0.8, BUDGET_VRAM_MB, false), BUDGET_VRAM_MB])
+	lines.append("  ↳ 텍스처   %s" % ("%.1f MB" % tex_mb if tex_ok else "[color=#888]측정 불가[/color]"))
+	lines.append("프로세스 메모리 %s / %.0f MB"
+		% [_tint("%.1f" % mem_mb, mem_mb, BUDGET_PROCESS_MB * 0.8, BUDGET_PROCESS_MB, false), BUDGET_PROCESS_MB])
+	lines.append("CPU          process %.2f ms · physics %.2f ms" % [t_proc, t_phys])
+	lines.append("")
+	lines.append("캐릭터       %s / %d  (AOI 천장)"
+		% [_tint(str(agents), float(agents), float(BUDGET_AOI), float(BUDGET_AOI), false), BUDGET_AOI])
+	lines.append("노드         %d" % nodes)
+	lines.append("[color=#888]F1 최저 FPS 초기화 · ESC 종료[/color]")
+	text = "\n".join(lines)
+
+
+## 값이 예산에 가까우면 노랑, 넘으면 빨강.
+## higher_is_better = true 면 FPS 처럼 클수록 좋은 값이다.
+func _tint(s: String, v: float, warn: float, bad: float, higher_is_better: bool) -> String:
+	var col := "#7CFC7C"
+	if higher_is_better:
+		if v < bad:
+			col = "#FF6B6B"
+		elif v < warn:
+			col = "#FFD166"
+	else:
+		if v > bad:
+			col = "#FF6B6B"
+		elif v > warn:
+			col = "#FFD166"
+	return "[color=%s]%s[/color]" % [col, s]
+
+
+func _comma(n: int) -> String:
+	var s := str(n)
+	var out := ""
+	var c := 0
+	for i in range(s.length() - 1, -1, -1):
+		out = s[i] + out
+		c += 1
+		if c % 3 == 0 and i > 0:
+			out = "," + out
+	return out
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F1:
+			_fps_min = 9999.0
+			_fps_avg = 0.0
+			_samples = 0
+			_uptime = warmup_time   # 이미 워밍업은 끝난 상태로 둔다
+		elif event.keycode == KEY_ESCAPE:
+			get_tree().quit()
+```
+
+#### 🛑 함정 — 전부 실측으로 확인된 것들
+
+| 함정 | 무엇이 일어나는가 | 처리 |
+|---|---|---|
+| **`RENDER_TEXTURE_MEM_USED` 가 거대값** | 드라이버가 값을 주지 않으면 **언더플로된 수**가 나온다 — macOS/Metal 실측 `17592186043619.8 MB` | 예산의 **100배를 넘으면 `측정 불가`** 로 표시한다. 그 값으로 판단하지 않는다 |
+| **시작 직후 FPS 가 1까지 떨어진다** | 셰이더 컴파일·리소스 로드 때문이다. 그 값을 '최저' 로 잡으면 **이후 측정이 전부 무의미**해진다 | `warmup_time`(기본 2초) 동안 최저·평균 집계를 건너뛴다 |
+| **매 프레임 갱신하면 못 읽는다** | 숫자가 떨려 눈으로 따라갈 수 없다 | `refresh_interval` **0.25초**로 갱신 |
+| **스크린샷을 찍어 읽으면 값이 왜곡된다** | 캡처 코드가 CPU 시간에 섞여 들어간다(실측) | 씬을 그대로 실행하고 **터미널로 받는다** — `--perf-log` |
+| **배경 없이 흰 글씨만 두면 안 보인다** | 밝은 지면 위에서 사라진다 | 반투명 패널 + `outline_size = 4` 검정 외곽선 |
+
+**터미널로 받기** — 화면을 보지 않고 2초마다 한 줄씩 로그로 받는다.
+
+```bash
+godot --path . scenes/demo/mecath/mecath_crowd_demo.tscn -- --perf-log
+```
+
+```
+[perf] 캐릭터  30 | FPS  16.0 (최저 16 · 평균 17.0) | 드로우콜 186/300 | 삼각형  37815 | process 199.31ms | VRAM 72.5MB | 메모리 104.7MB
+```
+
+#### 더 볼 것이 있으면 세트 **뒤에** 붙인다
+
+고정 세트를 **줄이지 않는 조건**으로, 상황에 따라 아래를 덧붙인다.
+
+| 추가 항목 | 모니터 | 언제 |
+|---|---|---|
+| 고아 노드 | `OBJECT_ORPHAN_NODE_COUNT` | **누수 추적** — 계속 증가하면 뗀 노드를 `free()` 하지 않았거나 순환 참조다. 정상은 0 |
+| 활성 바디 | `PHYSICS_3D_ACTIVE_OBJECTS` | 물리가 의심될 때 |
+| 충돌 쌍 | `PHYSICS_3D_COLLISION_PAIRS` | 콜리전 폭발을 볼 때 |
+| 내비 시간 | `TIME_NAVIGATION_PROCESS` | 길찾기가 의심될 때 |
 
 ---
 
