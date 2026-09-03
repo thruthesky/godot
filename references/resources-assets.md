@@ -1,5 +1,7 @@
 # 리소스와 에셋 임포트
 
+> **이 문서로 오는 상황** — 데이터와 파일 — 커스텀 `Resource`·`.tres`, `load/preload/스레드 로딩`, UID·`.import`, glTF·텍스처·오디오 임포트, 세이브(`user://`), `ConfigFile`, `FileAccess`
+
 ## 목차
 
 1. [핵심 개념 — Resource란 무엇인가](#1-핵심-개념--resource란-무엇인가)
@@ -1228,6 +1230,9 @@ func delete_save(slot: int) -> void:
 ### JSON 직렬화 주의사항
 
 - `JSON.stringify()`는 `Vector3`, `Color` 등 Godot 타입을 그대로 저장하지 못한다.
+- 🛑 **숫자는 전부 `float` 로 돌아온다** — `{"level": 3}` 의 `3` 이 `3.0`. 정수가 필요하면 `int(d["level"])`. 4.7.2 `JSON.parse_string()` 실측.
+- **파싱 오류 위치가 필요하면** `JSON.new()` + `parse(text)` → `get_error_line()`·`get_error_message()`. `parse_string()` 은 실패 시 `null` 만 돌려준다 — 반환이 `Variant` 이므로 `is Dictionary` 로 확인한 뒤 쓴다.
+- `var_to_bytes()`/`bytes_to_var()` 는 **Godot 전용 바이너리**라 서버·다른 언어와 못 주고받고, `allow_objects=true` 는 🛑 **임의 코드 실행 위험** — 신뢰할 수 없는 데이터(서버 응답·유저 파일)에 쓰지 않는다. 서버와는 JSON 또는 [networking-lowlevel.md §3](networking-lowlevel.md) 의 바이너리 규약으로.
   배열이나 딕셔너리로 변환해야 한다.
 - **모든 숫자가 `float`로 파싱된다.** `int(data.level)`로 명시적 변환이 필요하다.
 - 노드나 리소스 객체를 직접 저장하지 말고, **ID를 저장하고 로드 시 조회**한다.
@@ -1449,3 +1454,7 @@ ProjectSettings.localize_path("/home/u/proj/a.tscn") # "res://a.tscn"
 | 폴더 스캔 시 `.remap` 미처리 | 빌드에서만 실패 | `.remap` 접미사 제거 후 로드 |
 | 세이브 버전 관리 없음 | 업데이트 후 세이브 깨짐 | `version` 필드 + 마이그레이션 |
 | 볼륨 슬라이더를 dB에 직접 연결 | 체감이 부자연스러움 | `linear_to_db()` |
+
+## 공식 문서
+
+

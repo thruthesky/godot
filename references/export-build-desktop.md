@@ -1,5 +1,7 @@
 # 데스크톱 빌드 — macOS · Windows · Linux (Steam)
 
+> **이 문서로 오는 상황** — macOS 공증·Windows·Linux·Steam Deck·크로스 빌드
+
 데스크톱 3종의 테스트 실행과 Steam 배포용 릴리즈.
 템플릿 개념과 필요 파일 판정표는 [export-build.md](export-build.md) 를 먼저 볼 것.
 
@@ -407,3 +409,7 @@ ls -lh "$OUT"/*/*
 - [export-build-ios.md](export-build-ios.md) — iOS
 - [performance-mobile.md](performance-mobile.md) — 최적화, 기능 태그 오버라이드
 - [project-config.md](project-config.md) — `project.godot` 포맷, CI 예시
+
+## 공식 문서
+
+

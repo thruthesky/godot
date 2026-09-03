@@ -1,5 +1,7 @@
 # 3D 셰이더
 
+> **이 문서로 오는 상황** — 셰이더 코드 — spatial 구조, `render_mode`, 내장 변수, uniform, 실전 셰이더, `next_pass`, 컴파일 스터터·baker, 모바일 금기
+
 ## 목차
 
 1. [핵심 개념 — 셰이더 파이프라인](#1-핵심-개념--셰이더-파이프라인)
@@ -290,11 +292,11 @@ void fragment() {
 | `DEPTH` | `float` | W | 깊이 직접 쓰기 |
 | `LIGHT_VERTEX` | `vec3` | W | 조명 계산용 위치 |
 
-### 텍스처 샘플러 (내장)
+### 화면·깊이 텍스처 — Godot 3 의 내장 이름과 4.x 의 uniform 선언
 
-| 샘플러 | 설명 | 비고 |
+| Godot 3 이름 (🛑 4.x 에서 제거됨) | 설명 | 4.x 에서는 |
 |--------|------|------|
-| `SCREEN_TEXTURE` | 화면 색상 | 4.x에서는 `hint_screen_texture` uniform으로 선언 |
+| `SCREEN_TEXTURE` | 화면 색상 | `hint_screen_texture` uniform 으로 **직접 선언**한다(아래 코드) |
 | `DEPTH_TEXTURE` | 깊이 버퍼 | `hint_depth_texture` |
 | `NORMAL_ROUGHNESS_TEXTURE` | 법선+러프니스 | `hint_normal_roughness_texture` |
 
@@ -821,6 +823,34 @@ shader_compiler/shader_cache/strip_debug.release=true
 
 ---
 
+### 9.x 4.4+ 파이프라인 사전 컴파일과 4.5+ Shader Baker — 엔진이 대신 해 주는 것
+
+위의 예열·디스크 캐시는 **Godot 4.4 이전의 유일한 방법**이었다. 4.4 부터는 엔진이 세 가지를 스스로 한다
+(공식 *Reducing stutter from shader (pipeline) compilations* — 🛑 **Forward+·Mobile 전용**, Compatibility 는 여전히 예열이 필요하다).
+
+| 기능 | 버전 | 무엇 | 이 프로젝트 |
+|---|---|---|---|
+| **Ubershader** | 4.4+ | 조명·그림자 품질 같은 "특수화 상수" 를 렌더링 중에 바꿀 수 있는 셰이더 한 벌을 **미리** 컴파일하고, 최적화 버전은 **백그라운드에서** 만든다. 파이프라인 수가 크게 준다 | 자동. 끌 이유 없음 |
+| **파이프라인 사전 컴파일** | 4.4+ | 메시를 **로드할 때·노드를 트리에 넣을 때** 필요한 파이프라인을 미리 만든다. 로딩 화면 중 백그라운드 스레드에서도 | 🔑 **"본 적 있는 것만" 미리 만든다** — 게임 중에 처음 로드하는 메시·셰이더는 그때 컴파일된다 |
+| **Shader Baker** | 4.5+ | **내보낼 때** 셰이더를 중간 형식(SPIR-V / DXIL / MIL)으로 구워 PCK 에 넣는다. **첫 실행 시간**을 줄인다(특히 Metal·D3D12). 파이프라인 자체는 못 굽는다(GPU·드라이버 의존) | Export 프리셋 → **Shader Baker › Enabled**. iOS(Metal) 에서 효과가 크다 |
+
+**Debugger › Monitors 에 파이프라인 모니터가 있다** — 어느 단계에서 컴파일됐는지 센다.
+
+| 모니터 | 뜻 | 스터터 |
+|---|---|---|
+| Canvas | 2D 노드를 처음 그릴 때 — 2D 는 사전 컴파일이 **없다** | 첫 표시 때 |
+| Mesh | 메시 로드 시 | 게임 중 로드면 → 백그라운드 스레드로 |
+| Surface | 3D 노드가 트리에 처음 들어간 프레임 | 로딩 직후면 무해 |
+| **Draw** | 🛑 **미리 못 만들어서 그릴 때 컴파일** — 4.4 이전과 같음. 여기 숫자가 오르면 엔진 버그 신고 대상 | 게임 중 |
+| Specialization | 백그라운드 최적화 — 스터터 없음, 프레임만 조금 |
+
+**게임 중 숫자가 튀지 않게 하는 두 가지**
+
+1. **쓰는 렌더링 기능은 로딩 초반에 한 번 보여 준다** — MSAA 단계·ReflectionProbe·라이트맵 등은 **처음 만날 때** 사전 컴파일이 켜진다. 첫 씬(로딩 화면)에 그 기능을 쓰는 작은 씬을 넣어 두면(화면 밖 `SubViewport` 나 `ColorRect` 뒤도 됨) 뒤 에셋이 전부 대비된다. 🛑 **게임 중에 MSAA 를 바꾸면 즉시 스터터** — 설정 화면에서만, 로딩을 끼워서
+2. **동적으로 붙는 이펙트는 숨겨서 미리 붙여 둔다** — 4.4+ 는 씬에 **한 번이라도 인스턴스**되면(안 보여도) 사전 컴파일한다. 폭발 이펙트를 플레이어 자식으로 `visible=false` 로 둔다(스크립트는 끄거나 Editable Children 으로 정리)
+
+라리엔 3D 는 광원 0개·머티리얼 9종([lowend-3gb-60fps.md §6](lowend-3gb-60fps.md))이라 파이프라인 수 자체가 적지만, **캐릭터·이펙트를 게임 중 로드**하므로 Mesh/Draw 모니터를 실기기에서 한 번 본다. 공식: https://docs.godotengine.org/en/stable/tutorials/performance/pipeline_compilations.html
+
 ## 10. 모바일에서 피해야 할 것
 
 | 피할 것 | 이유 | 대안 |
@@ -871,3 +901,7 @@ render_mode vertex_lighting;
 | `cull_disabled` 남용 | 폴리곤 2배 | 필요한 곳만 |
 | `repeat_enable` 누락 | 텍스처가 늘어남 | UV가 1을 넘으면 필요 |
 | `varying`을 `fragment()`에서 쓰기 | 컴파일 오류 | `vertex()`에서만 대입 |
+
+## 공식 문서
+
+

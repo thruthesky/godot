@@ -1,10 +1,25 @@
 # Asset Store — 애드온 찾기·설치·활성화
 
+> **이 문서로 오는 상황** — 애드온·에셋을 받거나 켜고 끌 때 — 새 Asset Store, 설치 경로 3가지, `plugin.cfg`·`editor_plugins/enabled`, 🛑 애드온이 `[autoload]` 를 심는 함정
+
 Godot 에서 남이 만든 에셋·애드온을 가져오는 경로와, **설치된 애드온이 프로젝트에
 정확히 무엇을 남기는가**(`addons/` 폴더, `plugin.cfg`, `[editor_plugins]`, `[autoload]`)를
 다룬다. AI 도구 애드온의 상세는 [ai-tooling.md](ai-tooling.md) 로 넘긴다.
 
 확인 기준은 **4.7.2.stable** 이다.
+
+## 목차
+
+| 절 | 내용 |
+|---|---|
+| [1](#1-새-asset-store) | 새 Asset Store |
+| [2](#2-설치-경로-3가지) | 설치 경로 3가지 |
+| [3](#3-활성화가-프로젝트에-남기는-것) | 활성화가 프로젝트에 남기는 것 |
+| [4](#4-함정--애드온이-autoload-를-심는-경우) | 함정 — 애드온이 `[autoload]` 를 심는 경우 |
+| [5](#5-이-프로젝트에서-쓰는-애드온) | 이 프로젝트에서 쓰는 애드온 |
+| [·](#공식-문서) | 공식 문서 |
+
+---
 
 ---
 
@@ -151,3 +166,8 @@ grep -rL '@tool' addons/<이름> --include='*.gd'
 
 > 애드온을 늘리기 전에 **엔진 내장 기능으로 되는지 먼저 본다.** 애드온은 엔진 업그레이드마다
 > 깨질 수 있는 의존성이고, 이 프로젝트는 모바일 용량 예산이 빠듯하다.
+
+## 공식 문서
+
+- About the Asset Store · Using the Asset Store in the Engine · FAQ: https://docs.godotengine.org/en/stable/community/asset_store/what_is_asset_store.html · https://docs.godotengine.org/en/stable/community/asset_store/using_in_editor.html · https://docs.godotengine.org/en/stable/community/asset_store/faq.html
+- Installing plugins: https://docs.godotengine.org/en/stable/tutorials/plugins/editor/installing_plugins.html

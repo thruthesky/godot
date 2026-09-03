@@ -1,5 +1,7 @@
 # Android 빌드 — 테스트 APK · 설치 · 실행 · 릴리즈
 
+> **이 문서로 오는 상황** — APK·AAB 만들기·설치·로그·릴리즈 서명·Gradle·권한(🛑 INTERNET)·스플래시
+
 Android 앱을 만들어 실기기에 올리고 Play 스토어까지 내보내는 전 과정.
 템플릿 개념과 작업별 필요 파일은 [export-build.md](export-build.md) 를 먼저 볼 것.
 
@@ -511,3 +513,7 @@ boot_splash/fullsize=true
 - [performance-mobile.md](performance-mobile.md) — 모바일 최적화, 기기 등급 감지, 렌더링 설정
 - [export-build-desktop.md](export-build-desktop.md) — Steam(Windows/macOS/Linux)
 - [whats-new.md](whats-new.md) — GABE, Perfetto, Java 인터페이스 등 4.7 Android 신기능
+
+## 공식 문서
+
+

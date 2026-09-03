@@ -1,5 +1,7 @@
 # 3D 애니메이션 시스템
 
+> **이 문서로 오는 상황** — 캐릭터를 움직이게 하는 애니 전체 — `AnimationPlayer`·RESET·`AnimationTree` 상태 머신·블렌드·루트 모션·`Skeleton3D` 본·`Tween`·glTF 애니 임포트. "화살표만 눌렀는데 왜 걷나" 는 [basics/10-animation.md](basics/10-animation.md) 가 먼저
+
 > 🔰 **`.glb` 안의 애니메이션이 어떻게 화면에서 움직이는지부터** 알고 싶다면
 > **[basics/10-animation.md](basics/10-animation.md)** 를 먼저 읽는다.
 > 애니메이션 데이터의 실체(뼈의 자세표), `.glb` → `AnimationPlayer` 임포트 규칙,
@@ -861,6 +863,24 @@ Godot 4.3+는 SkeletonProfile 기반 리타게팅을 지원한다.
 
 ---
 
+### 12.x 리타게팅 — 다른 뼈대의 애니를 이 캐릭터에 입힌다 (BoneMap · SkeletonProfileHumanoid)
+
+**왜 이름이 같아도 안 되나** — Godot 4 의 본 애니 트랙은 **Bone Rest(기본 자세)를 포함한 값**이라, 본 이름이 같아도 Rest 가 다르면(Blender 와 Maya 가 다르다, A-포즈와 T-포즈가 다르다) 자세가 뒤틀린다. 그래서 **Rest 를 맞추는 절차**가 필요하다.
+
+| 단계 | 어디 | 무엇 |
+|---|---|---|
+| 1 | FileSystem 독에서 `.glb` 더블클릭 → **Advanced Import Settings** → `Skeleton3D` 노드 선택 | 오른쪽 **Retarget › Bone Map** |
+| 2 | `Bone Map` 에 **New BoneMap** → `profile` 에 **SkeletonProfileHumanoid** | 사람형 표준 프로필(Root·Hips·Spine…). 이름을 보고 **자동 매핑**한다(영어 이름이면 잘 된다) |
+| 3 | 빨강/자홍 버튼이 남으면 | 매핑 누락·중복·부모-자식 꼬임 — 손으로 고른다. 임포트는 막지 않지만 애니가 어긋난다 |
+| 4 | **Remove Tracks** | `Except Bone Transform`·`Unimportant Positions`(Root·Hips 외 위치 트랙 제거 — 🛑 Godot 4 에서 끄면 체형이 바뀐다)·`Unmapped Bones` — **공유 애니 라이브러리로 쓸 때 켠다** |
+| 5 | **Bone Renamer › Rename Bones · Unique Node** | 본 이름을 프로필 이름으로 통일, `Skeleton3D` 를 유니크 이름으로 — 트랙 경로가 씬 구조와 무관해진다 |
+| 6 | **Rest Fixer** | `Apply Node Transform`(Blender 에서 Apply Transform 안 한 모델) · `Normalize Position Tracks`(키가 다른 모델끼리 보폭 미끄러짐 방지 — Hips 높이를 `motion_scale` 로) · **`Overwrite Axis`**(🛑 가장 중요 — Rest 를 프로필 기준으로 덮어쓴다. 원래 Rest 가 중요하면 망가진다) · `Fix Silhouette`(A-포즈 → T-포즈. 발이 이상해지면 `filter` 에 발 본 추가) |
+
+프로필 기준 자세 — **T-포즈 · +Z 를 보는 Y-up · 노드 Transform 없음 · 관절은 부모→자식이 +Y · +X 회전이 근육 수축 방향.**
+
+> 🛑 **이 프로젝트의 정식 경로는 Godot 리타게팅이 아니다.** `model` 스킬이 **Blender 에서 ARP 리깅(`mixamorig:*`) → Mixamo 애니 적용 → `.glb`** 로 굽는 파이프라인을 규정하고, 뼈대·Rest·원점은 **`.glb` 안에서 이미 맞아 있어야** 한다(CLAUDE.md "에셋은 에셋에서 고친다"). 위 절차는 **남의 에셋을 급히 확인하거나** 파이프라인 밖 애니를 시험할 때의 도구이고, 임포트 옵션으로 자세를 "보정" 하는 데 쓰지 않는다.
+> 공식: https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/retargeting_3d_skeletons.html
+
 ## 13. 완성 예제 — 3인칭 캐릭터 애니메이션
 
 ### AnimationTree 구조
@@ -988,3 +1008,7 @@ func play_death() -> void:
 | 애니메이션 이름 문자열 직접 사용 | 오타 시 조용히 실패 | `StringName`(`&"name"`) 상수화 |
 | Advance Expression 대소문자 | 조건이 항상 false | GDScript는 `snake_case` |
 | `advance_expression_base_node` 미설정 | 표현식에서 프로퍼티 참조 실패 | `_ready()`에서 설정 |
+
+## 공식 문서
+
+

@@ -1,5 +1,7 @@
 # 빌드와 내보내기 — export template · CLI · 플랫폼 공통
 
+> **이 문서로 오는 상황** — 빌드·내보내기 공통 — export 와 실행의 차이, 템플릿 파일, CLI, 실패 진단, `export_presets.cfg`, 패치 PCK. 플랫폼별은 `export-build-android/ios/desktop.md`
+
 Godot 에서 프로젝트를 **실행 가능한 앱으로 만드는** 모든 절차를 다룬다.
 플랫폼별 상세는 §8 의 서브 문서로 갈라진다.
 
@@ -452,6 +454,8 @@ Xcode 가 서명·아카이브·배포를 맡는** 2단계 구조라는 점을 �
 
 ---
 
+| Web(HTML5) | 🛑 **다루지 않는다** — 라리엔 3D 는 Android·iOS·Steam(데스크톱) 이다. 필요해지면 공식 https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html (SharedArrayBuffer·COOP/COEP 헤더·스레드 제약) |
+
 ## 관련 문서
 
 - [performance-mobile.md](performance-mobile.md) — 모바일 최적화, 기기 등급 감지, 기능 태그 오버라이드
@@ -462,3 +466,7 @@ Xcode 가 서명·아카이브·배포를 맡는** 2단계 구조라는 점을 �
   **절차를 단계별로 밟아 보고 싶을 때** 참고한다. 템플릿 판정은 이 문서 §2 와 같은 실측
   결과로 맞춰져 있다. 이 문서는 라리엔 3D 기준 규범이고 그쪽은 일반 학습용이므로,
   **어긋나면 이 문서가 맞다.**
+
+## 공식 문서
+
+

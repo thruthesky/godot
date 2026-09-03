@@ -1,5 +1,7 @@
 # HUD·메뉴·버튼 만들기 — 화면 UI 조립
 
+> **이 문서로 오는 상황** — 화면 UI 를 **조립**할 때 — HUD·메뉴·체력바·인벤토리, 컨테이너·앵커, Theme, 🛑 한글 폰트, 모바일 세이프 에어리어, 터치가 안 먹히는 `mouse_filter`, 다국어 자리
+
 **화면에 붙는 UI 를 실제로 어떻게 짜는가**를 다룬다. 체력바·미니맵 같은 HUD,
 메인 메뉴·일시정지·설정 같은 메뉴 화면, 그리고 그것들의 디자인을 한 곳에서
 관리하는 방법이다.
@@ -1295,6 +1297,28 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 
 ---
 
+## 16-A. 다국어 — 자리를 만들어 둔다 (언어 정책은 사업 결정)
+
+**지금 라리엔 3D 는 한국어 하나다.** 그래도 UI 문자열을 **처음부터 번역 키로 두면** 언어를 늘릴 때 화면을 다시 만들지 않는다.
+공식 *Internationalizing games* 의 요지이고, **§9 한글 폰트와 한 몸**이다 — 언어를 늘리면 폰트 폴백과 번들 용량이 함께 는다.
+
+| 단계 | 무엇 | 어디 |
+|---|---|---|
+| 1 | 번역 표를 **CSV** 로 — 첫 줄 `keys,en,ko`, 둘째 줄부터 `UI_PLAY,Play,게임 시작` | `res://i18n/translations.csv`. 쉼표·따옴표가 든 문장은 `"…"` 로 감싼다 |
+| 2 | 임포트하면 `.en.translation`·`.ko.translation` 이 생긴다 | 자동 |
+| 3 | 등록 | **Project › Project Settings › Localization › Translations › Add** |
+| 4 | UI 에 키를 쓴다 | `Label.text = "UI_PLAY"` — **Control 은 키와 같은 텍스트를 자동으로 번역한다.** 플레이어 이름처럼 번역하면 안 되는 Label 은 인스펙터 **Auto Translate › Mode = Disabled** |
+| 5 | 코드에서 | `tr("UI_PLAY")` · 문맥 `tr("Close", "Actions")` · 복수형 `tr_n("%d item", "%d items", n)` |
+| 6 | 언어 바꾸기 | `TranslationServer.set_locale("ko")` — **UI 가 즉시 갱신**된다. 기본은 `OS.get_locale_language()` 로 맞추고 설정 화면에서 바꾸게 |
+| 7 | 자리표시자 | 🛑 `tr("%s picked up the %s") % [a, b]` 는 **순서를 못 바꾼다** → `tr("{who} picked up the {what}").format({who=a, what=b})` |
+| 8 | 길이 검사 | Project Settings › Internationalization › **Pseudolocalization** 을 켜면 모든 문자열이 `[Ĥéłłô ŵôŕłd́]` 처럼 길어진다 — **잘리는 UI 를 미리 찾는다** |
+
+- 🛑 **폰트** — 기본 폰트는 Latin-1 일부만 있다. 한글·CJK 는 §9 대로 `Noto Sans KR` 등을 Theme 기본 폰트로. 번역 표에 일본어·중국어를 넣는 순간 **그 글리프도 폰트에 있어야** 한다 — 폴백 체인(§9)과 서브셋 용량을 같이 계산한다.
+- 리소스(이미지·음성)를 언어별로 바꾸려면 **Localization › Remaps**. 폰트는 Remap 이 아니라 폴백으로.
+- 아랍어·히브리어(RTL) 는 Control 의 `layout_direction` 과 BiDi — 필요해지면 공식 문서 *Bidirectional text and UI mirroring*.
+
+공식: https://docs.godotengine.org/en/stable/tutorials/i18n/internationalizing_games.html · https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_translations.html
+
 ## 17. 공식 문서와 참고 자료
 
 ### 공식 문서 (Godot Engine)
@@ -1345,3 +1369,9 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 씬·시그널 기초는 [basics.md](basics.md), 용어는 [dictionary.md](dictionary.md),
 성능 예산은 [performance-mobile.md](performance-mobile.md),
 불변 결정은 [SSOT.md](../../game/references/SSOT.md) 를 본다.
+
+- Control node gallery: https://docs.godotengine.org/en/stable/tutorials/ui/control_node_gallery.html
+- Custom GUI controls: https://docs.godotengine.org/en/stable/tutorials/ui/custom_gui_controls.html
+- Introduction to GUI skinning · Using the theme editor · Theme type variations: https://docs.godotengine.org/en/stable/tutorials/ui/gui_skinning.html · https://docs.godotengine.org/en/stable/tutorials/ui/gui_using_theme_editor.html · https://docs.godotengine.org/en/stable/tutorials/ui/gui_theme_type_variations.html
+- Using Fonts: https://docs.godotengine.org/en/stable/tutorials/ui/gui_using_fonts.html
+- Internationalizing games: https://docs.godotengine.org/en/stable/tutorials/i18n/internationalizing_games.html

@@ -1,5 +1,12 @@
 # GDScript 2.0 언어 레퍼런스
 
+> **이 문서로 오는 상황** — GDScript 문법 **전체 레퍼런스** — 타입·어노테이션·클래스·시그널·await·람다·생명주기·4.5~4.7 신문법. 처음이면 [basics/04-script.md](basics/04-script.md)
+
+> **범위** — 이 스킬과 라리엔 3D 의 코드는 **GDScript 만** 쓴다. C#/.NET(별도 .NET 빌드·SDK 필요, 모바일 용량 증가)과
+> GDExtension(C++) 은 도입하지 않으며, 예제도 GDScript 로만 적는다. Steam 같은 플랫폼 플러그인이 GDExtension 으로
+> 오는 경우는 **쓰는 것**이지 만드는 것이 아니다 → [export-build-desktop.md §8](export-build-desktop.md).
+> C# 이 궁금하면 공식 https://docs.godotengine.org/en/stable/tutorials/scripting/c_sharp/index.html.
+
 ## 목차
 
 1. [핵심 개념](#1-핵심-개념)
@@ -26,6 +33,7 @@ GDScript는 Godot 전용 동적/정적 혼합 타입 스크립트 언어다. 설
 
 - **엔진 통합** — 모든 스크립트는 엔진 클래스(`Node`, `Resource` 등)를 `extends`한다.
   스크립트 파일 자체가 하나의 클래스이며, 파일 경로가 곧 클래스 식별자다.
+  `extends` 를 **생략하면 `RefCounted`** 를 상속한다 — 노드에 붙일 수 없는 데이터 클래스가 된다.
 - **씬 시스템과의 결합** — 스크립트는 노드에 붙어서 동작하고, 노드 트리 진입/이탈 시점에
   생명주기 콜백이 호출된다.
 - **점진적 정적 타입** — 타입 힌트는 선택이지만, 붙이면 컴파일 타임 검사·자동완성·성능 향상을
@@ -724,10 +732,11 @@ Godot에서 버그의 상당수가 이 순서를 오해해서 생긴다.
   └─ _shortcut_input(event)
   └─ _unhandled_key_input(event)
   └─ _unhandled_input(event)       # Control이 처리하지 않은 입력
-  (Control 노드는 _gui_input 이 _input 이후 별도 경로로)
+  (② Control._gui_input 은 _input 직후·_shortcut_input 전에 온다 — 마우스가 올라간/포커스 Control 만.
+   여기서 처리되면 아래로 내려가지 않는다. 5단계 그림은 input-ui.md §1)
 
 노드가 트리에서 제거됨
-  └─ _exit_tree()                  # 부모 → 자식 순
+  └─ _exit_tree()                  # 자식 → 부모 순 (손자→자식→부모. 4.7.2 헤드리스 실측 — _ready 와 같은 방향, _enter_tree 와 반대)
 
 객체 소멸
   └─ _notification(NOTIFICATION_PREDELETE)
@@ -819,3 +828,7 @@ breakpoint                                          # 코드에서 디버거 정
 print_stack()                                       # 현재 호출 스택
 print_tree_pretty()                                 # 노드 트리 시각화
 ```
+
+## 공식 문서
+
+

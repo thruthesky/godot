@@ -1,5 +1,20 @@
 # 멀티플레이어
 
+> **이 문서로 오는 상황** — **Godot 끼리**의 멀티플레이어 학습 — ENet·`@rpc`·Spawner·Synchronizer·예측·보간. 🛑 라리엔 서버 통신은 [networking-lowlevel.md](networking-lowlevel.md)
+
+> ### 🛑 이 문서는 "Godot 끼리" 의 멀티플레이어다 — 라리엔의 실시간 통신에는 쓰지 않는다
+>
+> `ENetMultiplayerPeer`·`@rpc`·`MultiplayerSpawner`·`MultiplayerSynchronizer` 는 **서버도 Godot 일 때** 의 도구다.
+> 라리엔 3D 의 서버는 **Go UDP Zone + Nakama** 이므로 이것으로 Zone 에 붙을 수 없다 — 서버가 ENet 을 모른다.
+>
+> | 하려는 것 | 문서 |
+> |---|---|
+> | Zone(UDP)·Nakama 에 붙는 **엔진 API**(`PacketPeerUDP`·`StreamPeerBuffer`·`HTTPRequest`·`WebSocketPeer`) | [networking-lowlevel.md](networking-lowlevel.md) |
+> | Zone **프로토콜**(HELLO/SNAP/opcode/BigEndian) | `game` 스킬 [server-protocol.md](../../game/references/server-protocol.md) |
+> | Nakama SDK(인증·RPC·파티) | `game` 스킬 [nakama-godot.md](../../game/references/nakama-godot.md) |
+>
+> 이 문서는 **개념 학습용**(권위·동기화·예측·보간의 원리)과 **로컬 테스트 서버**를 Godot 으로 짤 때를 위해 남긴다.
+
 ## 목차
 
 1. [핵심 개념 — 권위와 동기화](#1-핵심-개념--권위와-동기화)
@@ -965,3 +980,7 @@ godot --headless --path /path/to/project -- --server --port 7777
 | RPC로 `Object` 전달 | 보안 위험, 실패 | 기본 타입만 |
 | 서버/클라이언트 압축 설정 불일치 | 연결 실패 | 동일하게 설정 |
 | 연결 끊김 미처리 | 유령 플레이어 | `peer_disconnected` 처리 |
+
+## 공식 문서
+
+

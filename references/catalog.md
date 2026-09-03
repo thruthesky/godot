@@ -1,0 +1,829 @@
+# 참조 문서 카탈로그 — 각 reference 의 상세 소개
+
+> 2026-09-03 에 `SKILL.md` 의 "참조 문서" 절(약 800줄)을 **한 글자도 지우지 않고** 이 파일로 옮겼다(Agent Skills 규격 — SKILL.md 본문 500줄 권고).
+> 🛑 **이 파일은 비정본 요약 색인이다 — 정본은 각 reference 다.** 여기 요약과 본문이 다르면 본문이 맞다.
+> `SKILL.md` 에는 문서당 한 줄 표만 남아 있고, 라우팅은 `SKILL.md` 표에서 각 reference 로 **직접** 간다. **어느 문서에 무엇이 있는지 문단 단위로 볼 때** 이 파일을 읽는다.
+> 새 reference 를 만들면 여기에 100~120단어 소개를 더하고 `SKILL.md` 표에 한 줄을 더한다.
+
+---
+
+각 문서는 **핵심 개념 → 핵심 로직 → 실제 소스코드** 순으로 구성되어 있으며,
+문서만 보고 해당 기능을 완전히 재구현할 수 있도록 작성되었다. 필요한 것만 읽는다.
+
+**처음 배우는 순서**: [basics.md](basics.md)(색인 → 파트 0~4: 노드·씬·인스턴싱) → **[example.md](example.md)(손으로 한 번 만들어 본다)** →
+[dictionary.md](dictionary.md)(용어) → [gdscript.md](gdscript.md)(문법) →
+[nodes-scenes.md](nodes-scenes.md)(구조 심화) →
+[3d-core.md](3d-core.md)(좌표·카메라) →
+[level-design.md](level-design.md)(맵 만들기) →
+[physics-3d.md](physics-3d.md)(움직임·충돌).
+**만들면서 배우는 사람**은 처음 두 개만 읽고 바로 맵 만들기로 가도 된다.
+**넓은 야외 맵을 만들려는 사람은 코드를 쓰기 전에**
+[openworld-3d.md](openworld-3d.md) **§0 을 먼저 읽는다** —
+맵 크기는 나중에 조금씩 키울 수 있는 값이 아니다.
+
+### [lowend-3gb-60fps.md](lowend-3gb-60fps.md) — 🛑 3GB RAM 폰에서 60fps ★ 저사양 작업 전 필독
+
+**모바일 3D MMORPG 의 최소 지원 사양(3GB RAM)에서 60fps 를 확보한 A12 실측 기록.**
+의견이 아니라 전부 실기기 측정값이며, **처음 읽는 사람도 따라올 수 있게** 기초부터 쓰여 있다.
+
+맨 앞에 **"딱 세 가지만 기억하세요"** 와 **증상별 읽을 곳 표**가 있어, 무엇부터 볼지 바로 정해진다.
+
+| 절 | 내용 |
+|---|---|
+| **§1 기초** | 60fps = 16.7ms 예산 · 용어 5개(드로우콜·삼각형·정점·본·fill rate) · 프레임이 만들어지는 과정 |
+| **§2 병목 6가지** | 무엇이 무엇에 비례하는지 표 · 해결 순서 · **드로우콜은 언제 문제이고 언제 아닌가** |
+| **§3 진단** ★ | 변수를 하나씩 빼서 재는 절차. 이 작업에서 병목을 **세 번 잘못 짚었다** · 측정 함정 6가지 · **§3.4 AI 와 일할 때 되물을 말**(추측을 단정으로 말하지 않는다) |
+| **§4 조명** | 광원 0개. 라이트맵 1.0fps / 실시간 22.3fps / **정점 색 굽기 60.0fps** |
+| **§5 기물 만들기** ★ | 프로시저럴 → **빌드 타임 굽기** 전체 흐름도 · 함정 6개 |
+| **§5.3 MultiMesh vs 병합** ★ | **메모리를 400배 내는 거래.** 판단표 · 인스턴스 색 · 기물 종류별(자연물/인공물) 권장 · 스킨드 캐릭터는 왜 안 묶이는가 |
+| **§6 외부 에셋** | glTF 임포터가 텍스처를 복제해 **1.8GB** 가 되는 함정 · 반드시 바꿀 임포트 설정 7가지 |
+| **§7 캐릭터 30명** | **본 65 → 16** · 갱신 빈도 조절은 효과 없음 · **장비 교체는 프레임과 무관**(실측) |
+| **§8 크래시** | 리소스를 프레임에 나눠 읽기 (5/5 성공) |
+| **§9~11** | 수단 총정리 · 체크리스트 · 예산표 |
+
+### [lowend-culling-lod.md](lowend-culling-lod.md) — 저사양에서 "그리는 양"을 줄이는 6가지 엔진 기능
+
+**Godot 공식 문서 6편(MultiMesh · Mesh LOD · Visibility Ranges · 오클루전 컬링 ·
+해상도 스케일링 · VRS)을 3GB 폰 MMORPG 기준으로 판정한 문서.**
+원문은 "이 기능이 무엇인가"를 말하고, 이 문서는 **"우리 기기에서 쓸 것인가"** 를 말한다.
+
+**§0 판정표부터 본다** — 여섯 중 **넷을 쓰고, 오클루전은 조건부, VRS 는 못 쓴다.**
+
+| 절 | 내용 |
+|---|---|
+| **§1 예산 축** ★ | 기능마다 치는 축(드로우콜/삼각형·픽셀/메모리)이 다르다. **병목이 아닌 축을 줄이면 프레임이 1도 안 오른다** |
+| §2 MultiMesh | Populate Surface 도구 · 🛑 **맵 전체를 하나로 묶지 않는다**(컬링이 전부-아니면-전무) |
+| **§3 Mesh LOD** ★ | 자동 생성 · `Threshold Pixels` · 🛑 MultiMesh 는 **전체가 같은 LOD** → 청크 분할이 답 |
+| §4 HLOD | `visibility_range_*` · 🛑 저사양은 **fade_mode = Disabled** (알파 페이드는 비싸다) |
+| §5 오클루전 | Mobile 은 depth prepass 가 없어 효과가 크지만 **CPU 를 더 쓴다.** 평탄한 야외는 손해 |
+| **§6 해상도 스케일링** | 🛑 **FSR 은 Forward+ 전용** · Bilinear 0.6 · **2D UI 는 안 상한다** · 재는 도구이기도 하다 |
+| **§7 VRS** | 🛑 **A12 미지원.** 켜도 경고 없이 무시된다 — 성능 착시가 가장 위험 |
+| §8 적용 순서 | **먼저 잰다.** 그다음 MultiMesh → Mesh LOD → 해상도 → HLOD → 오클루전 |
+| §9 MMORPG | §2~§7 은 전부 **기물** 이야기다. **캐릭터에는 거의 안 듣는다** |
+
+### [basics.md](basics.md) — Godot 기본 ★ 처음 배울 때 먼저 · 기본은 여기 모은다
+
+> 🗂 **이 문서는 색인이다(223줄). 본문은 [`references/basics/`](basics/) 아래
+> **11개 파트**에 있다.** 한 파일이 5,000줄에 가까워져 파트별로 나눴다.
+>
+> | # | 파트 | 다루는 것 | 줄 |
+> |---|---|---|---|
+> | 0 | [무엇부터 공부하나](basics/00-study-list.md) | 6단계 체크리스트 — 엔진 구조부터 캐릭터 애니메이션까지 | 80 |
+> | 1 | [Godot 의 세계관](basics/01-world.md) | 노드 → 씬 → 씬 속의 씬. 씬 트리·충돌·인스펙터 상속 사슬·리소스 | 983 |
+> | 2 | [씬 — 파일인가 객체인가](basics/02-scene.md) | 같은 "씬"이 가리키는 세 가지와 루트 노드 | 141 |
+> | 3 | [인스턴싱](basics/03-instancing.md) | 설계도로 실체를 찍어낸다. load → instantiate → add_child 4단계 | 303 |
+> | 4 | [스크립트](basics/04-script.md) | 노드에 붙는 것. GDScript 기초 문법·들여쓰기·:=·어노테이션·@tool | 676 |
+> | 5 | [시그널](basics/05-signal.md) | 노드끼리 대화하는 방법. 연결이 .tscn 에 저장되는 함정 | 278 |
+> | 6 | [에디터 화면](basics/06-editor-screen.md) | 4개 독의 역할·단축키·res://·FileSystem 에서 파일 숨기기 | 252 |
+> | 7 | [에디터 조작](basics/07-editor-input.md) | 궤도 회전과 프리룩·3버튼 없는 마우스·왼손 사용자 리바인딩 | 186 |
+> | 8 | [동영상 강좌](basics/08-video.md) | 손으로 한 번 따라 만들어 보는 강좌 4개 | 127 |
+> | 9 | [캐릭터 컨트롤러](basics/09-controller.md) | 3D 컨트롤러 전체 코드를 한 줄씩. 좌표 규약·중력·transform.basis | 1,054 |
+> | 10 | [캐릭터 애니메이션](basics/10-animation.md) | .glb 애니메이션이 도는 원리. 화살표 키만 눌렀는데 왜 걷는가 | 862 |
+>
+> **0→1→2→3→4 가 학습 순서**이고, 5~8 은 필요할 때 찾아본다.
+> **9·10 은 앞 파트를 읽은 뒤** 코드를 한 줄씩 뜯는 실전 파트다.
+
+맨 앞에 **기본적으로 공부해야 할 목록**(6단계 체크리스트 — 엔진 구조 → GDScript 문법 →
+3D 기초 → 움직임·충돌 → 만들어 보기 → **캐릭터 애니메이션**)이 있어, 무엇을 알아야 하는지부터 판단하게 한다.
+**"Godot 이 왜 이렇게 생겼는가"**를 다루는 입문 문서. 다른 문서가 "어떻게 하는가"라면
+이쪽은 개념의 뼈대다. Godot 의 세계관 3문장(**모든 것은 노드 → 노드를 묶으면 씬 →
+씬은 다른 씬의 부품이 된다**)과 다른 엔진과의 차이(**레벨과 프리팹을 나누지 않고 둘 다
+`.tscn` 씬**), 노드의 상속 계층, **노드와 리소스의 구분**(리소스는 기본이 공유 · 커스텀 `Resource` 와 `.tres`)와
+**인스펙터는 상속 사슬을 세로로 펼친 것이다** — Create New Node 창의 `Class CSGCylinder3D < CSGPrimitive3D < CSGShape3D < GeometryInstance3D < VisualInstance3D < Node3D < Node < Object` 한 줄이 **인스펙터에서 위에서 아래로 늘어선 그룹 머리글과 정확히 대응**한다(엔진 확인). **맨 위가 그 노드만의 것, 아래로 갈수록 더 많은 노드가 공유하는 것** — 속성이 안 보이면 그 클래스를 상속하지 않는 것이고, 낯선 그룹 이름은 곧 조상이다. **각 계층이 무엇을 보태는가** — `MeshInstance3D`(`mesh`·`skeleton`) / `GeometryInstance3D`(그림자·LOD·`material_override`) / `VisualInstance3D`(`layers`·`sorting`) / `Node3D`(Transform) / `Node`(process·name) 로 **아래로 갈수록 추상적**이다. 🛑 **`MeshInstance3D` 를 추가해도 안 보이는 이유는 `mesh` 가 `<empty>` 라서** — 갓 만든 것은 `mesh=null`·`get_aabb()` 가 0 이고 `BoxMesh` 를 넣으면 **삼각형 12개·정점 36개**가 된다(실측). **`mesh` 는 `MeshInstance3D` 고유**(`ClassDB` 로 부모들엔 없음을 확인). Mesh(삼각형을 모은 형상 **리소스**)·삼각형(GPU 가 그리는 최소 단위)·Collision(**보이는 것과 별개**)을 한 줄씩. `MeshInstance3D` 와 `CSGBox3D` 의 **공통 조상은 `GeometryInstance3D` 부터**이고 다른 것은 위쪽 두세 칸뿐. 🛑 **"대부분의 노드가 이 구조인가" — 아니다.** 1,074개 클래스를 세면 `Node` 283 → `Node3D` 120(42%) → `VisualInstance3D` 43(15%) → `GeometryInstance3D` 18(6%) 로 **급격히 좁아지고**, `Node` 바로 아래에서 **2D·UI 갈래(`CanvasItem`)가 127개로 3D(120개)보다 많다.** **공통은 위로 갈수록 많아진다** — `Button` 과 `MeshInstance3D` 가 공유하는 것은 `Node` 수준뿐이다. **`Node3D` 가 주는 프로퍼티 9개**(`position`·`rotation`·`scale`·`transform`·`rotation_edit_mode`·`rotation_order`·`top_level`·`visible`·`visibility_parent`)와 그것을 물려받는 **120개 클래스**(사슬 길이는 달라도 결과는 같다). 🛑 반례 — **`WorldEnvironment < Node` 라 `Transform` 이 없다**(씬 전체 설정이라 위치가 필요 없다). **다른 노드를 가리키는 세 가지 방법** — `$"../Player"`(이름·위치 둘 다 깨짐) / `%Player`(이름 바뀌면 깨짐) / **`@export var target: Node3D`(둘 다 버팀 ★)**. 🔍 **왜 `@export` 만 안 깨지나** — 저장 형태를 확인해 보면 **`@export` 도 값은 `NodePath` 다**(`.tscn` 에 `node_paths=PackedStringArray("target")` 와 `target = NodePath("../Player")` 로 저장 — 실측). 차이는 **어디에 적히느냐**다 — `$` 는 **스크립트 안의 문자열**이라 에디터가 못 고치고, `@export` 는 **씬 데이터**라 에디터가 이름 변경·이동을 추적해 갱신한다. 깨지면 오류가 **엉뚱한 곳(`global_position` 의 `null instance`)을 가리키고**, 드래그·`Assign...` 은 **존재하는 노드만 들어가 오타가 불가능하다.** 카메라처럼 **비추는 대상이 바뀌는** 것은 `@export` 여야 스크립트를 안 고친다. **같은 높이에 두 면을 겹치지 않는다(z-fighting)** — 바닥 윗면을 `y=0` 에 맞췄다면 **구역 표시·장판처럼 바닥에 붙는 평면을 `y=0` 에 두면 안 된다.** 깊이 값이 같아 GPU 가 승자를 못 정하고 **픽셀마다 뒤바뀐다.** 실측 — 겹침 영역에서 평면 색이 차지한 비율이 `y=0` 일 때만 **65.9%**(뒤쪽 절반이 바닥에 먹힘)이고 `0.001`·`0.05`·`0.2` 는 모두 97% 안팎으로 정상. **해법은 `y=0.05` 로 5cm 띄우는 것** — 화면상 이동량이 **1.09px**(900×600·fov 75·거리 12.7m 실측)이라 **뜬 것은 안 보이면서 겹침만 사라진다**(⚠️ 이 값은 카메라 각도·거리에 묶여 있어 고정 시점이라 안전하다. `Decal`·`render_priority` 대안도 있지만 띄우는 것이 가장 싸다). **씬 트리가 정하는 것과 정하지 않는 것** — 트리는 좌표 상속·함께 지워짐·생명주기 순서를 정하지만 🔑 **충돌은 정하지 않는다.** 충돌은 **물리 공간(space)** 에서 일어나므로 **트리에서 어디에 있든 부딪힌다**(플레이어를 `Main` 자식 / `Geometry` 자식 / 무관한 가지에 각각 두고 잰 실측이 **소수점까지 같다**). 충돌 성립 3조건과 `collision_layer`(내가 입은 옷) vs `collision_mask`(내가 쓴 안경). 🔍 **물리 바디는 자격과 형체가 따로다** — `CharacterBody3D` → `PhysicsBody3D` → `CollisionObject3D` 상속이라 **태어날 때부터 물리 바디이고 물리 공간에도 등록되지만 모양이 하나도 없어** 아무것과도 안 부딪히고, **`CollisionShape3D` 는 옵션을 켜는 것이 아니라 빈 몸에 형체를 넣어 주는 것**이다(CSG 와 방향이 정반대 — 보이는 것→물리 vs 물리←넣어 준 모양. 그래서 한쪽엔 스위치가 있고 다른 쪽엔 없다). ⚠️ 단 **내 몸을 조립하는 것은 직속 부모를 따진다** — 중간에 `Node3D` 를 끼우면 **등록 shape 이 0** 이 되어 뚫고 떨어진다(실측). **누구와 부딪히는가는 트리와 무관하지만, 내 몸을 이루는 부품은 직속 부모에게만 붙는다.**
+**그 구분이 인스펙터에서 나타나는 형태** — `MeshInstance3D` 의 프로퍼티는 `mesh`·`skeleton`·`skin`
+**셋뿐**이라 **`Size` 가 인스펙터에 없고 `Scale` 만 보이는** 일이 생긴다. `Size` 는 `BoxMesh` **리소스**의
+것이라 `Mesh` 슬롯을 **클릭해 펼쳐야** 나오며, `CSGBox3D` 는 **노드 자체가 `size` 를 가져** 바로 보이므로
+CSG 로 벽을 만들다 `MeshInstance3D` 로 넘어가는 순간 걸린다(소속 대조표 · 상속 계층은 엔진 확인).
+🛑 **크기를 `Scale` 로 대신하지 않는다** — 화면 결과는 같지만 자식에 전파되고, 비균등 스케일이 노멀을
+왜곡해 조명이 어긋나며, 콜리전에서 동작이 달라진다(**메시의 크기는 메시에서, 노드의 배치는 Transform 에서**).
+같은 "씬"이라는 말이 가리키는 **세 가지**(씬 파일 = 설계도 / 씬 인스턴스 = 실체 /
+SceneTree = 실행 중인 트리). 여기에 **트리 맨 위의 노드는 씬이 아니라 루트 노드**라는 절이
+붙는다 — **씬은 루트 노드와 그 아래 전부를 묶은 것**이고 트리에서 짚고 있는 그 한 노드는
+**루트 노드**다(에디터 UI 문자열 `Create Root Node:`·`Make Scene Root`·`A root node is required to save the scene.` 로 확인). 🛑 **`root` 가 두 곳에서 쓰이는 함정** —
+**`get_tree().root` 는 엔진이 자동으로 얹는 `Window` 이지 내 씬의 루트가 아니고**, 내 씬의 루트는 **`get_tree().current_scene`**(doctool 확인 — `root` 는 `type="Window"`,
+`current_scene` 은 `type="Node"`). **루트 노드만 다른 점 4가지**(씬마다 정확히 하나 · `owner` 가 `null` · `.tscn` 에 `parent=` 가 없다 · `scene_file_path` 가 채워진다 — 실측)와
+**`instantiate()` 가 돌려주는 것도 루트 노드**라서 **씬의 타입은 루트 노드 타입이 정한다**는 것(`Node3D` 면 3D, `Control` 이면 UI — 나중에 못 바꾼다). 중심은 **인스턴싱** — 왜 필요한지 3가지, 에디터 방법
+(체인 버튼 `Instantiate Child Scene`·**Cmd+Shift+A**·드래그), 코드 방법 3단계, 그리고
+**"메모리에 올린다"의 정확한 의미를 4단계로 분해**한다 — ① `.tscn` 은 설계도일 뿐
+② `load()` 는 설계도를 메모리로 읽을 뿐 **아직 노드 0개** ③ `instantiate()` 에서 **비로소
+`Node` 들이 생성**되지만 트리 밖이라 화면에 없음 ④ `add_child()` 로 트리에 연결해야 표시됨.
+여기에 **반대 방향인 `Save Branch as Scene...`** 이 붙는다 — 이미 현재 씬 안에서 만든 노드
+묶음(= **브랜치**: 루트가 아닌 노드 하나와 그 자손 전부)을 **독립 `.tscn` 으로 떼어내고 그 자리를
+인스턴스로 교체**하는 기능. `.tscn` 텍스트가 **자식 노드 나열 → `ext_resource` + `instance=ExtResource(...)`
+두 줄**로 줄어드는 실측, 저장 대화상자의 **`Reset Position` 이 기본 켜짐**(새 씬 안에서만 원점이 되고 원본
+씬의 인스턴스는 원래 위치·시그널·`%` 고유 이름을 유지)이라는 것, `Save Scene As...`·`Duplicate`·
+`New Inherited Scene...`·`Make Local` 과의 차이표, **엔진이 거부하는 5가지 경우**(루트 노드 · 인스턴스 ·
+인스턴스의 자식 · 상속 씬의 일부 · 2개 이상 선택)를 엔진 메시지 그대로 싣고, **공식 문서 링크**를 단다
+(이 메뉴를 이름으로 설명한 페이지는 3.2 UI 튜토리얼뿐이고 4.x 문서에는 없다).
+**단계별 "존재하는 것 / 화면에 보이나 / `_ready` 불렸나" 대조표**와 흐름도로 보이고,
+**엔진 실행 결과로 검증**한다(`instantiate()` 직후 `is_inside_tree=false`,
+`_ready` 는 `add_child()` 안에서 호출, `preload` 와 `load` 는 같은 리소스 객체).
+거기서 나오는 규칙 3가지(전역 좌표는 `add_child()` 뒤에, 일반 변수는 앞에),
+`preload`/`load` 비교, `extends` 가 정하는 것, **생명주기 호출 순서와 자식이 먼저
+`_ready` 되는 이유**, **`pass`(§4)** — 스크립트를 붙이면 템플릿에 딸려 나오는 그것이
+**"아무 일도 하지 않는 문장"이고 `return` 과 달리 함수를 끝내지 않는다**는 것
+(엔진 확인 — `pass` 뒤 줄은 실행되고 `return` 뒤는 죽은 코드다), **있는 이유는
+GDScript 가 빈 블록을 문법 오류로 보기 때문**(`Expected indented block after function
+declaration`)이라 **자리를 채우는 문장**이며 코드를 쓰면 지운다는 것, 그리고
+**`pass` 만 있는 함수가 `null` 을 반환하는 건 `pass` 때문이 아니라 끝까지 도달해서**라는 것,
+**GDScript 문법의 기초(§4)** — **왕초보가 코드가 무엇을 하는지 이전에 막히는 것들**을 실측으로 답한다. 🔑 **블록은 들여쓰기로만 정해진다**(중괄호가 없다 · 줄 끝 `:` 은 블록 시작 표시 · 빈 블록은 오류라 `pass` 를 넣는다). **들여쓰기는 마음대로 해도 되는가** — **탭·스페이스 4칸·2칸·1칸이 전부 통과**하지만 🛑 **한 파일에서 섞으면 오류**(`Used space character for indentation instead of tab as used before in the file.`), 같은 블록인데 깊이가 다르면 `Expected statement, found "Indent"`. **Godot 에디터 기본은 탭**이라 그냥 쓰면 맞고, **웹에서 복사해 붙일 때 섞인다**(`Edit > Indentation > Convert Indent to Tabs`). **`:=` 가 무엇인가** — 변수 선언 3가지(`var a = 1` / `var b := 1` / `var c: int = 1`)의 차이는 **나중에 다른 타입을 넣을 수 있는가**이고, **`:=` 는 값에서 타입을 정해 고정한다**(실측 — `1`→`int`, `1.0`→`float`, `"글자"`→`String`, `Vector3(…)`→`Vector3`. **소수점 하나로 갈린다**). 고정하면 `Cannot assign a value of type "String" as "int".` 로 **실행 전에 실수를 잡는다**. 🛑 **`var a: int := 1` 은 문법 오류**이고, ⚠️ **`int` 변수에 `2.7` 을 넣으면 경고 없이 `2` 로 잘린다**(실측). `const` 와 `var` 의 차이, `#`/`##` 주석, `-> void`, **`and`·`or`·`not`(`&&`·`||`·`!` 가 아니다)**, 줄 끝 `;` 불필요. **`@` 로 시작하는 것은 어노테이션**이고 🛑 **개발자가 새로 만들 수 없다**(`Unrecognized annotation` — 엔진이 주는 37개 목록에서 고른다). 붙는 자리도 정해져 있어 `@onready` 를 지역 변수·함수·`Node` 아닌 클래스에 붙이면 각각 다른 오류가 나고, `@export` 와 함께 쓰면 **인스펙터 값이 덮인다**고 엔진이 경고한다(실측). **`@tool` — 스크립트를 에디터에서도 돌린다**(기본은 게임 실행 중에만 돈다). 인스펙터에서 값을 바꾸면 배치가 즉시 갱신되는 식으로 **실행 왕복을 없애는 것**이 목적이고, 🛑 **`Engine.is_editor_hint()` 로 갈라야** 한다(게임 실행 중에는 `false` — 실측). 빠뜨리면 **에디터가 응답 없음이 되거나 편집 중인 씬이 지워진다.** 에디터에서 만든 노드는 **`owner` 를 지정**해야 `.tscn` 에 저장된다. `EditorPlugin` 과의 차이표. **시그널(§5)** — 노드가 서로를 직접 부르지 않고 알리는 메커니즘이자
+옵저버 패턴의 엔진 구현. **직접 호출과 나란히 놓고 왜 결합도가 문제인지**부터 보이고
+(적이 UI 경로를 알면 재사용도 테스트도 불가능해진다), 내장/커스텀 두 종류가 **사용법이
+완전히 같다**는 것과 **엔진에서 센 실제 개수**(`Node` 13 · `Area3D` 25 · **`BaseButton` 33**),
+**Godot 4 에서 시그널이 문자열이 아니라 `Signal` 타입의 "값"이라는 것**
+(`typeof` 확인 결과 포함 — 그래서 `hit.emit()` 처럼 점을 찍고, 옛 `emit_signal("hit")` 과 달리
+**오타를 그 자리에서 잡아 준다**), `emit()`/`connect()` 와 **함수에 괄호를 붙이면 안 되는 이유**,
+**에디터 연결 상세** — Signals 탭이 **상속 계층별로 그룹**되는 이유, 연결 대화상자의
+네 칸(From Signal / Connect to Script / **Receiver Method** / Advanced), **함수 이름 자동
+생성 규칙**(`_on_` + 보내는 노드 이름 + 시그널 — **자기 자신에게 연결하면 노드 이름이
+빠진다**), 그리고 **연결이 코드가 아니라 `.tscn` 에 저장된다**는 것
+(`[connection signal="..." from="..." to="..." method="..."]` — 실제 저장 형식 확인,
+**`CONNECT_PERSIST` 를 준 것만 저장되고 에디터 연결이 그 플래그를 쓴다**).
+**스크립트를 읽어도 연결 코드가 없어서 왜 불리는지 알 수 없는 것이 가장 큰 함정**이고,
+**함수 왼쪽 초록 아이콘**이 그 표시라는 것. 이어서 **받는 함수를 뭐라고 부르는가** —
+**에디터 UI 의 공식 명칭은 `Receiver Method`(수신 메서드)**, **API 상의 타입은 `Callable`**,
+콜백·이벤트 핸들러는 통용되지만 **"시그널 함수"는 시그널 자체와 헷갈리므로 권하지 않는다**,
+`_on_` 은 문법이 아니라 관례라는 것.
+그리고 **엔진에서 확인한 실제 동작 4가지** — 여러 개를 연결하면 **연결한 순서대로** 불리고,
+**듣는 사람이 0명이어도 오류가 아니며**, **같은 함수를 두 번 연결하면 거부된다**
+(반환값 `31` = `ERR_INVALID_PARAMETER` — 노드 풀링·재사용에서 실제로 걸리므로
+`is_connected()` 로 방어), `CONNECT_ONE_SHOT` 은 1회 호출 후 **연결 수가 0이 된다**.
+마지막으로 **`await` 로 시그널을 기다리는 것**(실행 순서를 찍어 **emit 이 대기 중인 함수를
+그 자리에서 재개시킨다**는 것을 보인다)과 **방향 규칙 — 통지는 시그널로 위로, 명령은 직접
+호출로 아래로**. 이어서 에디터 4개 독의 역할과 단축키, `res://`·`user://`,
+**메뉴 항목 하나하나와 각 에디터 뷰의 화면을 정리한 별도 Google 문서 링크**(§6 — 이 절은 뼈대만 세우고, 항목 단위로 찾을 때는 그쪽을 본다),
+**FileSystem 독에서 파일·폴더를 숨기는 법(§6)** — 🛑 **폴더는 `.gdignore`, 개별 파일은 확장자 화이트리스트**로 수단이 완전히 다르다. `.gdignore` 는 **이름이 `.godotignore` 가 아니고**(4.7.2 바이너리에 그 문자열이 아예 없다), **`.gitignore` 처럼 목록을 적는 파일도 아니다** — **숨길 폴더 안에 빈 파일**로 넣으며 엔진은 `FileAccess::exists()` 로 **존재만 검사한다**(내용 무관 · 하위 폴더까지 재귀 제외). 개별 파일은 `docks/filesystem/textfile_extensions` 기본값에 **`md` 가 들어 있어** `CLAUDE.md` 가 `TextFile` 로 뜨는 것이므로 **`Editor Settings > Advanced Settings > Docks > FileSystem`** 에서 뺀다(🛑 Advanced 를 켜야 항목이 보이고 · **에디터 전역 설정**이다). 점(`.`)으로 시작하는 이름과 목록에 없는 확장자도 자동 제외된다(실측 5종). 🛑 어느 쪽이든 **가려 주는 게 아니라 스캔에서 빠지는 것**이라 제외한 것은 **`res://` 로 로드할 수 없다**,
+**에디터 조작을 손에 맞추는 절(§7)** — 먼저 **궤도 회전과 프리룩을 가른다**
+(**궤도 회전은 한 점을 중심으로 그 주위를 도는 것 — 물체를 손에 들고 돌려 보는 것**,
+**프리룩은 제자리에서 방향만 바꾸는 것 — 서서 고개를 돌리는 것**, **팬은 회전이 아니라
+방향을 유지한 채 평행 이동**). 그다음 Godot 기본 조작이 **"오른손 마우스 + 3버튼"을
+전제**하므로 벗어나면 **일부 기능이 아예 동작하지 않는다는 것**. **Magic Mouse 처럼
+가운데 버튼이 없으면 궤도 회전과 팬이 되지 않고**, 해법은
+`Editors > 3D > Navigation` 의 **Emulate 3 Button Mouse**(Option+좌클릭으로 대체)와
+**Navigation Scheme 을 Maya 로**(Alt 조합 기반이라 3버튼 없는 마우스에 맞는다),
+그리고 **4.7.2 에 실재함을 확인한** `orbit_mouse_button`/`pan_mouse_button`/
+`zoom_mouse_button` 개별 지정. **마우스를 왼손에 두면 오른손이 키보드 우측에 있으므로
+프리룩 WASD 가 겹친다** — `Shortcuts` 탭에서 `freelook` 검색 후 **IJKL**(권장, 화살표는
+Scene 독과 문맥 충돌) 또는 화살표로 옮기되 **기존 키를 지우고 교체한다**(첫 바인딩만
+인식되는 동작이 보고됨). **macOS 는 시스템 설정에서 보조 클릭이 꺼져 있으면 우클릭이
+안 되어 프리룩이 시작조차 되지 않는다.** 마지막으로 **에디터 설정과 게임 조작은 완전히
+별개**라는 것 — 게임은 `InputMap` 액션으로만 접근하고(`Input.is_key_pressed` 금지),
+리바인딩 API(`action_erase_events`/`action_add_event`/`action_get_events`/
+`load_from_project_settings`, 4.7.2 시그니처 확인)와 **`keycode` 가 아니라
+`physical_keycode` 를 써야 자판 배열이 달라도 같은 자리를 가리킨다**는 것.
+끝으로 **따라 만들어 볼 동영상 강좌 4개(§8)** — ① **비주얼 에디터만으로 3시간 만에 첫 게임**
+(Godot 4.7 완전 초보 라이브 트레이닝 · 다루는 항목이 §1~§7 과 그대로 겹쳐 절 대응표를 붙였다),
+② **안드로이드용 Godot 편집기**로 바닥·카메라·조명·하늘부터 집을 짓는 3분짜리 4편 시리즈
+(BoxMesh 벽 → CSG 문·창문 → 박공지붕 · **모바일에서 제작할 때만**),
+③ 에셋 임포트와 잔디·물·하늘로 만드는 **3D 워킹 시뮬레이터** 시리즈,
+④ **CSG 로 도로를 프로토타이핑 → Blender 로 내보내 Shrinkwrap 으로 지형 → Godot 재임포트**
+왕복 전 과정(타임스탬프 표 포함 · **라리엔 3D 의 블록아웃과 가장 가깝다**) —
+과 다음에 읽을 문서 안내를 담는다. 강좌의 값·구조는 그대로 옮기지 않는다는 경고를 함께 둔다
+(카메라·조명·성능 예산은 SSOT 와 `performance-mobile.md` §0 이 정한다).
+
+**캐릭터 애니메이션이 도는 원리(§10)** — §9 의 캡슐 자리에 사람 모양 모델을 넣었을 때
+**"화살표 키만 눌렀는데 어떻게 걷는 동작이 나오는가"** 하나를 파일 안쪽부터 화면까지
+따라간다. 먼저 **오해 셋을 지운다** — ① 애니메이션은 움직이는 그림이 아니라 **뼈의
+시간별 자세를 적은 숫자표**이고, ② 애니를 틀어도 **캐릭터는 제자리에서 걷는다**(이동은
+`move_and_slide()` 의 몫), ③ **엔진이 알아서 골라 주지 않는다 — 코드가 매 프레임 고른다.**
+그다음 **애니메이션은 `.glb` 안에 있다**는 것을 파이썬 10줄(`glb_peek.py`)로 파일을 직접
+열어 확인한다(실측 — `['idle','walk','run','attack','death','RESET']` · 본 23개 · `RESET`
+이 무엇인지). **데이터의 실체**는 `mixamorig:Hips → Spine → …` 로 이어진 **뼈 나무**와
+`idle` 한 편의 **채널 66개 = 뼈 22개 × (translation·rotation·scale)** 이며, 표에 없는
+중간 시각은 **보간**으로 채우므로 30fps 키프레임으로 144fps 가 부드럽게 나온다는 것,
+피부가 따라오는 것은 **GPU 스키닝이라 코드가 관여하지 않는다**는 것(그래서 **본 수가 곧
+프레임**이고 예제도 52개를 22개로 감축해 구웠다). **임포트 규칙** — `.import` 의
+`importer="scene"` · **`type="PackedScene"`** 한 줄이 핵심이라 **`.glb` 는 이미지가 아니라
+씬**이고, `animations` → **`AnimationPlayer` 하나**, joints → **`Skeleton3D`**, meshes →
+**`MeshInstance3D`** 로 번역된다(대응표 · **Editable Children 으로 에디터에서 직접 펼쳐
+보는 법**). **코드 쪽**은 `$character/AnimationPlayer` 대신 **타입으로 재귀 탐색**하는
+이유(`.glb` 내부 구조는 우리 손에 없다), `_ready` 의 세 가지 준비가 각각 무엇을 막는지
+(**`loop_mode` 미설정 → idle 이 2초 만에 얼어붙음** / `callback_mode_process` 를 PHYSICS 로
+안 두면 **발이 미끄러짐** / `animation_finished` 미연결 → **공격 자세로 굳음**), 🛑 **1회성
+애니를 일부러 루프에서 빼는 이유**. 핵심은 **`_physics_process` 안에서 이동 블록과 애니
+블록이 서로 아무것도 공유하지 않고 `if dir.length_squared() > 0.001` 한 줄로만 이어진다**는
+것 — **애니 블록을 지우면 차렷 자세로 미끄러져 다니고, 이동 블록을 지우면 제자리에서
+걷기만 한다.** 🛑 **`_play()` 의 `current_animation` 가드가 없으면** 초당 60번 되감겨
+**부들거리며 멈춘 것처럼 보인다**(`play()` 는 "시작하라"이지 "유지하라"가 아니다 —
+**자동인 부분은 걸어 둔 뒤 계속 도는 것뿐**). `blend_time` 값 감각(0 딱딱 / **0.1~0.2 적당**
+/ 0.5 흐물), `_busy` 를 푸는 것만으로 복귀가 끝나는 이유(**상태를 풀면 매 프레임 도는
+판단이 알아서 메꾼다**), **foot sliding** 의 원인과 세 가지 해법(속도를 애니에 맞춤 /
+`speed_scale` / **Root Motion → animation-3d.md §9**). 끝으로 **확인 방법 3종**
+(`get_animation_list()` 출력 · Editable Children 재생 · 파일 자체를 파이썬으로)과
+**증상 8가지 원인·해결 표**, 그리고 **언제 `AnimationTree` 로 넘어가야 하는가**
+(속도에 따른 연속 블렌딩 · 상하체 분리 · 상태 15개 · Root Motion — `AnimationPlayer` 를
+없애는 게 아니라 **그 위에 얹어 조종하는 층**이라는 그림과 함께 → `animation-3d.md`).
+
+### [example.md](example.md) — 예제: 빈 프로젝트에서 캐릭터가 움직이기까지 ★ 손으로 한 번 만들어 본다
+
+**`basics.md` 가 개념이라면 이쪽은 실습이다.** 빈 3D 프로젝트에서 시작해
+**바닥 위를 화살표 키로 걸어다니는 캐릭터**까지를 **8단계**로 만든다.
+에디터 조작을 단축키까지 적었고, **왜 그렇게 하는지**와 **틀리면 어떤 화면이 나오는지**를
+함께 담았다. 값은 전부 엔진에서 확인했다(기본값은 doctool, 화면은 실제 렌더 비교,
+이동 수치는 실행해서 좌표를 찍음).
+
+| 단계 | 내용 | 여기서만 다루는 것 |
+|---|---|---|
+| 1 | 씬 만들고 저장 | 씬의 타입은 **루트 노드가 정하고 나중에 못 바꾼다** |
+| **2** | **환경 — 🛑 태양을 만들지 않는다** | **광원 0개로도 형태가 다 보인다**는 렌더 비교 5조건(A~E)과 A12 실측(라이트맵 1.0 / 실시간 22.3 / **광원 0개 60.0 fps**). **⋮ 메뉴로 만들지 않으면 화면이 납작해진다** — `Environment.background_mode` 기본값이 `BG_CLEAR_COLOR`(하늘 없음)라, 손으로 추가하면 하늘이 안 붙는다. **입체를 만든 건 태양이 아니라 하늘**이라는 것(광원 수를 0으로 고정한 채 `background_mode` 만 바꿔 확인). `ambient=DISABLED` 를 **미리 켜면 새까매지는** 이유(정점 색을 구운 뒤에 켜는 값이다) |
+| **3** | **바닥 (CSG)** | `CSGBox3D` 원점은 **중심** → 윗면을 `y=0` 에 맞추려면 `y=-0.5`. 맵 제작 5방식 비교. 🖱 **숫자를 일일이 넣지 않고 마우스로 하는 법** — CSG 도형의 **면 핸들은 `Scale` 이 아니라 `Size` 를 직접 바꾸고**(소스 확인: `set_size()` · Undo 이름 `Change CSG Box Size`), **`Y` 로 스냅을 켜면 핸들 드래그에도 스냅이 걸려** 값이 정수로 떨어진다(`Transform > Configure Snap...` 의 `Translate Snap` = 1m). **`Alt` + 핸들이면 중심 고정 대칭, 그냥 끌면 반대편 면 고정**이라 `Position` 이 따라 움직인다. 🛑 **`R`(Scale Mode)로 늘리면 `Scale` 이 바뀐다** — 면 핸들과 구분한다. 3D 뷰포트 단축키표(Q·W·E·R·V·**Y**·T·B·PageDown, 소스 확인) |
+| **4** | **플레이어 씬** | 🔍 **`Size` 가 인스펙터에 없고 `Scale` 만 보이는 이유** — `MeshInstance3D` 의 프로퍼티는 `mesh`·`skeleton`·`skin` 셋뿐이고 `Size` 는 **`BoxMesh` 리소스**의 것이라 슬롯을 **클릭해 펼쳐야** 나온다. `CSGBox3D` 는 **노드가 `size` 를 직접 가져** 바로 보이므로 그 차이에서 걸린다. 🛑 **크기를 `Scale` 로 대신하지 않는 이유 3가지** |
+| **5** | **카메라** | 🔑 **카메라는 광원이 아니다** — `Light3D` 를 한 번도 만들지 않고 카메라만 바꾼 렌더 3조건(**없으면 단색 화면** / 넣으면 정상 / **멀리 옮겨도 명암은 그대로**). 누가 무엇을 정하는지 역할표. `(0,12,12)`·`-45°` 의 시야 계산과 **`y`·`z` 를 같게 유지하면 각도 고정 · 줌만** |
+| **6** | **스크립트 2개 — ★ 코드를 한 줄씩 100% 뜯어본다** | 🔑 먼저 **이름에는 세 종류가 있다** — **① 엔진이 정한 것**(`velocity`·`_physics_process`·`move_and_slide`·`is_on_floor`·`Input`·`Vector3`·`x`/`y`/`z` — 🛑 못 바꾼다), **② 내가 정하되 엔진과 약속한 것**(`"ui_accept"` 같은 액션 이름 — 양쪽 철자만 같으면 된다), **③ 순수하게 내 것**(`SPEED`·`dir`·`input`·`delta`·`_mesh` — 마음대로). 그다음 요소별 상세 — **`_physics_process` 는 내가 부르지 않고 엔진이 부르는 콜백**이라 **철자를 틀리면 오류도 경고도 없이 조용히 안 불린다**(`_process` 와의 주기 차이, `delta` 를 곱하는 이유), **`is_on_floor()` 는 `move_and_slide()` 가 기록한 값을 읽을 뿐**이라 `_ready()` 에서는 항상 `false` 이고 🛑 **땅속으로 꺼져 떨어지는 것은 감지하지 못한다**(닿은 게 없으니 계속 `false` — `global_position.y` 를 직접 검사하는 낙사·리스폰 코드 제공), **`velocity` 는 `CharacterBody3D` 의 `Vector3` 프로퍼티**라 `move_and_slide()` 가 그 이름을 읽으므로 바꿀 수 없고 `.x`/`.y`/`.z` 는 `Vector3` 의 성분 이름이며 **통째로 대입하면 중력이 지워진다**(`+=` 와 `=` 의 차이), **`Input` 은 엔진 싱글턴**(`is_action_pressed` vs `just_pressed` — `just_` 를 빼면 하늘로 날아간다), **액션은 키 이름이 아니라 이름표**라 코드가 키를 모르고(기본 `ui_*` 70여 개와 실제 키 바인딩 표 · 내 액션 만드는 법), **`dir` 은 순수하게 내가 지은 `Vector3`**(`Vector2` → `Vector3` 로 축이 느는 그림 · `y=0` 인 이유), `move_toward`·`look_at`·`move_and_slide()`(Godot 3 와 달리 **인자 없음**). 🛑 **`$` 는 이름으로 찾으므로 노드 이름을 바꾸면 코드가 깨진다** — 실제로 `Player` → `PlayerCharacter` 로 바꿨더니 `Invalid access to property 'global_position' on a base object of type 'null instance'` 가 났다(**오류가 `global_position` 을 가리켜 좌표 문제처럼 보이지만 진짜 원인은 앞줄의 `$` 경로**). 노드를 잡는 세 방법 비교 — `$`/`%` 는 이름이 바뀌면 깨지고 **`@export var` 만 안 깨진다**. **`global_position`** 은 월드 원점 기준 절대 좌표라 **부모가 다른 노드끼리 위치를 더하거나 비교할 때 반드시 쓴다**(`position` 은 부모 기준 · 로컬/전역 대응표 · `look_at()` 이 월드 좌표를 받는다는 것 · 대입하면 엔진이 역산해 준다). **이름 앞의 밑줄은 문법이 아니라 관습**이며 🔑 **붙는 자리가 세 군데인데 뜻이 전부 다르다** — `var _mesh`(내부용 표시 · **떼어도 됨**) / `func _physics_process`(엔진 콜백 · **떼면 안 불림**) / `func _process(_delta)`(안 쓰는 인자 · **떼면 경고**). 밑줄은 `position`·`name` 같은 **엔진 멤버를 가리는 사고도 막아 준다**. **`_mesh` 와 `$Mesh` 는 다른 것** — 왼쪽은 마음대로, 오른쪽은 씬 노드 이름을 따라가야 한다. `main.gd` 도 같은 방식으로 — `_process` 를 쓰는 이유, **`_delta` 앞 밑줄의 뜻**, `global_position` 과 `position` 의 차이, **회전을 코드로 건드리지 않아 각도가 안 틀어진다**는 것, 두 스크립트 대조표. ⏱ **한 틱 동안의 전체 흐름 5단계**(①중력 ②점프 ③입력→방향 ④방향→수평속도 ⑤`move_and_slide()`) — **①②는 `y` 만, ④는 `x`·`z` 만 건드려 서로 간섭하지 않으므로 순서를 신경 쓸 필요가 없고, 🛑 `move_and_slide()` 만 맨 마지막이어야 한다**(먼저 부르면 그 틱의 속도가 반영되지 않는다). **틱 단위 실측 시나리오 3개** — 낙하 시 `velocity.y` 가 매 틱 `0.163`(=9.8×0.0167)씩 **쌓이고**(`+=` 가 가속), 걷기는 `-5.00` 으로 **일정**하며(`=` 가 등속), **벽에 붙으면 키를 누르고 있어도 `velocity` 가 `0`** 이다 — 🔑 **`velocity` 는 내가 원하는 속도를 쓰는 칸이자 엔진이 실제 결과를 돌려주는 칸**이라는 증거. 두 스크립트가 **플레이어의 `global_position` 이라는 공통 지점**을 통해 만나는 그림과 물리 틱(60Hz 고정) vs 렌더 프레임(주사율)의 관계. 📜 **주석 완전판** — 두 파일 전체에 파일 머리 블록(붙는 자리·기대하는 씬 구조·좌표 규약)과 함수·블록·줄 단위 주석을 붙인 것으로, **그대로 복사해 쓸 수 있고 코드 설명을 요청받았을 때의 표준 형식**이다. 이어서 ⌨ **화살표 키가 이동으로 바뀌기까지 4단계**(키 → 액션 이름 → `Vector2` → 월드 `Vector3`). **`ui_up` 이 `negative_y` 자리인 이유**(화면 좌표계는 위가 음수)와 **화면 위쪽이 월드 `-Z` 와 맞아떨어지는 것은 카메라 yaw 가 0 이기 때문**(돌리면 `transform.basis` 변환이 필요해진다). 키별 대응표와 **실측 — 대각선도 정확히 5.000 m/s**(`get_vector()` 가 정규화. 손으로 조합하면 √2 배 빨라진다). `velocity` 를 통째로 대입하면 **중력이 지워져 공중에 뜬다**. 🛑 **스크립트를 `player.tscn` 루트에 붙인다** — 실제로 여기서 막혔고, 안 붙이면 **이동뿐 아니라 중력도 안 받아 공중에 뜬다.** 기존 파일은 **`Load`** 로 붙인다(`Attach Script` 는 코드를 덮어쓴다) |
+| 7 | 메인 씬 지정·실행 | 조작이 화살표인 이유(기본 InputMap), WASD 로 바꿔도 **코드는 그대로** |
+| **8** | **벽 추가** | **좌표를 외우지 않고 세우는 법** — `Size` 세 숫자의 축 의미, 방향 규약(`-Z`=북), **평면도·측면도 그림**, 벽 4개를 "어느 방향으로 길어야 하나"부터 하나씩 유도. **`y=1.5` 는 높이의 절반**, **바닥만 `y` 가 음수**인 이유. 자주 틀리는 5가지(동쪽 벽에 북쪽 `Size` 를 그대로 넣어 **얇은 판이 누움** 등). 🛑 **벽을 `Node3D` 로 묶으면 보이는데 통과한다** — `CSGCombiner3D` 는 자식 중 `CSGShape3D` 계열만 CSG 트리에 넣으므로 평범한 `Node3D` 가 끼면 그 아래는 **콜리전에서 통째로 빠지고**, 그런데도 각 도형이 **자기 자신을 독립 CSG 루트로 렌더해 화면에는 보인다**. 엔진 실측 — `Node3D` 로 묶으면 AABB `(12,1,12)`·정점 **36**(바닥뿐), `CSGCombiner3D` 로 바꾸면 `(13,4,13)`·정점 **228**. 고치는 법은 `Change Type...` 으로 `CSGCombiner3D`(그룹 유지) 또는 `Reparent...`. **왜 그런지는 엔진 규칙 3개로 설명한다**(소스 인용) — ① **루트는 부모가 CSG 가 아닌 도형**(`is_root_shape()` 는 `!parent_shape` 이고 `parent_shape` 는 부모를 `CSGShape3D` 로 캐스팅한 결과다. 부모가 CSG 면 자식은 **`set_base(RID())` 로 자기 렌더를 끈다**), ② **자식 순회에서 CSG 가 아니면 `continue`** — 그 아래로 내려가지 않는다, ③ **콜리전은 루트만 만든다**(`if (!is_root_shape()) return;` — 자식에서 `use_collision` 을 켜도 무시). 그래서 `Node3D` 아래 벽은 **각자 루트가 되어 스스로 그려지지만**(보인다) `use_collision` 기본값이 `false` 라 콜리전이 없다(통과한다). **벽마다 `use_collision` 을 켜면 막히기는 하지만**(실측 확인) `Geometry` 의 형상에 벽이 없어 **`bake_static_mesh()` 때 벽이 통째로 빠지고** Subtraction 도 안 걸리므로 쓰지 않는다. `Debug > Visible Collision Shapes` 로 눈으로 확인한다. 🔑 **충돌은 씬 트리가 아니라 물리 공간에서 일어난다** — 플레이어를 `Main` 자식 / `Geometry` 자식 / 무관한 가지에 각각 두고 재니 **소수점까지 같은 결과**(트리 위치 무관). 충돌 성립 3조건과 `collision_layer`(입은 옷) vs `collision_mask`(쓴 안경). ⚠️ 단 **내 몸을 조립하는 것은 직속 부모를 따진다** — `CharacterBody3D` 는 `CollisionObject3D` 상속이라 **몸은 있는데 모양이 0개**이고 `CollisionShape3D` 는 스위치가 아니라 **형체를 공급하는 도우미 노드**라 **중간에 `Node3D` 가 끼면 등록 shape 이 0** 이 된다(실측). **CSG 와 정반대 구조**(보이는 것→물리 vs 물리←넣어 준 모양)이지만 **함정은 똑같다** |
+
+마지막에 **검증표**(`y=1.0` 정착 · ↑1초 `z=-5.0` · 광원 0 · CSG AABB)와
+**증상별 진단표 17줄**(꿈쩍 안 함 / 바닥 뚫음 / 납작함 / 새까맘 / 하늘만 보임 /
+`Size` 없음 / 대각선만 빠름 / 공중에서 멈춤 …), 그리고 **CSG 블록아웃 → bake →
+정점 색 굽기** 로 넘어가는 다음 단계를 담는다.
+
+**`/godot init` 으로 설치되는 `/godot-example` 명령이 이 문서를 정본으로 삼는다.**
+
+### [lsp.md](lsp.md) — Godot LSP 정적 검증 ★ 코드 작성 시 필수
+
+Godot 에디터가 127.0.0.1:6005에 노출하는 GDScript Language Server를 이용해 게임을
+실행하지 않고 문법·타입 오류와 경고를 잡는 방법을 다룬다. 번들 스크립트
+`scripts/gdscript_lsp.py`의 다섯 가지 명령(`diagnose`로 오류 진단, `symbols`로 파일
+구조 파악, `hover`로 타입 확인, `definition`으로 정의 위치 조회, `complete`로 자동완성)
+사용법과 종료 코드, git 변경분 일괄 검증(`--changed`), JSON 출력을 설명한다. 또한
+`UNUSED_VARIABLE`·`SHADOWED_GLOBAL_IDENTIFIER`·`UNSAFE_CAST` 등 GDScript 경고 30여 종의
+의미와 대응, `project.godot`의 경고 수준 설정(0=무시/1=경고/2=오류 승격), 정적 타입
+가드레일, LSP 프로토콜 상세(0-based 좌표 주의), DAP(6006) 디버깅, VS Code 연동,
+그리고 LSP로 잡히지 않는 것(런타임 null, 노드 경로 오타, 논리 오류)을 정리한다.
+
+### [gdscript.md](gdscript.md) — GDScript 2.0 언어 전체
+
+GDScript 문법 전부를 다룬다. 정적 타입 선언과 타입 추론(`:=`), `Array[T]`·
+`Dictionary[K,V]` 타입 컨테이너, 팩드 배열, `class_name`과 상속, `@abstract`(4.5+)
+추상 클래스/메서드, 가변 인자(`...args`), `when` 패턴 가드, 모든 `@export_*` 어노테이션
+목록과 인스펙터 표시 방법, 시그널 선언·연결·플래그(`CONNECT_DEFERRED`/`ONE_SHOT`),
+`await`와 코루틴, 람다와 `Callable`, `match` 패턴 매칭, setter/getter, 정적 변수와
+`_static_init()`, `#region` 코드 접기, `##` 문서 주석, 그리고 생명주기 콜백
+(`_init`/`_enter_tree`/`_ready`/`_process`/`_physics_process`/`_input`/`_exit_tree`)의
+정확한 호출 순서를 코드와 함께 설명한다. **복사 3단계**(`duplicate()` / `duplicate(true)` /
+`duplicate_deep()`)도 여기서 다룬다 — `duplicate(true)`는 중첩 배열·딕셔너리는 복사하지만
+**그 안의 `Resource`는 원본과 공유**하므로 "깊은 복사"가 아니며, 이 때문에 추가된
+`duplicate_deep()`과 `DEEP_DUPLICATE_NONE`/`INTERNAL`(기본)/`ALL` 모드의 차이를
+실측 결과와 함께 설명한다. GDScript를 한 줄이라도 쓰기 전에 읽는다.
+
+### [nodes-scenes.md](nodes-scenes.md) — 노드·씬·SceneTree 아키텍처
+
+씬 파일(`.tscn`)과 씬 인스턴스, `SceneTree`의 차이를 먼저 구분한다. 3D 개발에 필요한
+노드 상속 계층, 노드 참조 방법 6가지 비교(`$`, `%` 고유 이름, `@export NodePath`,
+`@export Node`, `get_node_or_null`, 그룹), 씬 인스턴싱과 초기 데이터 전달 패턴,
+`PackedScene.pack()`과 `owner`의 의미, 씬 전환과 `load_threaded_request()` 기반 비동기
+로딩 화면 구현, 오토로드(싱글턴) 등록·사용 원칙과 이벤트 버스 패턴, 그룹
+(`call_group`/`call_group_flags`), `queue_free()`와 `is_instance_valid()`, 오브젝트 풀링,
+`process_mode` 5종과 일시정지 처리, 시그널 기반 컴포넌트 조합을 다룬다. 마지막으로
+로직 종류별 배치 위치와 파일 경로를 정리한 역할 분리 표, 그리고 **스크립트를 씬 옆에
+두는 폴더 구조 규범**(엔진의 Attach Script 기본 경로, 씬-스크립트 1:1 결합, 파일명 충돌
+세 가지 근거와 `autoload/`·`scripts/` 예외, 에셋 배치까지 포함한 전체 구조)을 담는다.
+
+### [3d-core.md](3d-core.md) — Node3D·Transform3D·카메라
+
+3D 공간의 기초 전부를 다룬다. Godot 좌표계 규약(-Z forward, +Y up, 오른손 좌표계),
+`Transform3D`와 `Basis`의 내부 구조 및 축 벡터의 의미, 로컬(`position`/`transform`)과
+글로벌(`global_position`/`global_transform`)의 차이, 오일러를 쓰지 말아야 하는 세 가지
+이유(회전 순서 의존·짐벌락·보간 왜곡), 짐벌락 없는 FPS 카메라 회전 패턴과 3인칭 노드
+분리 방식, `look_at`의 up 벡터 함정과 안전한 래퍼, 내적·외적을 이용한 시야·좌우 판정,
+`Quaternion.slerp`와 프레임레이트 독립 지수 감쇠 보간, `orthonormalized()`가 필요한 이유,
+벡터 연산 실전, `Camera3D`의 투영·FOV·near/far 설정과 `unproject_position`·
+`project_ray_normal`을 이용한 HUD 마커와 마우스 피킹, `SpringArm3D` 3인칭 카메라 완성
+코드, `MeshInstance3D` 머티리얼 개별화와 가시성·LOD 제어를 코드로 설명한다.
+
+### [physics-3d.md](physics-3d.md) — Jolt Physics와 3D 물리
+
+이 프로젝트가 쓰는 Jolt Physics 기준으로 3D 물리 전체를 설명한다. 물리 서버가 별도
+고정 틱으로 도는 구조, 4가지 충돌체(`Area3D`·`StaticBody3D`·`RigidBody3D`·
+`CharacterBody3D`)의 선택 기준, `collision_layer`/`collision_mask` 비트마스크 설계법과
+히트박스/허트박스 패턴, 콜리전 셰이프 성능 순위, **에디터의 `Mesh > Create Collision
+Shape...` 6가지 타입**(4.6 신규 `Primitive`가 박스·구·실린더·캡슐 메시를 대응 셰이프로
+자동 변환 — 단 에디터 전용이라 코드 API에는 없으며 직접 매핑 코드를 제공), glTF 접미사
+자동 생성(`-col`/`-convcol`/`-colonly`), `CharacterBody3D`의 전체 속성표(`motion_mode`·`floor_max_angle`·
+`floor_snap_length`·`platform_on_leave` 등)와 상태 조회 메서드, 코요테 타임·점프 버퍼·
+하강 중력 가중을 포함한 1인칭 컨트롤러 완성 코드, 카메라 기준 이동과 모델 회전을 분리한
+3인칭 컨트롤러 완성 코드, `move_and_collide`와 `KinematicCollision3D`, `RigidBody3D`의 힘·
+임펄스·`_integrate_forces`·`freeze`·폭발 구현, `Area3D` 트리거와 중력 오버라이드,
+`RayCast3D`/`ShapeCast3D`, `PhysicsDirectSpaceState3D` 직접 질의, 조인트, **Jolt가 4.4 내장 → 4.6 새 프로젝트 기본이 된 경위(4.7 이 아니다 — 2026-09-03 정정)와 기존 프로젝트는 자동 전환되지 않는다는
+점**, Jolt 고유 차이와 `physics/jolt_physics_3d/*` 설정 전체(엔진에서 확인한 실제 키와
+기본값 — 솔버 반복, 슬립 임계값, CCD, `max_bodies` 한계, `enable_ray_cast_face_index`),
+물리 보간과 터널링 방지를 다룬다.
+
+### [rendering-3d.md](rendering-3d.md) — 렌더러·머티리얼·조명·환경
+
+Forward+/Mobile/Compatibility 렌더러의 기능 지원표와 Mobile에서 하지 말아야 할 것을 먼저
+정리한다. `StandardMaterial3D`의 모든 속성 그룹(Transparency 5종 비교와 선택 가이드,
+Shading 모드, Albedo/Metallic/Roughness PBR, Emission, Normal Map, Rim, Clearcoat(4.7 개선),
+Anisotropy, AO, Height, Backlight, Refraction, Detail, UV1/UV2 Triplanar, Billboard, Grow,
+Proximity/Distance Fade, Stencil, Render Priority)과 각 옵션의 성능 비용, 머티리얼 코드
+조작과 `set_instance_shader_parameter()`로 배칭을 유지하는 방법, 피격 플래시·`next_pass`
+외곽선 실전 코드, `DirectionalLight3D`/`OmniLight3D`/`SpotLight3D`/`AreaLight3D`(4.7 신규)
+속성과 `light_bake_mode`, shadow bias·normal bias·PSSM split 튜닝과 모바일 그림자 최적화,
+`LightmapGI` 베이킹 절차와 실패 원인, `ReflectionProbe`와 box projection,
+**스텐실 버퍼**(4.5+ — `stencil_mode`의 `OUTLINE`/`XRAY` 프리셋과 `CUSTOM` 조합,
+플래그·비교·참조값 전체, **벽 너머 캐릭터 보이기** 구현, Mobile 렌더러에서도 동작하며
+투명 패스로 넘어가는 비용과 그리는 순서 함정), **4.7에서 전면 재작성된 SSR**(`ssr_enabled`·`ssr_max_steps`·`ssr_depth_tolerance`와
+`screen_space_reflection/half_size` 해상도 설정 — 단 **Forward+ 전용이라 이 프로젝트에서는
+동작하지 않는다**), `WorldEnvironment`의 톤매퍼·Glow·Fog·색보정, `Decal` 탄흔 배치,
+파티클(**4.7 축별 스케일·3D 회전** — `use_scale_3d`/`use_rotation_3d`/
+`use_rotation_velocity_3d` 세 플래그가 모두 기본 꺼져 있는 함정, 기존 float 방식과의
+차이, 빌보드에서는 효과가 안 보이는 이유), 렌더 레이어와 `SubViewport` 활용을 설명한다.
+
+### [animation-3d.md](animation-3d.md) — 애니메이션 시스템
+
+**`BoneConstraint3D` 계열(4.6+)** — `AimModifier3D`·`CopyTransformModifier3D`·
+`ConvertTransformModifier3D`로 본을 다른 본에 묶는 방법과 인덱스 기반 설정 API 포함.
+
+Animation·AnimationPlayer·AnimationTree의 3계층 구조를 먼저 구분한다. `AnimationPlayer`의
+트랙 종류와 Call Method Track으로 공격 판정 타이밍을 애니메이션에 위임하는 방법,
+`callback_mode_process`를 물리 프레임으로 두어야 하는 이유, **RESET 애니메이션이 블렌딩의
+전제 조건인 이유**, `AnimationTree` 구성 요소 전체 — `AnimationNodeStateMachine`
+(Immediate/Sync/AtEnd 전환, Advance Condition vs Advance Expression, `travel()` A* 경로
+탐색), `BlendSpace1D`/`BlendSpace2D`(Sync Mode 4종으로 발 맞춤 해결, Blend Mode 3종),
+`BlendTree`, 상하체 분리를 위한 `Blend2` 필터, `OneShot` 요청/중단, `TimeSeek`, `TimeScale`,
+`Transition`, `Add2` — 을 `animation_tree["parameters/..."]`로 제어하는 방법, 파라미터 경로
+상수화, Root Motion 추출과 상태별 혼합 전략, `Skeleton3D` 본 조작과 `SkeletonModifier3D`
+기반 절차적 조준, `BoneAttachment3D` 무기 장착, 래그돌, `Tween`과 4.7 신규 `tween_await()`,
+glTF 애니메이션 임포트와 후처리 스크립트, 콤보·히트스톱을 포함한 3인칭 캐릭터 애니메이터
+완성 코드를 담는다.
+
+### [navigation-3d.md](navigation-3d.md) — 길찾기와 적 AI
+
+**전용 2D 내비게이션 서버 분리(4.6+)와 비동기 리전 처리**(기본 켜짐)도 다룬다.
+
+`NavigationServer3D` 기반 길찾기 전체를 다룬다. 서버가 물리 프레임에 비동기 동기화되므로
+첫 프레임에 경로를 요청하면 안 되는 이유, `NavigationRegion3D`와 `NavigationMesh` 베이킹
+파라미터 전체표(agent radius/height/max climb/max slope, cell size)와 설정 원칙,
+콜라이더 기반 베이킹, `NavigationAgent3D`의 모든 속성(경로 탐색 12종, 회피 9종)과 메서드·
+시그널, `get_next_path_position()`을 프레임당 한 번만 호출해야 하는 이유, 목표 갱신 빈도를
+제한한 추적 AI 완성 코드, RVO 회피의 두 단계 흐름(`set_velocity` → `velocity_computed`
+콜백에서 `move_and_slide`)과 파라미터 튜닝, `NavigationObstacle3D`와 `carve_navigation_mesh`,
+`NavigationLink3D`로 점프·사다리 구현, `navigation_layers` 비트마스크, `NavigationServer3D`
+직접 질의(경로 계산·랜덤 위치·도달 가능 여부), 런타임 재베이킹과 값싼 대안, `AStar3D`와의
+선택 기준, 그리고 감지/상실 반경 분리·시야각·레이캐스트 2단계 검사를 포함한 상태 머신
+기반 적 AI 완성 코드를 설명한다.
+
+### [input-ui.md](input-ui.md) — 입력 처리와 Control UI
+
+입력 파이프라인(`_input` → `_gui_input` → `_shortcut_input` → `_unhandled_key_input` →
+`_unhandled_input`)의 호출 순서와 목적별 콜백 선택 기준, `set_input_as_handled()`의 사용
+시점을 설명한다. `InputMap` 액션 정의와 `physical_keycode`를 써야 하는 이유,
+`Input.get_vector()`가 대각선 정규화와 데드존을 처리하는 방식, `InputEvent` 계층 전체와
+`relative` vs `screen_relative`의 차이, 마우스 캡처 관리와 알트탭 대응, 게임패드 연결
+감지와 입력 장치 자동 전환, **4.7 장치 ID 상수**(`DEVICE_ID_KEYBOARD`=16 /
+`DEVICE_ID_MOUSE`=32 / 게임패드는 0부터 — 터치도 0이라 겹치는 함정 포함),
+**창 미포커스 시 게임패드 입력 무시 설정**(`joypads/ignore_joypad_on_unfocused_application`,
+기본 꺼짐), 키 리바인딩 저장/로드를 다룬다. **4.7 내장 `VirtualJoystick` 노드는 전체
+API를 담았다** — 프로퍼티 11종과 기본값·범위, `JoystickMode`/`VisibilityMode` 열거형,
+시그널 5종(`pressed`/`released`/`tapped`/`flicked`/`flick_canceled`), StyleBox 테마 4종,
+**출력값을 읽는 API가 없고 InputMap 액션에 강도를 주입하는 설계**, 조이스틱 벡터를 카메라
+yaw 기준 월드 방향으로 변환하는 3D 이동 코드, 그리고 함정 6가지(Control 크기를 안 잡으면
+터치가 안 먹힘, 기본 액션이 `ui_*`, 미등록 액션 에러, `deadzone_ratio` 기본 0 등).
+UI 쪽은 `Control` 앵커/오프셋/프리셋/`size_flags`, **`mouse_filter`가 게임 입력을 막는
+문제**, 컨테이너 12종, `Theme`와 `StyleBox`, **`RichTextLabel`과 BBCode**(`bbcode_enabled`,
+`append_text()`, 4.7 `em` 단위로 폰트 크기에 맞춰 자동 조정되는 `[img]` 이미지, `[img]`
+옵션 전체와 픽셀/`em`/`%` 단위 비교, `add_image()`는 픽셀만 받는 제약, 유저 입력 BBCode
+이스케이프), 3D 게임의 `CanvasLayer` 구성과 일시정지 메뉴, 화면 스트레치 설정, 모바일
+세이프 에어리어, `Label3D`와 `SubViewport` 기반 월드 스페이스 UI, 게임패드 UI 내비게이션을
+코드와 함께 설명한다.
+
+> **HUD·메뉴·버튼을 실제로 만드는 작업 절차는 [hud-menu.md](hud-menu.md) 에 있다.**
+> 이 문서는 속성과 API 의 정의를, 그쪽은 화면을 조립하는 순서를 담는다.
+
+### [hud-menu.md](hud-menu.md) — HUD·메뉴·버튼 만들기 (화면 UI 조립)
+
+**input-ui.md 가 Control API 레퍼런스라면 이 문서는 화면을 조립하는 작업 절차다.**
+먼저 이 프로젝트의 화면이 **모바일 세로 1080×1920(`orientation=1` = `SCREEN_PORTRAIT`)과
+데스크톱 가로 1920×1080 두 가지**라는 전제를 실제 `project.godot` 값으로 확인하고,
+종횡비가 뒤집히므로 좌표 배치가 반드시 깨진다는 것을 숫자로 보인다. UI 의 네 기둥
+(`Control`·`Container`·`Theme`·`CanvasLayer`)을 **"없으면 무엇이 깨지는가"**로 설명하고,
+`CanvasLayer.layer`(기본 `1`)를 HUD 1 / 창 5 / 모달 10 / 로딩 100 으로 나누는 층 설계를
+제시한다. **작업 순서를 앵커 → 컨테이너 → Theme → 시그널 넷으로 고정**하고, 프리셋 16종
+중 실제로 쓰는 것, `size_flags` 6종(`SIZE_EXPAND_FILL`=3 이 주력, `Label`만
+`size_flags_vertical` 기본이 `4`), **컨테이너 안에서 `position` 이 무시되는 이유와 대신
+쓰는 4가지 수단**(`separation`·`MarginContainer`·`custom_minimum_size`·`stretch_ratio`),
+컨테이너 9종 선택표를 담는다. **노드별 `mouse_filter` 실측 기본값 표가 핵심이다** —
+`Control`·`PanelContainer` 는 `0`(STOP)이라 화면을 덮는 순간 터치를 전부 삼키고,
+`Label`·`NinePatchRect` 는 `2`(IGNORE), `TextureRect`·`TextureProgressBar` 는 `1`(PASS)로
+서로 다르다. **"화면을 눌렀는데 캐릭터가 안 움직인다"의 원인 1순위**가 이것이다.
+실전으로는 세로 화면 기준 라리엔 HUD 씬 구조(정보는 위 / 조작은 아래, 왼손 이동 ·
+오른손 전투), 에디터 조작 8단계, **서버 권위를 지키는 체력바 코드**(HP 는 서버 스냅샷이
+올 때만 갱신하고 클라가 계산하지 않는다), `%UniqueName` 접근, 메인 메뉴·일시정지
+(`PROCESS_MODE_WHEN_PAUSED`)와 **온라인 게임이라 `get_tree().paused` 로 월드를 멈출 수
+없다는 함정**, `Theme` 3층 우선순위(개별 오버라이드가 이긴다)와 `.tres` 만드는 절차,
+`StyleBoxFlat` 실측 기본값(`border_width`·`shadow_size` 가 `0` 이라 기본은 테두리도
+그림자도 없다)과 버튼 4상태, 타입 배리에이션, 세로 1080px 기준 폰트 크기표를 다룬다.
+모바일 필수 3가지는 **세이프 에어리어**(`DisplayServer.get_display_safe_area()` 적용
+코드 — 에디터에서는 검증되지 않고 실기기에서만 확인된다), **터치 최소 48dp(1080px 폭에서
+100~120px)**, **엄지 영역**(하단 1/3 은 손가락이 덮으므로 읽을 글자를 두지 않는다)이다.
+3D 특유의 함정으로 월드 스페이스 UI 3종의 비용 비교(**AOI 82개에 `SubViewport` UI 를
+붙이면 예산이 끝난다 — 이름표는 `Label3D`**)와 **카메라 yaw 고정 덕에 미니맵을 회전시킬
+필요가 없다는 점**, 성능 규칙(`_process` 에서 `Label.text` 를 매 프레임 바꾸지 않는다),
+자주 하는 실수 표, 공식 문서·데모·커뮤니티 자료 링크를 담는다.
+
+**공식 권장값과 대조한 결과도 담았다** — Godot 공식 문서의 플랫폼별 stretch 조합표
+(모바일 세로 = 기준 720×1280 또는 고사양 1080×1920 + `canvas_items` + `expand`)와
+이 프로젝트 설정이 일치하지만 **기준이 고사양 쪽 값이라 720 폭 저사양 폰에서 UI 가
+0.67 배로 축소된다**는 함의, stretch mode 3종·aspect 5종 선택표(공식 문서가 GUI 에
+"대개 최선"이라 적은 `keep_width` 포함), 세로·가로 양쪽 지원의 두 방법(정사각형 기준
+vs 현재의 `.mobile` 오버라이드) 비교, 런타임 UI 배율 `content_scale_factor`,
+**앵커와 컨테이너는 같은 노드에 함께 쓸 수 없다는 것**(컨테이너 자식은 `Layout` 메뉴가
+잠긴다 — "화면에 붙이는 것은 앵커, 그 안을 채우는 것은 컨테이너"), 컨테이너 중첩 깊이
+비용과 `ScrollContainer` 실측값(`follow_focus` 기본 `false`, 터치 드래그는
+`emulate_mouse_from_touch` 에 의존), **StyleBox 는 4개가 아니라 5개**(`focus` 포함)이며
+빠뜨린 상태는 조용히 기본 테마로 돌아간다는 것과 `Duplicate` 로 5상태를 만드는 순서를
+다룬다. **§9 폰트는 한글이 먼저다** — 내장 폰트에 한글 글리프가 없어 □ 가 뜨는 것,
+CJK 폰트가 15~20MB 라 SSOT 번들 용량 규칙과 정면으로 부딪치는 것, 해법 3가지(`SystemFont`
+기기 내장 = 0MB / 서브셋 1~3MB / 통째), `Font.fallbacks` 폴백 체인, **MSDF 는 저사양
+모바일에서 렌더링 기본 비용이 올라 이 프로젝트에서는 켜지 않는다**(엔진 기본값이 이미
+`false`), 대신 **축소 렌더링 때문에 폰트 밉맵을 켜는 것을 검토**해야 한다는 것,
+3D 위 글자의 외곽선을 담는다. **§10 재사용 컴포넌트**는 `@tool` + `class_name` +
+`@export` setter 조합과 `Engine.is_editor_hint()` 가드, `is_node_ready()` 검사,
+`Editable Children` 을 피해야 하는 이유를 다룬다. **§11 UI 애니메이션**은 `Tween` 의
+`set_ease`/`set_trans`, 겹칠 때 `kill()`, **4.7 오프셋 변환**(`offset_transform_enabled`
+기본 `false`, `offset_transform_visual_only` 기본 `true` — 레이아웃 재계산도 터치 판정도
+건드리지 않고 흔들 수 있다), `layer = 100` 페이드 전환을 담는다. **§13.4 는 세로 화면의
+`Camera3D.keep_aspect` 함정**이다 — 실측 기본값이 `KEEP_HEIGHT` 라 9:16 에서 좌우 시야가
+좁아지고 공식 문서도 세로에서는 `Keep Width` 를 권하지만, **SSOT §6 의 줌 상한 ↔ AOI
+계약 계산이 가로 해상도 기준이라 사람의 판단이 필요하다**고 명시한다. **§15 접근성**은
+4.5 AccessKit 통합으로 `Control` 에 들어온 `accessibility_name`/`description`/`live` 등
+실측 속성과, 아이콘 버튼부터 채우라는 우선순위를 담는다.
+
+### [resources-assets.md](resources-assets.md) — 리소스와 에셋 임포트
+
+`Resource`의 개념과 **참조 공유 규칙**(같은 경로를 여러 번 `load()`하면 같은 인스턴스),
+`duplicate()`와 `resource_local_to_scene`으로 개별화하는 방법을 먼저 다룬다.
+**§3 은 맵 설정·카메라 설정처럼 "미리 정의해 두는 정적 정보"를 `.tres` 로 빼는 방법**을
+독립해 다룬다 — 개체 데이터(아이템 100종)와 구성 데이터(맵마다 하나)의 구분,
+**`const` 로 두면 맵이 둘이 되는 순간 막히는 이유**와 판단 기준표,
+`@export_group` 으로 인스펙터를 접는 정의 패턴, 그리고 엔진 실측으로 확인한 함정들 —
+**🛑 선언 기본값과 같은 값은 명시적으로 대입해도 `.tres` 에 저장되지 않는다**(그래서
+기본값은 운영 맵 값이 아니라 **작고 안전한 폴백**으로 잡아야 파일에 그 맵의 값이 남는다),
+**로드 순서가 `_init()` → setter** 라 `_init()` 에서 다른 프로퍼티를 읽으면 기본값만 보인다는 것,
+**setter 가 손으로 고친 `.tres` 의 범위 밖 값까지 막아 준다**는 것(`hp = 99999` → `100`),
+**`@export var` 에 대입해도 `changed` 가 저절로 나가지 않아 setter 에서 `emit_changed()` 를
+직접 불러야 한다**는 것. 이어 `assert` 대신 문제 목록을 돌려주는 **`validate()` 패턴**과
+`_get_configuration_warnings()` 연동, 파생값을 프로퍼티가 아닌 **메서드로 계산**하는 이유,
+`@export` 로 끼워 쓰는 쪽 코드, **로드된 설정이 공유되므로 런타임에 고치면 안 된다**는 것,
+헤드리스에서 `ResourceSaver` 로 `.tres` 를 찍어내는 스크립트(폴더가 없으면
+`ERR_CANT_OPEN`(19), 새 `class_name` 은 `--import` 를 한 번 돌려야 인식),
+그리고 **`.res` 가 항상 작지 않다는 실측**(작은 설정 208B vs 380B, 문자열 2천개 24,200B vs
+34,345B — 설정·데이터는 `.tres` 를 쓴다)을 담는다.
+**`duplicate(true)`의 한계와 `duplicate_deep()`** — `Array`/`Dictionary` 프로퍼티 안에
+담긴 하위 리소스는 `duplicate(true)`로 복제되지 않으므로 인벤토리·스킬 목록처럼 리소스를
+배열에 담는 구조에서 반드시 걸린다. 복제 범위 3단계와 언제 `ALL`을 피해야 하는지 포함. 커스텀
+`Resource` 클래스로 아이템·무기 데이터를 정의하고 `.tres`로 밸런싱하는 패턴, 폴더 스캔
+자동 등록과 `.remap` 처리, `preload`/`load`/`load_threaded_request()`의 차이와 로딩 화면
+구현, `ResourceUID`와 `.import` 시스템, 3D 모델 임포트 옵션 전체표와 콜리전 자동 생성
+접미사, `EditorScenePostImport` 후처리 스크립트, Blender 작업 규칙 6가지, 텍스처 압축 모드
+비교와 플랫폼별 실제 포맷·모바일 권장 크기·ORM 채널 패킹, 오디오 임포트(3D는 반드시 모노),
+`user://` 세이브 파일의 JSON·이진·암호화 저장과 버전 마이그레이션 완성 코드, `ConfigFile`
+설정 관리와 `linear_to_db()` 볼륨 변환, `FileAccess`/`DirAccess` API를 담는다.
+
+### [audio.md](audio.md) — 3D 오디오
+
+플레이어·버스·서버의 3계층 구조와 "개별 볼륨 대신 버스로 카테고리를 나눈다"는 설계 원칙을
+먼저 세운다. `AudioStreamPlayer` 3종의 차이, `volume_db`와 선형 값 변환,
+`AudioStreamPlayer3D`의 공간 설정(감쇠 모델 4종, `unit_size`/`max_distance` 소리별 권장값,
+지향성, 공기 흡수, 도플러, `area_mask`), `Area3D` 리버브 존으로 동굴 울림을 자동 적용하는
+방법, 권장 버스 구조와 `AudioServer` API, 버스 이펙트 15종과 Master 리미터 필수 이유,
+물속 저역 통과 필터 전환 코드, `AudioStreamRandomizer`로 반복감을 없애는
+`PLAYBACK_RANDOM_NO_REPEATS`, 3D 플레이어 풀링과 크로스페이드 BGM을 포함한 오디오 매니저
+오토로드 완성 코드, `AudioStreamInteractive`·`AudioStreamSynchronized`(4.3+) 기반 인터랙티브
+뮤직, 지연(latency)과 정확한 재생 위치 계산, 모바일 오디오 7가지 주의사항을 담는다.
+
+### [shaders-3d.md](shaders-3d.md) — 셰이더
+
+`vertex()`/`fragment()`/`light()`의 실행 시점과 "계산을 `vertex()`로 옮긴다"는 성능 원칙을
+먼저 세운다. `shader_type spatial` 기본 구조와 `varying`, `render_mode` 전체 목록(블렌딩·
+뎁스·컬링·조명 모델·기타), 내장 변수 전체 목록(전역·vertex·fragment)과 `SCREEN_TEXTURE`·
+`DEPTH_TEXTURE`를 4.x에서 uniform으로 선언하는 방법, `uniform`과 `hint_*`·필터·반복 옵션,
+**`instance uniform`으로 머티리얼 복제 없이 인스턴스별 값을 주는 방법**, 전역 uniform,
+코드에서 파라미터 전달과 트윈 애니메이션을 설명한다. 실전 셰이더로 외곽선(툰), 디졸브,
+홀로그램, 모바일 친화 물 표면, 삼중 평면 매핑, 인스턴스 uniform 피격 플래시, 정점 단계에서
+처리하는 바람 식생, 프레넬 발광 8종의 전체 소스코드를 제공하고, `next_pass` 다중 패스,
+셰이더 컴파일 스터터 대응(워밍업 코드 포함), 모바일에서 피해야 할 연산 10가지를 다룬다.
+**스텐실은 `render_mode`가 아니라 독립 `stencil_mode` 구문**이라는 점과 플래그·비교 키워드
+전체, 벽에 캐릭터 모양 구멍을 뚫는 2패스 셰이더 예제, 투명 패스 제약도 여기 있다.
+
+### [performance-mobile.md](performance-mobile.md) — 최적화와 내보내기 ★ §0 먼저
+
+**§0 이 최소 지원 사양(3GB RAM Android · Galaxy A12)과 실기기 실측값을 담는다.**
+성능·조명·드로우콜을 판단하기 전에 **§0 을 먼저 읽는다** — 조명을 쓰지 않는 이유,
+`MultiMesh` 가 선택이 아닌 이유, 폴리곤을 아끼지 않아도 되는 이유가 전부 실측으로 있다.
+
+"측정 없이 최적화하지 않는다"는 원칙과 최적화 5단계 순서를 먼저 세운다. 해상도 테스트로
+CPU/GPU 병목을 가르는 방법, `Performance` 모니터 전체 목록, **화면에 성능을 띄울 때
+반드시 세트로 고정해서 표시하는 디버그 패널 항목(FPS·드로우콜·삼각형·렌더 오브젝트·VRAM·
+텍스처·프로세스 메모리·CPU·캐릭터·노드)과 완성 코드**(예산 대비 색칠, 텍스처 메모리
+언더플로·워밍업 함정, `--perf-log` 터미널 측정, 고아 노드로 누수 감지 포함),
+프로파일러와 Visual Profiler 읽는 법, 드로우콜 상한과 줄이는
+5가지 방법, 오버드로우, 메시 LOD와 `visibility_range`(HLOD)·`VisibleOnScreenEnabler3D`,
+오클루전 컬링이 효과 있는 경우와 없는 경우, `MultiMeshInstance3D` 풀밭 완성 코드와 셰이더
+연동·한계, 조명 비용 순위와 모바일 조명 전략·그림자 축소, CPU 최적화(타이머 분할·캐시·
+`StringName`·시간 분할·`WorkerThreadPool` 스레드 안전 규칙), 물리 최적화, VRAM 예산과 메모리
+누수 원인, 모바일 전용 렌더링 설정과 동적 해상도 스케일링·기기 등급 자동 감지, 기능 태그
+오버라이드를 다룬다. **빌드·설치·실행·릴리즈 절차는 아래 export-build 문서로 분리했다.**
+
+### [headless-workflow.md](headless-workflow.md) — 에디터 없이 작업하기 ★ 기본 작업 방식
+
+에디터 GUI 를 열지 않고 **코드 작성 → LSP 검증 → 창 없는 검사 → 데스크톱 실행 → 실기기 확인**
+까지 도는 개발 루프를 담는다. 기본 명령 6가지(`--quit-after` 는 초가 아니라 프레임이라는 점,
+`--import --quit`, PNG 캡처 시 `RenderingServer.frame_post_draw` 대기), **`install.sh` 로
+기기 ID 하나만 주면 Android·iOS 를 판별해 빌드·설치·실행까지 끝내는 방법**, `.ipa` 가
+나오게 하는 iOS preset 다섯 값(`runnable`·`app_store_team_id`·`code_sign_identity_debug`·
+`export_method_debug`·`export_project_only`)과 **Team ID 는 인증서 이름 괄호 안이 아니라
+`OU=` 값이라는 함정**, 에디터 실행 버튼(`Cmd+B`)과 Remote Deploy 의 차이와 아이콘이 뜨는
+전체 조건, 빌드 산출물이 `res://` 안에 있을 때 `.gdignore` 로 임포트를 막는 법을 다룬다.
+**실행 버튼을 기기로 향하게 하는 설정은 없다** — 이 구분이 이 문서의 출발점이다.
+
+### [export-build.md](export-build.md) — 빌드와 내보내기 (플랫폼 공통)
+
+"export template 은 export 할 때만 필요하다"는 경계를 먼저 세운다. 데스크톱 실행·
+`--headless` 검사·`--export-pack` 은 템플릿 0개로 돌고, 패키지를 만들 때 처음 필요해진다.
+**엔진에서 직접 실측해 확정한 작업별 최소 필요 파일 판정표**가 핵심이다 — Android
+테스트 APK 는 `android_debug.apk` 하나, Gradle 빌드는 `android_source.zip` 만, Windows 는
+debug/release 가 서로 다른 파일을 쓴다. **템플릿이 없을 때 오류는 없는 파일을 전부
+나열할 뿐 그게 필수 목록이 아니라는 함정**, `use_gradle_build` 한 값이 요구 파일을 통째로
+가른다는 규칙, 4.7 의 에디터 선택 설치와 CLI TPZ 설치, `--export-debug`/`--export-release`/
+`--export-pack`/`--export-patch`/`--install-android-build-template` 전체 규칙과 출력 경로·
+종료 코드 판정, 오류 메시지 해석표, `export_presets.cfg` 포맷, **패치 PCK 배포와 4.6 델타
+인코딩**(`--export-patch`/`--patches` CLI, Patching 탭 설정 전체,
+`ProjectSettings.load_resource_pack()`으로 런타임 적용, 그리고 Base Packs가 런타임 로드
+목록과 파일·순서까지 같아야 한다는 제약과 예전 버전 재익스포트 금지), 이 프로젝트에서
+사람만 고칠 수 있는 파일의 경계를 담는다. 플랫폼별 상세는 아래 세 문서로 갈라진다.
+
+### [export-build-android.md](export-build-android.md) — Android 빌드
+
+테스트 APK 를 만들어 실기기에 설치·실행하고 Play 스토어 릴리즈까지 가는 전 과정.
+JDK 17·Android SDK·에디터 경로 준비(`java_sdk_path` 가 비면 템플릿이 다 있어도 막힌다),
+`--export-debug` 빌드 → `adb install -r` 설치 → `adb logcat -s godot` 로그의 반복 루프,
+원클릭 배포와 원격 디버그·무선 디버깅, **debug keystore 는 Godot 이 자동 생성하므로
+`keytool` 이 불필요**하다는 점과 서명 충돌 시 `adb uninstall`, 릴리즈 keystore 생성과
+`GODOT_ANDROID_KEYSTORE_*` 환경변수 주입, `use_gradle_build`/`export_format` 으로 APK·AAB 를
+가르는 판정표, GABE 와 `res://android/build/` 의 엔진 버전 종속, preset 옵션 전체,
+권한 최소화, **네이티브 스플래시와 부트 스플래시의 이중 구조**(배경색을 맞추지 않으면 두 번
+깜빡인다)를 담는다.
+
+### [export-build-ios.md](export-build-ios.md) — iOS 빌드
+
+Godot 이 `.ipa` 를 직접 만들지 않고 **Xcode 프로젝트까지만 내보내면 Xcode 가 서명·아카이브·
+배포를 맡는 2단계 구조**를 먼저 세운다. macOS 전용이라는 제약, `ios.zip`·Xcode·Team ID·
+프로비저닝 준비, `application/export_project_only` 값이 산출물을 가르는 규칙,
+`xcrun simctl` 로 시뮬레이터에 설치·실행하는 절차와 `xcrun devicectl` 로 실기기에 올리는
+절차, 기기 신뢰 설정과 무료 계정 7일 만료, Console.app·`log stream` 로그, `xcodebuild
+archive` → `ExportOptions.plist` → `.ipa` → TestFlight 업로드, 그리고 **헤드리스에서 설정
+오류 메시지가 빈 문자열로 나오는 실측 현상**과 그때 점검할 항목 순서를 담는다.
+
+### [export-build-desktop.md](export-build-desktop.md) — macOS·Windows·Linux
+
+데스크톱 3종의 테스트 실행과 Steam 배포용 릴리즈. 플랫폼별 필요 템플릿(macOS 는 debug·
+release 가 `macos.zip` 하나를 공유하고, Windows·Linux 는 모드마다 파일이 다르다)과 어느
+OS 에서 무엇을 크로스 빌드할 수 있는지, macOS 의 `universal` 아키텍처와 서명·공증
+(notarization)·Gatekeeper `xattr` 우회, Windows 의 `embed_pck` 단일 실행 파일과 `print()`
+를 보기 위한 `.console.exe`·코드 서명, Linux 실행 권한과 Steam Deck 대응(Mobile 렌더러가
+유리한 이유), `exclude_filter` 로 빌드 산출물이 자기 자신에 들어가지 않게 막는 규칙,
+d3d12·Mobile 렌더러 선택, GodotSteam 연동과 Steam 빌드 체크리스트, 크로스 플랫폼 빌드
+스크립트를 담는다.
+
+### [multiplayer.md](multiplayer.md) — 멀티플레이어
+
+RPC·MultiplayerSpawner·MultiplayerSynchronizer 세 축과 피어 ID 규칙, "승패에 영향을 주는
+것은 반드시 서버 권위로 한다"는 원칙을 먼저 세운다. `ENetMultiplayerPeer` 서버/클라이언트
+생성과 시그널 처리를 포함한 네트워크 매니저 완성 코드, `@rpc` 어노테이션 4개 인자 전체
+(`any_peer` 사용 시 서버 검증 필수, transfer_mode 선택 기준, 채널 분리), 노드 권한 설정과
+`@export peer_id` setter 패턴, `MultiplayerSpawner`의 자동/커스텀 스폰과 노드 이름 일치
+문제, `MultiplayerSynchronizer`의 Spawn/Sync/Watch 구분과 가시성 필터·입력 역방향 동기화,
+서버 권위 플레이어 완성 코드(발사 요청의 3단계 검증 포함), 클라이언트 예측과 서버 화해
+(reconciliation) 구현, 원격 플레이어 100ms 지연 보간, 입력 검증 체크리스트와 레이트
+리미팅, 연결 끊김 처리, 에디터 다중 인스턴스 로컬 테스트를 담는다.
+
+### [project-config.md](project-config.md) — 설정 파일 포맷과 CLI
+
+Godot 파일이 전부 텍스트라는 설계와 직접 편집해도 되는 것/위험한 것을 먼저 구분한다.
+`project.godot`의 INI 문법·전체 구조·섹션별 주요 설정 항목(application/display/physics/
+rendering/debug)과 정적 타입을 강제하는 GDScript 경고 설정, 기능 태그 오버라이드
+(`.mobile`·`.android`) 규칙과 우선순위, **`.tscn` 파일 포맷 전체** — `load_steps` 계산,
+`[ext_resource]`/`[sub_resource]`/`[node]`/`[connection]` 블록, `parent`·`index`·
+`unique_name_in_owner`, `Transform3D` 12개 인자의 의미, 값 표기법 — 을 직접 편집할 수
+있을 만큼 상세히 다룬다. **`.tres` 포맷**은 헤더 필드 전체(`script_class`·`load_steps`·`uid`)와
+**기본값과 같은 프로퍼티가 기록되지 않는 규칙**(그래서 파일이 비어 보여도 값이 없는 게 아니고,
+적힌 줄은 전부 "기본값과 다른 값"이며, **선언 기본값을 바꾸면 저장 안 된 모든 `.tres` 가
+조용히 따라 바뀐다**), 로드가 setter 를 거친다는 것, 중첩 리소스의 `[sub_resource]` 인라인과
+공유가 필요하면 별도 파일로 빼야 한다는 것, **`.res` 가 이진인데도 더 큰 실측 수치**,
+스크립트 일괄 밸런싱, `.import` 파일과 `.godot/`
+캐시, `.gitignore`/`.gitattributes` 권장 설정과 커밋해야 할 것/안 될 것, `godot` CLI 옵션
+전체(헤드리스·내보내기·디버그·유틸리티)와 CI 예시, `SceneTree` 상속 자동화 스크립트,
+`ProjectSettings` 코드 API를 담는다.
+
+### [ai-tooling.md](ai-tooling.md) — LSP·MCP·Codex 연동
+
+AI가 Godot을 다룰 때 쓸 수 있는 네 개의 채널(파일·LSP·MCP·DAP)과 각자 볼 수 있는 것,
+비용과 정보량의 반비례 관계, 알고 싶은 것별 채널 선택 결정표를 먼저 제시한다.
+`godot-mcp`(TypeScript 서버 + GDScript 브리지)의 아키텍처와 **세 가지 캡처 모드**
+(`debug_data` 신호·`mcp:` capture·에디터 API)의 원리, 도구 전체 목록(런타임 관찰·
+브레이크포인트 디버깅·에디터 시점 에셋), 전형적 사용 흐름, 4.0~4.7 프로토콜 호환성.
+`Open-Godot-MCP`(Python, ~35 도구 ~130 액션)의 도구 영역별 정리와 **결정론적 플레이테스트**
+(`godot_game_time freeze`/`step`/`step_until`), `godot_lsp` 5개 액션, DAP 조건부 중단점의
+평가 컨텍스트, 기본 포트. `GodexCLI`의 `#I`/`#F` 마커 인라인 생성과 요청 프로파일,
+그리고 이 스킬이 채택한 GDScript 가드레일. **`Godot AI`(`godot_ai` 애드온, `mcp__godot-ai__*`)**
+는 별도 서버 바이너리 없이 **에디터 플러그인 하나가 MCP 서버를 겸하는** 방식으로,
+대표 도구(`node_create`·`scene_open`·`editor_screenshot`·`project_run`·`logs_read`)와
+**에디터 프로세스(`plugin.gd`)와 게임 프로세스(`runtime/game_helper.gd` 오토로드)로
+갈라지는 구조** — 후자는 **익스포트 빌드에 포함되므로 릴리즈 전에 끈다 —**, 그리고
+Claude Code 쪽에서 `.claude/settings.json` 의 `enabledMcpjsonServers` 로 켜는 방법을 다룬다.
+MCP 설정 파일, `@tool`에서 에디터 API를 쓸 때
+타입 캐스트가 필요한 이유, eval 비활성화·읽기 전용 모드·네트워크 노출·프롬프트 인젝션
+보안 주의사항을 다룬다.
+
+### [editor-plugin.md](editor-plugin.md) — @tool과 EditorPlugin 개발
+
+"에디터도 Godot으로 만든 앱"이라는 전제에서 시작해 `@tool` 스크립트와 `EditorPlugin`의
+차이를 구분한다. `@tool`의 절대 규칙(`Engine.is_editor_hint()` 분기, 에디터에서 만든 노드의
+`owner` 지정), 인스펙터 setter 반응과 `_validate_property`로 조건부 프로퍼티 숨기기,
+`_get_configuration_warnings()`로 설정 누락 알리기. `plugin.cfg`와 `plugin.gd` 구조,
+생명주기 콜백 전체, 플러그인이 등록할 수 있는 것 12종(커스텀 노드 타입·도크·하단 패널·
+툴바·도구 메뉴·오토로드·임포트 플러그인·인스펙터 플러그인·3D 기즈모·디버거 플러그인)과
+`_exit_tree()` 대칭 제거, 에디터 설정 vs 프로젝트 설정 구분과 `add_property_info()` 등록
+패턴, `EditorInterface` API와 스크립트 에디터의 `CodeEdit` 접근·HiDPI 스케일. 실전 도구로
+3D 뷰포트 클릭 배치 플러그인, 임포트 후처리, 헤드리스 씬 일괄 검증 스크립트, 커스텀 기즈모
+전체 소스코드를 제공하고, **Undo/Redo 등록 규칙**을 설명한다.
+
+### [whats-new.md](whats-new.md) — 최신 버전 신기능과 마이그레이션
+
+**최신 Godot에서 새로 쓸 수 있게 된 것**을 영역별로 모으고, 기능마다 도입 버전을
+표기한다. 현재 4.7 / 4.6 / 4.5를 다룬다. 3D 렌더링(`AreaLight3D` 신규 노드와 비용, HDR 출력, Clearcoat 개선, 파티클 3D
+스케일/회전, **SSR 대개편 — Forward+ 전용이라 이 프로젝트엔 못 씀**, 포비티드 렌더링
+최적화), 물리(**Jolt가 정식 기본 엔진화 — 4.6 부터, 4.7 은 유지**, 방향 기반 일방향 충돌, Path3D 콜라이더 스냅),
+애니메이션(`Tween.tween_await()` 예제, AnimationPlayer 트랙 집계), GUI(Control 오프셋 변환,
+`DrawableTexture2D`, 원뿔형 그래디언트, **RichTextLabel `em` 단위 이미지 스케일**), 에디터(3D 정점
+스냅·트랙볼 회전·카메라 추종·룰러 축별 길이, 2D 씬 페인터, MeshLibrary 에디터, CSG
+Autosmooth, 인스펙터 복사/붙여넣기), Android(GABE Gradle, PiP, 커스텀 스플래시, Perfetto,
+Java 인터페이스 구현), XR, 입력(**`VirtualJoystick` 내장 노드**, **게임패드 미포커스 무시
+설정**, **키보드·마우스 장치 ID 상수**, iOS SDL3), 내보내기(선택적 템플릿
+다운로드), 새 Asset Store를 다룬다. **4.6에서 들어와 4.7 노트만 보면 놓치기 쉬운 것**
+(패치 PCK 델타 인코딩, 메시→프리미티브 콜리전 자동 생성)을 따로 모았고, 마지막으로
+**이 프로젝트에 당장 쓸 수 있는 것**을
+추리고, 4.6 이하에서 올릴 때의 마이그레이션 체크리스트(LSP 전체 진단 포함)를 제공한다.
+
+### [asset-store.md](asset-store.md) — Asset Store와 애드온
+
+남이 만든 에셋·애드온을 가져오는 경로와, **설치·활성화가 프로젝트에 정확히 무엇을
+남기는가**를 다룬다. 4.7에서 AssetLib를 대체한 **새 Asset Store**(`store.godotengine.org`,
+아직 beta)와 설치 전 확인할 4가지(4.7.x 호환성, 라이선스 전염, 소스 저장소 생존,
+에디터 전용인지 런타임 포함인지), 설치 경로 3가지(AssetLib 탭 / `.zip` 수동 / git submodule).
+후반부는 **`[editor_plugins]` 섹션의 정확한 의미** — `enabled`가 `plugin.cfg` 경로의
+`PackedStringArray`이고 **여기 적힌 것만 에디터가 로드**하며, `Plugins` 탭 체크박스가
+자동으로 써 넣는 값이라 **직접 편집하지 않는다**는 것 — 과 로드 순서
+(`plugin.cfg` → `script=` → `@tool extends EditorPlugin` → `_enter_tree()`),
+`plugin.cfg` 구조. 그리고 **가장 큰 함정** — 플러그인이 `add_autoload_singleton()`으로
+`[autoload]`를 심으면 그 스크립트는 **게임 프로세스에서 돌고 익스포트 빌드에 포함된다**.
+"에디터 전용이니 런타임 비용 0"이 아니라는 것과, 설치 후 무엇이 남았는지 확인하는
+`grep` 절차를 제공한다.
+
+### [level-design.md](level-design.md) — 맵 만들기
+
+맵을 **무엇으로 만들 것인가**와 **어떤 구조에 담을 것인가**를 다룬다. 제작 방식 5가지
+(**CSG 블록아웃** — 프로토타입 전용, **GridMap + MeshLibrary** — 던전·실내 모듈러,
+**glTF 통째 임포트** — 확정된 아트, **씬 인스턴싱** — 소품, **지형** — 대규모 야외)를
+"최종물로 쓸 수 있나" 기준으로 비교하고, **A(블록아웃) → B(GridMap) + D(프롭), 야외만 C**
+라는 라리엔 3D 권장 경로를 카메라 피치 고정이라는 전제에서 근거와 함께 제시한다.
+방식별 함정을 엔진 실측값으로 정리한다 — CSG `use_collision` 기본 `false`,
+**GridMap `cell_size` 기본값이 `Vector3(2,2,2)`**(1m 아님)과 `bake_navigation` 기본 `false`,
+**Godot 에 터레인 에디터가 내장돼 있지 않다**는 사실(`HeightMapShape3D`는 콜리전 셰이프일 뿐).
+후반부는 씬 골격 — `Main` 아래 `WorldEnvironment`/`DirectionalLight3D`/**`Level`(교체 지점)**/
+`Player`/`CameraRig` 구조와 `Level` 하위 `Geometry`·`NavigationRegion3D`·`Props`·`SpawnPoints`를
+각각 왜 분리하는지 설명한 뒤, **빈 씬에서 그 뼈대까지 만드는 에디터 조작 5단계**(루트 이름
+변경 → 뷰포트 툴바 **⋮**의 `Add Sun`/`Add Environment` → `Level` → `CSGCombiner3D`, 노드 4개)를
+표로 제공한다 — **5단계 직후 `Use Collision` 을 켜지 않으면 벽을 통과한다**.
+**쿼터뷰 카메라**는 `Level` 이 아닌 `Main` 아래에 두고 `Position (0,12,12)` ·
+`Rotation (-45,0,0)` 을 직접 입력한다 — **`y`·`z` 를 같게 유지한 채 키우면 각도는 그대로 두고
+줌아웃만 되므로**(피치 고정·줌 제한이라는 이 프로젝트 카메라 규범과 그대로 맞는다),
+기본 `fov=75` 기준 시야 계산과 `Preview` 체크박스·`Current`·
+`Transform > Align Transform with View` 사용법을 함께 담는다.
+그다음 **문이 뚫린 12×12m 방을 상자 6개로 만드는 좌표표**(바닥 1 + 벽 4 + 문 1,
+**헤드리스로 조립해 AABB 로 검증한 값**)와 **좌표가 전부 정수가 되는 규칙 3개**
+(`CSGBox3D` 원점은 중심 → 벽 위치는 `±방크기/2`, `y` 는 높이의 절반, 바닥만 음수 /
+**벽 두께를 `1` 로 잡는 것이 정수 좌표의 핵심**), 방 크기를 바꿀 때의 대응표,
+그리고 **빼는 상자는 벽보다 두껍게** 잡아야 면이 깨끗이 뚫린다는 점을 담는다. 이어
+`load_threaded_request()`·`load_threaded_get_status()`
+(진행률 `Array` 인자, `THREAD_LOAD_*` 상수 4종) 기반 **맵 비동기 교체 전체 코드**를 제공한다.
+
+### [openworld-3d.md](openworld-3d.md) — 오픈월드 만들기 ★ 넓은 야외 맵
+
+**"맵 크기는 처음부터 최종값, 콘텐츠는 중앙부터 넓힌다"** 를 제1원칙으로 세우고,
+그 근거를 **크기를 바꿔 가며 실제로 만들어 잰 측정**으로 제시한다 —
+5m·50m·250m·1km 는 **상주 비율이 전부 100%** 라 스트리밍이 아무 일도 하지 않고,
+4km 에서 6.2% 가 된다. 즉 **맵 크기는 연속적인 값이 아니라 계단**이며,
+"5×5m 로 시작해 1m 씩 키운다"는 계획은 **1.25km 까지 아무것도 안 변하다가 그 뒤에
+전부 다시 만들게 되는** 방식이다. 임계점이 1.25km 인 이유도 계산으로 보인다
+(상주 상한 (2r+2)²=16개 ≤ 맵 청크 수여야 하므로 250m 청크 기준 한 축 5칸부터).
+**비율 열을 단독으로 읽으면 안 된다는 경고**도 함께 둔다 — 상주 수는 관찰자가
+청크 중심에 있는지 경계에 있는지에 따라 **9~16 사이를 오가고 그것이 정상**이라,
+검증 기준을 9로 잡으면 멀쩡한 동작이 실패로 잡힌다.
+규모별 필요 기법 표(~50m 무기법 / ~500m 시야·안개 / 1.25km~ 스트리밍 /
+2km~ LOD·임포스터 / 100km~ floating origin)와 **float 정밀도 한계**(4km 에서 0.1mm,
+16km 에서 0.5mm, 1mm 넘으면 위치가 끊긴다)를 계산 코드와 함께 담는다.
+본론은 **지면 3층 구조** — 원경 평면 1장(드로우콜 1, **이것이 없으면 시야를 상주
+범위보다 멀리 둘 수 없다**) + 상주 청크 (2r+1)² + `MultiMesh` 랜드마크 1 — 와
+**청크 스트리밍 4장치**(상주 반경 · 경계 50m 전 미리 로딩 · 지연 해제 · 프레임 예산).
+미리 로딩을 **예측 로직이 아니라 판정 중심을 미는 것**으로 구현하는 코드,
+🛑 **순간이동 예외**(겹치지 않는 곳으로 건너뛰면 유예 없이 즉시 정리 — 없으면
+존 이동마다 **메모리가 잠시 두 배**가 되고 그것이 최대 사용량이 된다),
+**상한이 `(2r+1)²` 이 아니라 `(2r+2)²`** 라 검증 기준을 잘못 잡으면 정상 동작이
+실패로 잡힌다는 것. 이어 **좁게 시작하는 법** — 크기가 아니라 `view_distance` 를
+줄이면 안개가 앞을 덮어 작은 맵처럼 느껴지되 구조·좌표는 그대로다 — 와
+**시야 거리는 카메라가 아니라 월드가 정한다**(`far` 와 안개가 어긋나면 잘린 지면이
+그대로 보인다), `FOG_MODE_DEPTH` 로 바꾸면 `fog_density` 가 1.0 으로 재설정된다는 실측.
+설정을 `Resource` 로 빼는 이유와 🛑 **폴백 기본값을 작은 맵으로 둬야 하는 이유**
+(Godot 은 기본값과 같은 값을 `.tres` 에 저장하지 않아, 폴백이 4km 면 맵 파일에
+크기가 기록조차 되지 않는다), `validate()` 로 설정을 스스로 검사하게 하는 패턴.
+후반부는 **기물 흩기** — `MultiMesh`(개수와 무관하게 드로우콜 1) vs 개별
+`MeshInstance3D`(모양이 달라야 할 때) 판단 기준과, **구를 노이즈로 찌그러뜨려 바위를
+만드는 프로시저럴 메시 전체 코드** 및 함정 3가지(**방향으로 노이즈를 뽑아야** UV
+이음매가 안 갈라진다 / `FastNoiseLite` 기본 `frequency` 가 **0.01** 이라 방향을 10배로
+벌려야 한다 / **노멀을 다시 계산**하지 않으면 모양은 울퉁불퉁한데 조명은 매끈한 구로
+계산돼 형태가 안 보인다), 거부 샘플링 배치와 **반지름에 제곱근을 취해야 밀도가 고른**
+이유. 마지막으로 **검증** — **스트리밍은 잘 돌 때 화면에 아무 일도 일어나지 않으므로**
+플레이어를 옮겨 놓고 상주 청크가 따라오는지를 숫자로 확인해야 하고, 대기는 프레임 수가
+아니라 **누적 시간**으로 세야 하며(헤드리스는 프레임이 훨씬 빨리 돈다), 헤드리스에서는
+**드로우콜과 `MultiMesh` 트랜스폼을 잴 수 없다**(더미 렌더러 · 버퍼가 렌더링 서버에 있다)는
+것과 그 대안. **실제로 걸린 함정 8가지**(원점 기물이 스폰을 가리는데 검증은 전부 통과 /
+`specular` 는 3.x 이름이라 조용히 무시 / 이름 없는 노드가 `@CollisionShape3D@2` 가 되어
+경로로 못 찾음 / 원경 평면 z-fighting / `floor()` 가 Variant 반환 / `_process` 의
+`await` 가 SceneTree 를 즉시 종료시킴 / `_initialize` 에서 노드 접근 불가 /
+**HUD 외곽선이 드로우콜 68개**를 먹어 3D 전체(11개)보다 8배 비쌌던 것)와 성능 실측치를 담는다.
+
+### [dictionary.md](dictionary.md) — 용어집
+
+**맨 앞에 분류별 목차**가 있어 찾아보는 문서로 쓴다. Godot 문서·에디터 UI·다른 참조 문서에 그대로 나오는 용어를 **뜻 → 왜 그렇게 부르는가 →
+라리엔 3D 에서 실제로 어떻게 쓰는가** 순으로 정리한다. "이름은 봤는데 무엇인지 모르겠는"
+상태를 없애는 것이 목적이다. 현재 **CSG**(Constructive Solid Geometry, 구성적 입체 기하 —
+불리언 3연산 `OPERATION_UNION`/`INTERSECTION`/`SUBTRACTION`, 엔진에서 확인한 CSG 노드 계층과
+각 프리미티브 기본값, **`use_collision` 기본값이 `false`** 라 켜지 않으면 벽을 통과하는 함정),
+**블록아웃**(blockout·그레이박싱 — 회색 상자로 구조·동선·크기감을 먼저 짜는 단계와 그 이유),
+**방**(room — 집의 방이 아니라 **맵의 구획 단위**. 연습 기준 치수 **12×12m ≈ 43평**과
+**현실보다 훨씬 크게 잡아야 하는 이유** 3가지, 그리고 **실내는 방+복도 / 야외는 넓은 바닥+
+지형 기복+경계 산맥**으로 구조가 완전히 갈린다는 것),
+**"CSG 블록아웃"**(둘을 합친 말 — 구멍을 뚫을 수 있는 건 CSG 뿐이라 표준이 된 이유,
+`MeshInstance3D`·`GridMap` 과의 비교표, 실제 씬 구조 예시),
+**피치·요·롤**(카메라 회전 3축 — **yaw 는 도리도리, pitch 는 끄덕임, roll 은 갸웃**이고
+**줌은 회전이 아니라는 것**, `rotation` 의 `(x,y,z)` 가 곧 (pitch, yaw, roll) 이라는 것,
+고정 시점 게임에서 **피치가 yaw 보다 비싼 이유**),
+**텍스처**(**3D 모델의 표면을 통째로 벗겨 펼쳐 만든 이미지**라는 것 — 종이 상자를
+갈라 펼치는 비유, 펼치는 작업이 **UV 언랩**이고 축이 X·Y·Z 와 겹치지 않게 **U·V** 로
+불린다는 것, UV1 과 **라이트맵 전용 UV2** 의 구분, **"맵"은 담긴 내용의 종류를 가리키는
+말**일 뿐이라 컬러맵·노멀맵·러프니스맵이 전부 그냥 이미지라는 것과 `StandardMaterial3D`
+대응 속성표. **왜 파일이 커지는가를 실측으로 답한다** — 256×256 PNG 를 직접 만들어
+재보니 **단색 761B / 큰 영역 4개 817B / 픽셀마다 다른 실사 87,743B** 로 **115배** 차이가
+난다. 그래서 **텍스처가 큰 이유는 3D 가 아니라 실사**이며, 단색이면 `albedo_color` 하나로
+**0 바이트**다. *"좌표 범위 + 색상만 적으면 되지 않나"* 라는 자연스러운 의문에 **그것이
+벡터 그래픽(SVG)이고 게임에 안 쓰는 이유 둘**로 답한다 — 실사는 영역으로 안 나뉘어
+오히려 커지고, **GPU 는 픽셀을 직접 읽도록 회로가 박힌 하드웨어**다.
+**128px·256px 은 화면 크기가 아니라 이미지 자체의 픽셀 수**이고 2K·4K 와 같은 단위이며,
+**변이 2배면 넓이가 4배**라 용량이 가파르다는 것(해상도별 ASTC 용량표). 마지막으로
+용량을 줄이는 세 수단 — **타일링**(512px 을 8번 반복해 4096px 상당 벽을 64KB 로),
+**아틀라스 공유**, **단색 0바이트** — 과 **타일링이야말로 "좌표 범위 지정" 직관의
+UV 판 구현**이라는 것, 그리고 **카메라 3축 고정 덕에 건물이 화면에서 최대 500px 를
+넘지 않아 2K 텍스처가 필요 없다**는 계산),
+**노멀**(법선 — 면이 향한 방향이고 **조명 밝기가 전적으로 여기 달려 있다**는 것,
+**같은 메시가 각져/매끄럽게 보이는 차이**가 플랫·스무스 셰이딩이라는 것과 CSG `smooth_faces`·
+`autosmooth` 기본값),
+**노멀맵**(RGB 가 노멀의 XYZ 라서 **연보라색인 이유**, 그리고 **실루엣은 안 바뀐다**는 한계),
+**하이폴리·로우폴리·베이킹**("하이폴리에서 구워 로우폴리에 입힌다"의 3단계 흐름,
+모바일에서 디테일을 확보하는 사실상 유일한 방법인 이유, **`normal_enabled` 기본값이
+`false`** 라 텍스처만 넣으면 아무 일도 안 일어나는 함정, OpenGL/DirectX 규약 차이,
+그리고 **"굽는다"가 노멀맵·CSG·라이트맵 세 군데에서 다른 것을 가리킨다**는 정리),
+그리고 **CSG 는 최종물이 아니라는
+제약**(런타임 CPU 실시간 계산 → `bake_static_mesh()`/`bake_collision_shape()` 로 굳히고
+CSG 노드를 삭제하는 흐름)을 다룬다.
+
+**레벨(level)** 도 다룬다 — **캐릭터 레벨(Lv.30)도 LOD 의 L 도 아닌 "맵 한 판"**이라는 것,
+왜 하필 "층(level)"이라 부르게 되었는지, `레벨 디자인`·`레벨 에디터`·`레벨 스트리밍`을
+전부 **"맵"으로 바꿔 읽으면 된다**는 것, **Godot 에는 `Level` 이라는 클래스가 0개**라
+맵을 찾으려면 "씬(scene)"으로 찾아야 한다는 것(엔진에서 확인), 그리고 **씬 트리에 자주
+보이는 `Level` 노드를 줄별로 읽는 표** — `Main`·`Level`·`Geometry`·`Floor`·`Walls`·`Player`
+중 **엔진이 정한 이름은 하나도 없고 괄호 안의 클래스 이름만 엔진 것**이라는 구분,
+빈 `Level` 노드를 두는 이유 3가지(맵 교체 지점·통째 켜고 끄기·트리에서 구분),
+그리고 **`Geometry` 를 `Node3D` 로 바꾸면 벽을 그대로 통과한다**는 함정.
+
+### [getting-started.md](getting-started.md) — 시작하기 ★ 0단계
+
+Godot 을 **내려받아 첫 프로젝트를 만들기까지**와, 이 스킬 밖의 정보를 찾는 법을 다룬다. Standard 빌드(.NET 아님)·실행 파일이 곧 에디터라는 것·Homebrew 설치, 프로젝트 매니저의 탭·Go Online·태그·Recovery Mode, **New Project 에서 렌더러를 반드시 Mobile 로** 고르는 이유, 에디터 다섯 화면과 독, 공식 핵심 개념 4가지(노드·씬·씬 트리·시그널), 설계 철학 7기둥, 공식 Getting Started 각 편이 이 스킬 어디에 대응하는지, **클래스 레퍼런스 한 페이지의 구조(Inherits·Properties·Methods 한정자·setter/getter)와 여는 법(F1·Cmd+클릭)**, 질문하는 법 6가지, 공식 최소 사양(1GB)과 라리엔 규범(3GB)의 관계를 담는다. `example.md` 가 전제하는 "빈 3D 프로젝트" 직전까지다.
+
+### [networking-lowlevel.md](networking-lowlevel.md) — 저수준 네트워킹 🛑 서버가 Godot 이 아닐 때
+
+라리엔 서버(Go UDP Zone·Nakama)는 Godot 이 아니므로 **고수준 멀티플레이어 API 를 쓰지 않는다**는 경계에서 시작한다. 네 통신 방식(PacketPeerUDP·StreamPeerTCP·HTTPRequest·WebSocketPeer)의 단위·보장·라리엔 대응 표, `PacketPeerUDP` 전체 시그니처와 매 틱 폴링 클라이언트, **`StreamPeerBuffer` 엔디안 실측**(`decode_u16` 리틀 고정·`big_endian=true` 로 빅) 과 길이 검사가 있는 디코딩 뼈대, `HTTPRequest` GET/POST·`request_completed` 4인자·`timeout` 기본 0 함정, `HTTPClient` 상태 머신, `WebSocketPeer` 매 프레임 `poll()`·STATE 4종·클린 클로즈, TLS 번들·자체 서명, Android INTERNET 권한·백그라운드, 자주 하는 실수 12가지. 프로토콜 값(포트·매직·SNAP)은 `game` 스킬 `server-protocol.md`, Nakama 는 공식 SDK 문서로 보낸다.
+
+### [best-practices.md](best-practices.md) — 공식 Best practices 와 스타일 가이드
+
+공식 Best practices 12편과 GDScript 스타일 가이드를 **이 스킬 규범의 출처**로 정리했다. 의존성 없는 씬과 주입 5가지(시그널·메서드·Callable·참조·NodePath), `_get_configuration_warnings()`, 권장 트리(Main→World/GUI), 관계 vs 공간(`RemoteTransform3D`·`top_level`), 씬 vs 스크립트 판단 3가지, **오토로드가 만드는 세 문제와 대안(`class_name`·`static`·`Resource`)**, 노드 대신 `Object`·`RefCounted`·`Resource` 표, 참조 얻기 6방법과 덕 타이핑 검사, `_notification` 상수와 콜백 고르기, Array·Dictionary·Object 연산 비용 표, 값을 먼저 트리는 나중에·`@export` 에 `preload` 금지, snake_case·PCK 대소문자, **명명 규칙 9행 표와 코드 순서 17단계**, 공식과 이 스킬이 다른 곳 5가지.
+
+### [debugging.md](debugging.md) — 디버깅 ★ 실행한 뒤 이상할 때
+
+`lsp.md`(실행 전) 다음 단계다. 문제를 찾는 순서 8단계, Output 패널의 메시지 4종과 `print` 계열 11함수(**`push_error` 는 Errors 탭으로**), Debugger 9탭(Stack Trace·Errors·**Evaluator REPL**·Profiler·Visual Profiler·Network Profiler(고수준 전용)·Monitors·Video RAM·Misc Clicked Control), 브레이크포인트 3방법과 `@tool` 제한, **Remote 씬 트리로 "스폰한 몹이 안 보여요" 3분 절차**, 오류 메시지 형식과 `Nil` 오류의 진짜 원인 표 10종, Debug 메뉴 옵션 9개, 프로파일러 Inclusive/Self·`get_ticks_usec`, ObjectDB 스냅샷 diff(4.6+)·고아 노드, 커스텀 모니터, 원격 디버그와 **Android 크래시 심볼화(native debug symbols·ndk-stack)**, 공식 Troubleshooting 8항목(비리소스 필터·PCK 대소문자·Recovery Mode), 내비게이션 디버그.
+
+### [keywords.md](keywords.md) — 트리거 키워드 색인
+
+2026-09-03 에 `SKILL.md` 의 `description` 을 1,024자로 줄이면서 잘라낸 **9,319자의 상황·키워드 원문**을 한 글자도 버리지 않고 옮긴 파일이다. 트리거에는 쓰이지 않지만, 어떤 질문이 어느 reference 로 가야 하는지 찾는 검색 색인으로 쓴다. 새 키워드는 여기와 해당 reference 머리의 "이 문서로 오는 상황" 줄에 함께 적는다.

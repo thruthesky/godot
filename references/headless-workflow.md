@@ -1,5 +1,7 @@
 # 에디터 없이 작업하기 — 터미널만으로 도는 개발 루프
 
+> **이 문서로 오는 상황** — 에디터 없이 터미널만으로 — 6가지 기본 명령, `install.sh` 로 빌드·설치·실행, iOS 실기기 preset, Remote Deploy 와의 관계
+
 Godot 에디터 GUI 를 열지 않고 **코드 작성 → 검증 → 실행 → 실기기 확인**까지 끝내는 방법이다.
 Claude 가 이 프로젝트에서 작업할 때의 **기본 작업 방식**이며, CI 에서도 같은 명령을 쓴다.
 
@@ -10,7 +12,7 @@ Claude 가 이 프로젝트에서 작업할 때의 **기본 작업 방식**이�
 
 1. [개발 루프 한 장](#1-개발-루프-한-장)
 2. [기본 명령 6가지](#2-기본-명령-6가지)
-3. [실기기 설치 — `install.sh`](#3-실기기-설치--installsh)
+3. [실기기 설치 — `install.sh`](#3-빌드설치실행--installsh)
 4. [iOS 실기기가 되게 하는 preset 설정](#4-ios-실기기가-되게-하는-preset-설정)
 5. [에디터 Remote Deploy 와의 관계](#5-에디터-remote-deploy-와의-관계)
 6. [자주 막히는 지점](#6-자주-막히는-지점)
@@ -281,3 +283,10 @@ Remote Deploy 와 `install.sh` 는 결과가 같다. 에디터를 띄우지 않�
 - [export-build-android.md](export-build-android.md) — Android APK·AAB·adb
 - [lsp.md](lsp.md) — LSP 정적 검증 (코드 작성 직후 필수)
 - `docs/godot/에디터 없이 작업.md` §13 — 사람이 읽는 전 과정 예제
+
+## 공식 문서
+
+- Command line tutorial: https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
+- Using an external text editor: https://docs.godotengine.org/en/stable/tutorials/editor/external_editor.html
+- One-click deploy: https://docs.godotengine.org/en/stable/tutorials/export/one-click_deploy.html
+- Overview of debugging tools: https://docs.godotengine.org/en/stable/tutorials/scripting/debug/overview_of_debugging_tools.html

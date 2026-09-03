@@ -1,5 +1,7 @@
 # @tool 스크립트와 EditorPlugin
 
+> **이 문서로 오는 상황** — 에디터 안에서 도는 코드 — `@tool`·`EditorPlugin`·기즈모·인스펙터 플러그인·임포트 후처리·Undo/Redo. 🛑 에셋 보정 용도 금지(CLAUDE.md)
+
 ## 목차
 
 1. [핵심 개념 — 에디터도 게임이다](#1-핵심-개념--에디터도-게임이다)
@@ -972,3 +974,7 @@ undo.commit_action()
 | `_enter_tree`에서 오토로드 등록 | 토글 동작 불일치 | `_enable_plugin` 사용 |
 | 에디터에서 무거운 `_process` | 에디터 응답 없음 | `set_process(false)` 기본, 필요할 때만 |
 | `_forward_3d_gui_input`에서 항상 `STOP` | 에디터 조작 불가 | 처리한 입력만 `STOP` |
+
+## 공식 문서
+
+

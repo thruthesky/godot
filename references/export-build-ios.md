@@ -1,5 +1,7 @@
 # iOS 빌드 — 테스트 빌드 · 설치 · 실행 · 릴리즈
 
+> **이 문서로 오는 상황** — Xcode 프로젝트 내보내기·시뮬레이터·실기기·TestFlight·App Store
+
 Godot 은 iOS 에서 **`.ipa` 를 직접 완성하지 않는다.** 템플릿 개념은
 [export-build.md](export-build.md) 를 먼저 볼 것.
 
@@ -331,3 +333,7 @@ xcrun altool --upload-app -f ./ipa/Laryen3D.ipa -t ios \
 - [export-build-android.md](export-build-android.md) — Android
 - [export-build-desktop.md](export-build-desktop.md) — macOS·Windows·Linux
 - [performance-mobile.md](performance-mobile.md) — 모바일 최적화와 기기 등급 감지
+
+## 공식 문서
+
+

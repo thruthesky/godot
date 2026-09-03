@@ -1,5 +1,7 @@
 # Godot LSP — GDScript 정적 검증
 
+> **이 문서로 오는 상황** — 🛑 GDScript 를 쓰거나 고친 **직후 반드시** — `gdscript_lsp.py diagnose`, 경고 종류, DAP, 문제 해결
+
 > **이 문서의 내용은 선택이 아니다.** GDScript를 작성하거나 수정한 뒤에는
 > 반드시 LSP로 진단해서 오류가 없음을 확인한 뒤 작업을 마친다.
 
@@ -601,3 +603,10 @@ MCP 도구로 런타임 상태를 관찰한다.
 | 경고가 전혀 안 나옴 | 경고 비활성 | `project.godot`의 `gdscript/warnings/enable=true` |
 | addons의 경고가 섞여 나옴 | | `gdscript/warnings/exclude_addons=true` |
 | 진단은 깨끗한데 실행하면 오류 | 정적 분석의 한계 | 11절 참고 — 실행 확인 필요 |
+
+## 공식 문서
+
+- Command line tutorial: https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
+- Using an external text editor: https://docs.godotengine.org/en/stable/tutorials/editor/external_editor.html
+- One-click deploy: https://docs.godotengine.org/en/stable/tutorials/export/one-click_deploy.html
+- Overview of debugging tools: https://docs.godotengine.org/en/stable/tutorials/scripting/debug/overview_of_debugging_tools.html

@@ -1,5 +1,7 @@
 # 3D 내비게이션과 AI 이동
 
+> **이 문서로 오는 상황** — 길찾기와 적 AI — 내비메시 베이킹·`NavigationAgent3D`·회피·장애물·링크·레이어·런타임 재베이킹·디버그·최적화·상태 머신
+
 ## 목차
 
 1. [핵심 개념 — 서버 기반 길찾기](#1-핵심-개념--서버-기반-길찾기)
@@ -894,6 +896,35 @@ func _goto_next_patrol_point() -> void:
 
 ---
 
+## 12-A. 디버그 — 내비메시가 정말 거기 있나
+
+> 🛑 디버그 기능·설정·API 는 **디버그 빌드에서만** 있다. 릴리스 코드에 남기지 않는다.
+
+| 무엇 | 어디 |
+|---|---|
+| 에디터 안 | 기본으로 보인다 |
+| **실행 중에도** | 메인 메뉴 **Debug › Visible Navigation** (회피는 **Visible Avoidance**) |
+| 코드로 | `NavigationServer3D.set_debug_enabled(true)` (4.7.2 doctool 확인) |
+| 모양·색 | Project Settings **`debug/shapes/navigation`** — `enable_edge_lines`(폴리곤 테두리) · `enable_edge_lines_xray`(벽 너머로) · `enable_geometry_face_random_color`(폴리곤마다 다른 색 — **폴리곤이 몇 개인지** 한눈에) · `edge_connection_color`(메시끼리 연결 — 🛑 서버가 켜져 있을 때만 보인다) |
+| 성능 | Debugger › **Monitors › Navigation Process** — 맵·리전·에이전트·회피 갱신에 쓴 ms. **경로 탐색은 포함되지 않는다.** 물리 틱 안에서 돌므로 이 값이 크면 Physics Process 도 같이 커진다 |
+
+`NavigationServer3D` API 만으로 만든 것은 디버그 그리기에 안 나온다 — 노드(`NavigationRegion3D`·`NavigationAgent3D`) 기반만.
+읽는 법 전체는 [debugging.md §12](debugging.md).
+
+## 12-B. 느릴 때 — 원인은 다섯 군데 중 하나다
+
+공식 *Optimizing Navigation Performance* 의 요지. MMORPG 의 몹 수십 마리가 한꺼번에 길을 찾는 상황이 바로 이것이다.
+
+| 어디가 느린가 | 왜 | 처방 |
+|---|---|---|
+| **씬 파싱**(베이킹 입력) | 시각 메시를 소스로 쓰면 GPU 에서 복사해 오고 폴리곤이 너무 많다 | 🔑 **물리 콜리전 셰이프를 소스로** — 단순하고 CPU 에 있다. 둥근 모양(구·토러스) 피함 |
+| **베이킹** | 셀이 너무 작다 · 파티션이 무겁다 · 🛑 **노드 스케일로 줄인 지오메트리**는 원래 크기로 복셀화된다 | 런타임은 **백그라운드 스레드**에서 · `cell_size`·`cell_height` 올림 · `SamplePartitionType` 을 watershed → monotone/layers · 스케일은 메시 자체에 적용(`model` 스킬 규범과 같다) |
+| **에이전트 쿼리** | 매 프레임 `target_position` 을 다시 넣는다 → 매 프레임 경로 계산 | 🛑 **플레이어 위치를 매 프레임 넣지 않는다.** 일정 거리 이상 움직였을 때만. "도달 가능한가" 를 미리 묻지 않는다(그것도 경로 계산이다). 에이전트를 **그룹으로 나눠** 같은 프레임에 몰리지 않게 |
+| **경로 탐색** | 폴리곤·엣지 수에 비례한다(맵 크기가 아니라) | 내비메시를 단순하게. 🛑 **도달 불가능한 목표**는 전체를 뒤져야 해서 갑자기 느려진다 — 정상이며 메시가 너무 세밀하다는 신호 |
+| **맵 동기화** | 메시를 바꿀 때 서버가 엣지를 다시 잇는다 — 정점 병합은 싸고 **엣지 연결은 비싸다** | 인접 메시의 정점을 **같은 자리에** 두어 정점으로 병합되게. Monitors 의 내비 통계에서 edge connection 비율 확인 |
+
+공식: https://docs.godotengine.org/en/stable/tutorials/navigation/navigation_optimizing_performance.html · https://docs.godotengine.org/en/stable/tutorials/navigation/navigation_debug_tools.html
+
 ## 13. 자주 하는 실수
 
 | 실수 | 증상 | 해결 |
@@ -911,3 +942,7 @@ func _goto_next_patrol_point() -> void:
 | 매 프레임 `bake_navigation_mesh()` | 프레임 정지 | 비동기 베이킹 또는 링크 토글 |
 | navmesh가 계단을 인식 못 함 | 경로가 끊김 | `agent_max_climb` 증가 |
 | 좁은 통로가 navmesh에서 사라짐 | 경로 없음 | `cell_size` 감소, `agent_radius` 확인 |
+
+## 공식 문서
+
+

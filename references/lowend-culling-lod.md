@@ -1,5 +1,7 @@
 # 저사양 폰에서 "그리는 양"을 줄이는 6가지 엔진 기능
 
+> **이 문서로 오는 상황** — LOD·가시 범위·오클루전·해상도 스케일링·VRS 를 **쓸지 말지** — 엔진 기능별 저사양 판정
+
 > Godot 공식 문서 6편을 **3GB RAM 폰 · 3D MMORPG** 기준으로 골라 정리한 것이다.
 > 원문은 "이 기능이 무엇인가"를 말하고, 이 문서는 **"우리 기기에서 쓸 것인가"** 를 말한다.
 >
@@ -538,3 +540,7 @@ iOS 도 전 기종 미지원입니다.
 | §5 | [Occlusion culling](https://docs.godotengine.org/en/stable/tutorials/3d/occlusion_culling.html) |
 | §6 | [Resolution scaling](https://docs.godotengine.org/en/stable/tutorials/3d/resolution_scaling.html) |
 | §7 | [Variable rate shading](https://docs.godotengine.org/en/stable/tutorials/3d/variable_rate_shading.html) |
+
+## 공식 문서
+
+

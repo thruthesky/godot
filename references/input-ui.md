@@ -1,5 +1,7 @@
 # 입력 처리와 Control UI
 
+> **이 문서로 오는 상황** — 입력 처리와 Control 의 **원리** — 전파 순서 5단계, InputMap, 게임패드, 터치·가상 조이스틱, 종료·백그라운드 알림, Theme·BBCode·포커스. 화면 조립 자체는 [hud-menu.md](hud-menu.md)
+
 ## 목차
 
 1. [핵심 개념 — 입력 전파 순서](#1-핵심-개념--입력-전파-순서)
@@ -584,9 +586,10 @@ HUDLayer (CanvasLayer)
 
 #### 카메라 기준으로 변환한다 — 3D에서 가장 중요한 부분
 
-조이스틱이 주는 것은 **화면 기준 2D 벡터**다. 라리엔 3D는 카메라 yaw를 45도 단위로
-회전할 수 있으므로(→ CLAUDE.md 카메라 규칙), 이 벡터를 그대로 월드 이동에 쓰면
-카메라를 돌린 뒤 조작 방향이 어긋난다. 카메라 기준으로 변환해야 한다.
+조이스틱이 주는 것은 **화면 기준 2D 벡터**다. 라리엔 3D 의 카메라는 **yaw 0° 고정**이다(초기 설계의
+45° 스냅은 폐기 — `CLAUDE.md` 결정 이력 · `game` 스킬 SSOT §1). 고정이면 화면 벡터를 월드로 바꾸는 변환이
+**상수**라 단순하지만, 아래 코드는 **카메라 basis 를 읽는 일반형**으로 적어 둔다 — 컷신·연출에서 카메라를
+잠시 돌릴 때도 그대로 동작하기 때문이다. (🛑 예전 판의 "yaw 를 45도 단위로 회전할 수 있으므로" 는 SSOT 와 충돌해 2026-09-03 정정)
 
 ```gdscript
 extends CharacterBody3D
@@ -803,6 +806,50 @@ func _apply_actions() -> void:
 `Input.get_vector()`가 그대로 동작한다.
 
 ---
+
+## 7-A. 종료 요청과 백그라운드 알림 — 앱이 사라질 때
+
+**폰에서는 앱이 "종료" 되지 않고 "백그라운드로 갔다가 언제든 죽는다".** 저장·소켓 정리를 할 자리는 하나뿐이다.
+공식 *Handling quit requests* 의 요지이고, 값은 4.7.2 doctool·실측이다.
+
+| 플랫폼 | 무엇이 오나 | 언제 | 기본 동작 |
+|---|---|---|---|
+| 데스크톱·웹 | `NOTIFICATION_WM_CLOSE_REQUEST` | 창 ✕ | **`auto_accept_quit = true`(기본)** — 알림 뒤 바로 종료 |
+| **Android** | `NOTIFICATION_WM_GO_BACK_REQUEST` | **뒤로가기 버튼** | **`quit_on_go_back = true`(기본)** — 🛑 **뒤로가기 한 번에 앱이 꺼진다.** 게임은 대개 끈다(Project Settings › Application › Config › **Quit On Go Back**) |
+| **Android·iOS** | `NOTIFICATION_APPLICATION_PAUSED` / `RESUMED` | 홈 버튼·전화·화면 꺼짐 | 없음 — 🛑 **`WM_CLOSE_REQUEST` 는 오지 않는다.** 백그라운드에서 OS 가 언제든 죽인다. **iOS 는 PAUSED 뒤 약 5초** 안에 끝내야 한다 |
+| 모든 플랫폼 | `NOTIFICATION_APPLICATION_FOCUS_IN` / `OUT` | 포커스 | 소리 줄이기 등 |
+
+```gdscript
+## 어느 노드에든 (오토로드가 자연스럽다). 종료·백그라운드에서 할 일을 한 곳에 모은다.
+extends Node
+
+func _ready() -> void:
+	get_tree().auto_accept_quit = false     # 데스크톱: 내가 저장한 뒤 직접 quit() 한다
+	get_tree().quit_on_go_back = false      # Android: 뒤로가기로 앱이 꺼지지 않게 — 게임 안에서 처리
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_WM_CLOSE_REQUEST:      # 데스크톱 ✕
+			_save_and_disconnect()
+			get_tree().quit()
+		NOTIFICATION_WM_GO_BACK_REQUEST:    # Android 뒤로가기 — 메뉴를 연다든지
+			_on_back_pressed()
+		NOTIFICATION_APPLICATION_PAUSED:    # 🛑 폰에서 "마지막 기회". 5초 안에(iOS)
+			_save_and_disconnect()
+		NOTIFICATION_APPLICATION_RESUMED:   # 돌아왔다 — 소켓 재연결
+			_reconnect()
+```
+
+**내가 종료시킬 때** — `get_tree().quit()` 만 부르면 다른 노드에 `WM_CLOSE_REQUEST` 가 **가지 않는다.**
+저장·확인 대화상자를 거치게 하려면 먼저 알림을 뿌린다.
+
+```gdscript
+get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST)   # 모두에게 알린다 (종료는 안 됨 — 3.x 와 다르다)
+get_tree().quit()                                                          # 그 다음 종료
+```
+
+라리엔의 소켓 재연결 절차는 [networking-lowlevel.md §8](networking-lowlevel.md)·`game` 스킬 [nakama-godot.md §12](../../game/references/nakama-godot.md).
+오디오를 백그라운드에서 멈추는 예는 [audio.md §10](audio.md). 공식: https://docs.godotengine.org/en/stable/tutorials/inputs/handling_quit_requests.html
 
 ## 8. 키 리바인딩
 
@@ -1462,3 +1509,7 @@ func _on_button_focused(btn: Control) -> void:
 | 알트탭 후 마우스가 캡처된 채 | 다른 창 조작 불가 | `NOTIFICATION_APPLICATION_FOCUS_OUT` 처리 |
 | 노치 기기에서 UI 잘림 | 세이프 에어리어 미적용 | `DisplayServer.get_display_safe_area()` |
 | 게임패드 스틱 드리프트로 UI 전환 | 임계값 없음 | `axis_value` 0.5 이상만 인정 |
+
+## 공식 문서
+
+

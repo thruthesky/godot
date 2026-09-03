@@ -1,5 +1,7 @@
 # 3D 렌더링 — 렌더러·머티리얼·조명·환경
 
+> **이 문서로 오는 상황** — 보이는 것 — 렌더러 3종 비교, Mobile 에서 못 쓰는 것, `StandardMaterial3D` 전체, 투명도, 조명·그림자·GI·`ReflectionProbe`·`WorldEnvironment`·Decal·파티클·뷰포트. 🛑 라리엔은 광원 0개
+
 > **이 프로젝트는 Mobile 렌더러다.** `project.godot`의
 > `renderer/rendering_method="mobile"`. 아래 제약을 항상 전제한다.
 
@@ -68,8 +70,9 @@
 **전역 조명**
 
 - `SDFGI`, `VoxelGI` 노드를 추가하지 않는다. 씬에 있어도 렌더링되지 않는다.
-- 대신 `LightmapGI`로 정적 지오메트리를 베이킹하고, 동적 오브젝트는
-  `LightmapProbe` 또는 `ReflectionProbe`로 처리한다.
+- 일반 Godot 에서는 `LightmapGI`로 정적 지오메트리를 굽고, **동적 오브젝트의 간접광은 `LightmapProbe`**,
+  **반사는 `ReflectionProbe`** 가 맡는다(역할이 다르다 — 공식 *Using Lightmap global illumination*).
+  🛑 **라리엔 3D 는 `LightmapGI` 도 쓰지 않는다** — 광원 0개·정점 컬러 베이크(SSOT §2 · [lowend-3gb-60fps.md §4](lowend-3gb-60fps.md)).
 
 **화면공간 효과**
 
@@ -1023,3 +1026,7 @@ $MinimapRect.texture = sub.get_texture()
 | `far`가 매우 큼 | Z-fighting | 필요한 거리만 |
 | SubViewport 항상 갱신 | 프레임 저하 | `UPDATE_WHEN_VISIBLE` |
 | 그림자 최대 거리가 과함 | 그림자가 흐림 + 느림 | `directional_shadow_max_distance` 축소 |
+
+## 공식 문서
+
+

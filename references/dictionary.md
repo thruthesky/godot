@@ -1,5 +1,7 @@
 # 용어집 — Godot·3D 개발 용어
 
+> **이 문서로 오는 상황** — 용어 하나의 뜻 — 지오메트리·CSG·블록아웃·레벨·방·피치/요/롤·투영·임포스터·텍스처·밉맵·노멀·LOD·베이킹
+
 Godot 문서·에디터 UI·이 스킬의 다른 참조 문서에 그대로 나오는 용어를 **뜻 → 왜 그렇게
 부르는가 → 라리엔 3D 에서 실제로 어떻게 쓰는가** 순으로 정리한다.
 "이름은 봤는데 무엇인지 모르겠는" 상태를 없애는 것이 이 문서의 목적이다.
@@ -1211,3 +1213,73 @@ CSG 로 짓는다 → 걸어보며 고친다 → 확정되면 bake → CSG 노�
 
 **블록아웃은 버릴 것을 전제로 빠르게 만드는 단계다.** 예쁘게 만들려고 시간을 쓰면
 목적에서 벗어난다. 회색 상자인 채로 **"이 던전 재미있나?"에 답이 나오면 그 단계는 성공**이다.
+
+---
+
+## 코드에서 만나는 엔진 용어 — 프로그래밍 쪽
+
+위까지는 **형상·아트** 용어였다. 여기부터는 **스크립트를 읽을 때 막히는 엔진 용어**다.
+문법 자체는 [gdscript.md](gdscript.md), 개념 본문은 [basics/](basics.md) 에 있고, 여기는 **뜻 한 가지**만 적는다.
+
+### Variant — "아무 타입이나 담는 상자"
+
+GDScript 의 모든 값이 겉으로는 `Variant` 다. `var x = 1` 이라고 타입을 안 적으면 `x` 는 **Variant 변수**라
+나중에 문자열을 넣어도 된다. `var x: int = 1` 이나 `x := 1` 로 **고정**하면 실수를 컴파일 때 잡는다 — [basics/04-script.md](basics/04-script.md) `:=`.
+엔진 함수가 `Variant` 를 돌려주면(`get_node()`·`Dictionary` 값·`JSON.parse_string()`) **그 자리에서 타입을 확인하거나 캐스팅**한다 — SKILL.md 절대 규칙 "`:=` 는 우변 타입이 확실할 때만".
+
+### PackedScene — 씬 파일을 메모리에 올린 "설계도 리소스"
+
+`.tscn` 을 `load()`/`preload()` 하면 나오는 것. **아직 노드가 아니다.** `instantiate()` 를 불러야 노드 트리(실체)가 나온다.
+붕어빵 틀(PackedScene)과 붕어빵(인스턴스)의 관계 — [basics/03-instancing.md](basics/03-instancing.md) 4단계.
+`@export var enemy_scene: PackedScene` 으로 인스펙터에서 `.tscn` 을 끌어다 넣는 것이 전형적 사용이다.
+
+### NodePath — 노드를 가리키는 "주소 문자열"
+
+`$Player` 의 정체. `"../Player"`·`"Level/Geometry/Floor"` 처럼 **트리에서의 상대·절대 경로**다.
+`@export var target: Node3D` 도 `.tscn` 안에는 `NodePath("../Player")` 로 저장된다 — 차이는 **에디터가 추적해 갱신해 주느냐**([basics/01-world.md](basics/01-world.md)).
+🛑 문자열이므로 노드 이름을 바꾸면 조용히 깨진다. `%Player`(유니크 이름)는 위치 변화에는 버틴다.
+
+### SceneTree — 실행 중인 게임 전체
+
+`get_tree()` 로 잡는 **하나뿐인 객체**. 씬을 바꾸고(`change_scene_to_file`), 멈추고(`paused`), 끝내고(`quit`),
+그룹으로 노드를 찾고(`get_nodes_in_group`), 프레임을 기다린다(`await get_tree().process_frame`).
+🛑 `get_tree().root` 는 **엔진이 얹은 `Window`** 이지 내 씬의 루트가 아니다 — 내 씬의 루트는 `get_tree().current_scene` ([basics/02-scene.md](basics/02-scene.md)).
+
+### Autoload(오토로드) — 시작할 때 자동으로 트리에 붙는 노드
+
+`Project › Project Settings › Globals › Autoload` 에 등록한 씬·스크립트. 루트 바로 아래에 붙고 씬을 바꿔도 남으며 **이름으로 어디서나** 접근한다(`GameState.hp`).
+🛑 편하다고 다 넣지 않는다 — 전역 상태는 버그 범위를 프로젝트 전체로 넓힌다 → [best-practices.md §3](best-practices.md). "싱글턴" 과 같은 말로 쓰이지만 **엄밀히는 자동 로드일 뿐** 인스턴스를 더 만들 수 있다.
+
+### Signal(시그널) — "무슨 일이 일어났다" 는 통지
+
+노드가 밖에 알리는 이벤트. `pressed`·`body_entered` 처럼 엔진이 주는 것과 `signal died` 처럼 내가 선언하는 것.
+받는 쪽이 `connect()` 로 붙는다. **부르는 쪽이 받는 쪽을 몰라도 된다**는 것이 핵심(옵저버 패턴) — [basics/05-signal.md](basics/05-signal.md). Godot 4 에서 시그널은 **값**이라 `died.connect(f)`·`died.emit()` 로 쓴다.
+
+### Callable(콜러블) — "부를 수 있는 것" 을 값으로 든 것
+
+함수 하나를 변수에 담은 것. `died.connect(_on_died)` 의 `_on_died` 가 Callable 이고, `func(): print("x")` 람다도 Callable 이다.
+`tween.tween_callback(queue_free)`·`Performance.add_custom_monitor("x", _count)` 처럼 **"나중에 이걸 불러 줘"** 를 넘길 때 쓴다.
+`.bind(인자)` 로 인자를 미리 붙이고 `.call()` 로 부른다.
+
+### RefCounted — 참조가 0 이 되면 스스로 사라지는 객체
+
+`Node` 가 아닌 데이터 클래스의 기본 부모(`extends` 를 생략한 스크립트가 이것이다). 누가 붙잡고 있는 동안 살고, 아무도 안 잡으면 자동으로 지워진다.
+`Node` 는 이것이 **아니다** — 트리에서 빼도 `queue_free()` 를 안 하면 남는다(고아 노드). `Resource` 는 RefCounted + 저장 기능 → [best-practices.md §4](best-practices.md).
+
+### RID — 서버 쪽 자원의 "번호표"
+
+`RenderingServer`·`PhysicsServer3D`·`NavigationServer3D` 가 관리하는 것(메시·바디·내비맵)을 가리키는 **불투명한 ID**. 노드는 사실 이 RID 를 감싼 껍데기다.
+`NavigationServer3D.map_get_path(map_rid, …)` 처럼 **서버 API 를 직접 쓸 때만** 만난다 — [navigation-3d.md §9](navigation-3d.md) · [performance-mobile.md](performance-mobile.md) "서버 직접 사용". 대개는 노드 API 로 충분하다.
+
+### Anchor(앵커) · Offset · Size Flags — UI 가 "어디에 붙고 얼마나 늘어나나"
+
+`Control` 노드의 위치는 좌표가 아니라 **부모의 어느 비율 지점(앵커 0~1)에 붙고 거기서 몇 px 떨어졌나(오프셋)** 로 정한다. 화면 크기가 바뀌어도 따라간다.
+**Size Flags** 는 컨테이너 안에서 **남는 공간을 차지할지(`SIZE_EXPAND_FILL`)** 를 정한다. 이 셋이 "좌표로 놓지 않는다" 원칙의 도구다 → [hud-menu.md §2~§4](hud-menu.md).
+
+### delta — 지난 프레임에서 지금까지 걸린 시간(초)
+
+`_process(delta)`·`_physics_process(delta)` 의 인자. **60fps 면 약 0.0167.** 속도에 곱해야 프레임 속도가 달라도 같은 거리를 간다(`velocity * delta` — 단 `move_and_slide()` 는 안에서 곱하므로 또 곱하지 않는다). [basics/09-controller.md](basics/09-controller.md) 의 "60배로 추락" 함정.
+
+## 공식 문서
+
+

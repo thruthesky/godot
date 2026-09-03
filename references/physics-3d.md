@@ -1,5 +1,7 @@
 # 3D 물리 — Jolt Physics
 
+> **이 문서로 오는 상황** — 부딪히고 움직이는 것 — 충돌체 4종, 레이어·마스크, 콜리전 셰이프, `CharacterBody3D`, `RigidBody3D`, `Area3D`, `RayCast3D`, 조인트, Jolt, 물리 보간. 🛑 컨트롤러 예제는 학습용 자유 시점
+
 이 프로젝트는 `project.godot`에서 `3d/physics_engine="Jolt Physics"`로 설정되어 있다.
 모든 물리 코드는 Jolt 기준으로 작성한다.
 
@@ -433,6 +435,10 @@ move_and_slide() -> bool               # 충돌했으면 true
 ---
 
 ## 6. 1인칭 캐릭터 컨트롤러 (완성 코드)
+
+> 🛑 **학습용 자유 시점 코드다.** 아래 컨트롤러는 마우스로 카메라를 돌리는 일반 1인칭/3인칭이다 — **Godot 의 `CharacterBody3D` 를 배우기 위한 것**이다.
+> **라리엔 3D 본체의 카메라는 피치 −45°·yaw 0°·roll 0° 고정, 직교 투영, 줌은 `size`** 다(`game` 스킬 SSOT §1). 본체에 이 코드를 복사하면 카메라 회전 부분을 **버려야** 한다.
+> 고정 카메라에서 조이스틱 입력을 월드 방향으로 바꾸는 법은 [input-ui.md §7](input-ui.md) "카메라 기준으로 변환한다".
 
 ```gdscript
 class_name FPSController
@@ -1111,10 +1117,11 @@ Jolt에서 지원하지 않는다. 이 값들을 설정해도 무시되므로 �
 
 ## 14. Jolt 고유 사항
 
-### 4.7에서 정식 기본 엔진이 되었다
+### 4.6부터 새 프로젝트의 기본 엔진이다
 
-Jolt는 4.4에서 **실험적(experimental) 옵션**으로 들어왔다. 4.7에서 실험 딱지가
-떨어지고 **새로 만드는 3D 프로젝트의 기본 물리 엔진**이 되었다.
+Jolt는 4.4에서 **실험적(experimental) 옵션**으로 들어왔고(4.5 까지 공식 문서가 experimental 로 표기),
+**4.6 부터 새로 만드는 3D 프로젝트의 기본 물리 엔진**이 되었다. 4.7 은 그 상태를 유지한다.
+(공식 4.4·4.5 *Using Jolt Physics*: "not finished, experimental" / 4.6·4.7: "By default, new projects will use it as the physics engine." — 2026-09-03 대조)
 (Jolt는 Death Stranding 2 같은 상용 게임에도 쓰이는 독립 물리 엔진이다.)
 
 **기존 프로젝트는 자동으로 바뀌지 않는다.** 4.7로 올려도 `project.godot`에 적힌
@@ -1301,3 +1308,7 @@ func fire_hitscan(from: Vector3, direction: Vector3, range_m: float) -> void:
 | 캡슐 대신 박스로 캐릭터 | 계단·경사에서 걸림 | `CapsuleShape3D` 사용 |
 | 슬립 전부 비활성화 | 프레임 저하 | 꼭 필요한 바디만 |
 | 조인트에 `bias`/`softness` 설정 (Jolt) | 무시됨 | Jolt 지원 파라미터만 사용 |
+
+## 공식 문서
+
+

@@ -1,5 +1,7 @@
 # 최신 버전 신기능과 마이그레이션
 
+> **이 문서로 오는 상황** — 버전이 다를 때 — 4.4~4.7 신기능·마이그레이션 체크리스트·이 프로젝트에 당장 쓸 것
+
 **최신 Godot에서 새로 쓸 수 있게 된 것**을 영역별로 모은 문서다.
 기능마다 **어느 버전에서 들어왔는지** 표기하므로, 쓰기 전에 대상 버전을 확인한다.
 
@@ -133,10 +135,11 @@ VR/XR 프로젝트에 직접적인 성능 이득이 있다.
 
 ## 2. 물리
 
-### Jolt Physics가 기본 물리 엔진이 되었다
+### Jolt Physics 가 기본 물리 엔진이다 — 🛑 4.7 이 아니라 **4.6** 의 변경이다
 
-4.4에서 **실험적 옵션**으로 들어왔던 Jolt가 4.7에서 실험 딱지를 떼고
-**새 3D 프로젝트의 기본 물리 엔진**이 되었다.
+4.4에서 **실험적 옵션**으로 들어왔던 Jolt가 **4.6 에서** 실험 딱지를 떼고
+**새 3D 프로젝트의 기본 물리 엔진**이 되었다. 4.7 은 그 상태를 유지한다.
+(이 절은 처음에 4.7 신기능으로 잘못 적혔다 — 공식 4.4·4.5 *Using Jolt Physics* 는 "experimental", 4.6·4.7 은 "By default, new projects will use it". 4.6 항목은 [§11](#11-46에서-들어온-것-중-놓치기-쉬운-것) 에도 있다.)
 
 **기존 프로젝트는 자동으로 바뀌지 않는다.** 4.7로 올려도 `project.godot`의
 물리 엔진 설정이 그대로 유지된다.
@@ -538,6 +541,9 @@ FileSystem 독에서 파일을 여러 개 선택하면 Import 독에서 **편집
 
 ---
 
+- **Jolt Physics 가 새 3D 프로젝트의 기본** — `project.godot` 에 `3d/physics_engine="Jolt Physics"` 가 기본으로 기록된다. 기존 프로젝트는 자동 전환되지 않는다(§2 참조). 선택지는 `DEFAULT`·`Jolt Physics`·`GodotPhysics3D`·`Dummy`(4.7.2 `ProjectSettings` hint 실측) → [physics-3d.md §14](physics-3d.md)
+
+
 ## 12. 이 프로젝트에 당장 쓸 수 있는 것
 
 `Laryen 3D`는 Mobile 렌더러 + Jolt Physics + Android/Steam 대상이다.
@@ -624,3 +630,7 @@ HDR 출력을 지원하지 않으므로 실질적 이득은 데스크톱 빌드�
 - 릴리스 노트: https://godotengine.org/releases/4.7/
 - 변경 기록: https://github.com/godotengine/godot/blob/4.7-stable/CHANGELOG.md
 - 릴리스 목록: https://github.com/godotengine/godot-builds/releases
+
+## 공식 문서
+
+

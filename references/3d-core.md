@@ -1,5 +1,7 @@
 # Node3D·Transform3D·카메라
 
+> **이 문서로 오는 상황** — 위치·회전·좌표가 헷갈릴 때 — `-Z` 가 앞인 이유, `Transform3D`·`Basis`·`Quaternion`, `look_at` 의 함정, 로컬/글로벌, 마우스 피킹, `Camera3D`·`SpringArm3D` 수학. 물리 이동은 [physics-3d.md](physics-3d.md), 카메라 규범은 `game` 스킬 SSOT
+
 ## 목차
 
 1. [핵심 개념 — Godot 3D 좌표계](#1-핵심-개념--godot-3d-좌표계)
@@ -744,6 +746,44 @@ func _ready() -> void:
 
 ---
 
+## 12-A. 난수 — 서버 결정론과 클라이언트 연출을 가른다
+
+| 방법 | 무엇 | 언제 |
+|---|---|---|
+| `randi()` · `randf()` · `randi_range(a, b)` · `randf_range(a, b)` · `randfn(mean, dev)` | 전역 함수. 시드는 실행마다 다르다 | **연출**(파티클 흩기·데미지 숫자 흔들림·발소리 변주) |
+| `seed(n)` / `randomize()` | 전역 시드 고정 / 다시 무작위로 | 재현이 필요한 테스트 |
+| **`RandomNumberGenerator`** | 인스턴스마다 **`seed`·`state`** 를 따로 갖는다. `state` 를 저장했다 되돌리면 같은 수열이 나온다 | 리플레이·되감기·**여러 시스템이 서로 시드를 오염시키지 않게** |
+| `randi() % n` | 0~n−1 | `randi_range(0, n-1)` 이 더 읽기 쉽다 |
+| `array.pick_random()` · `array.shuffle()` | 배열에서 하나 / 섞기 | 스폰 위치 고르기 |
+| `FastNoiseLite` | 연속적인 "자연스러운" 난수(지형·구름) | [openworld-3d.md](openworld-3d.md) 기물 흩기 |
+
+> 🛑 **게임 결과를 정하는 난수는 클라이언트에 없다.** 드롭·명중·크리티컬은 **서버(Zone)** 가 정하고 클라이언트는 결과만 받는다(`game` 스킬 SSOT — 서버 권위). 클라이언트 난수는 **보이는 것**에만 쓴다. 같은 시드로 같은 결과를 내야 하는 곳(빌드 타임 베이킹의 기물 배치)은 `RandomNumberGenerator` 에 **시드를 명시**해 굽는다 — [lowend-3gb-60fps.md §5](lowend-3gb-60fps.md).
+
+공식: https://docs.godotengine.org/en/stable/tutorials/math/random_number_generation.html
+
+## 12-B. 곡선 경로 — `Curve3D` · `Path3D` · `PathFollow3D`
+
+몹 순찰·컷신 카메라·투사체 궤적처럼 **정해진 길을 따라가는 것**은 베지어 곡선으로 그린다.
+
+| 노드·리소스 | 무엇 |
+|---|---|
+| `Curve3D` | 점(과 제어점)의 목록. **리소스**다 |
+| `Path3D` | `Curve3D` 를 씬에 놓는 노드. 에디터 툴바에서 점을 찍어 그린다 |
+| `PathFollow3D` | `Path3D` 의 자식. **`progress`(미터) 또는 `progress_ratio`(0~1)** 를 올리면 곡선 위를 이동한다. `rotation_mode` 로 진행 방향을 보게 할 수 있다 |
+
+```gdscript
+## 순찰 몹: PathFollow3D 의 자식으로 몹 씬을 두고 progress 만 올린다
+extends PathFollow3D
+@export var speed := 2.0          # m/s
+func _physics_process(delta: float) -> void:
+	progress += speed * delta      # 끝에 닿으면 loop 가 켜져 있을 때 처음으로 돌아간다
+```
+
+**왜 `t` 가 아니라 거리인가** — 베지어를 `t=0→1` 로 훑으면 **속도가 일정하지 않다**(제어점 간격에 따라 빨라졌다 느려진다). Godot 은 곡선을 **등간격 점으로 구워**(`bake_interval`) `sample_baked(거리)` 로 일정 속도를 만든다. `PathFollow3D.progress` 가 그것을 대신해 준다. 직접 하려면 `curve.sample_baked(t * curve.get_baked_length(), true)`.
+
+라리엔에서 몹의 경로는 **서버가 정하고 SNAP 으로 온다** — 클라이언트의 `Path3D` 는 **컷신·연출·로컬 데모**에 쓴다. 길찾기는 [navigation-3d.md](navigation-3d.md).
+공식: https://docs.godotengine.org/en/stable/tutorials/math/beziers_and_curves.html
+
 ## 13. 자주 하는 실수
 
 | 실수 | 증상 | 해결 |
@@ -760,3 +800,7 @@ func _ready() -> void:
 | 머티리얼 색 변경이 전체에 반영 | 리소스 공유 | `duplicate()` 또는 `set_instance_shader_parameter` |
 | `far`를 매우 크게 설정 | Z-fighting | `far`를 필요한 만큼만 |
 | 트리 밖에서 `global_transform` 읽기 | 잘못된 값 | 트리 진입 후 접근 |
+
+## 공식 문서
+
+
