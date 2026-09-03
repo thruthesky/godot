@@ -140,6 +140,124 @@ func _ready() -> void:
 
 ## 4. 콜리전 셰이프 선택
 
+### 4.0 CollisionShape3D 는 어디에 붙는가 — `CollisionObject3D` 의 **직속 자식**뿐
+
+`CollisionShape3D` 자체는 **`Node3D` 를 상속하는 평범한 노드**이고 물리 기능이 없다.
+하는 일은 하나 — **부모가 `CollisionObject3D` 계열이면 그 부모에게 형체를 등록해 주는 것**이다.
+
+**엔진 소스에서 확인한 판정 로직** (`scene/3d/physics/collision_shape_3d.cpp`, 4.7):
+
+```cpp
+case NOTIFICATION_PARENTED: {
+    collision_object = Object::cast_to<CollisionObject3D>(get_parent());   // ← 직속 부모만
+    if (collision_object) {
+        owner_id = collision_object->create_shape_owner(this);
+        if (shape.is_valid()) {
+            collision_object->shape_owner_add_shape(owner_id, shape);
+        }
+        _update_in_shape_owner();
+    }
+} break;
+```
+
+캐스팅이 실패하면 `collision_object` 가 `nullptr` 이 되고 **그 뒤로 아무 일도 하지 않는다.**
+오류가 아니라 **조용한 무동작**이라 화면상으로는 알 수 없다.
+
+#### 붙을 수 있는 부모 — `CollisionObject3D` 파생 7종이 전부다
+
+```
+CollisionObject3D            (추상 — 직접 인스턴스화하지 않는다)
+├─ Area3D                    트리거·감지 영역
+└─ PhysicsBody3D             (추상)
+   ├─ StaticBody3D           움직이지 않는 지형·벽
+   │  └─ AnimatableBody3D    애니메이션으로 움직이는 발판·문
+   ├─ RigidBody3D            물리로 굴러다니는 물체
+   │  └─ VehicleBody3D       차량
+   ├─ CharacterBody3D        플레이어·몬스터
+   └─ PhysicalBone3D         래그돌의 뼈 하나
+```
+
+**실측** — 각 부모 아래에 `shape` 을 채운 `CollisionShape3D` 를 하나 붙이고
+`get_shape_owners()` → `shape_owner_get_shape_count()` 로 등록 수를 센 결과:
+
+| 부모 노드 | `CollisionObject3D` 인가 | 등록된 shape |
+|---|---|---|
+| `Area3D` | ✅ | **1** |
+| `StaticBody3D` | ✅ | **1** |
+| `AnimatableBody3D` | ✅ | **1** |
+| `RigidBody3D` | ✅ | **1** |
+| `VehicleBody3D` | ✅ | **1** |
+| `CharacterBody3D` | ✅ | **1** |
+| `PhysicalBone3D` | ✅ | **1** |
+| `Node3D` | ❌ | 🛑 **등록 안 됨** |
+| `MeshInstance3D` | ❌ | 🛑 **등록 안 됨** |
+| `CSGBox3D` | ❌ | 🛑 **등록 안 됨** |
+| `GridMap` | ❌ | 🛑 **등록 안 됨** |
+| `SoftBody3D` | ❌ | 🛑 **등록 안 됨** |
+
+`GridMap`·`SoftBody3D`·`CSGShape3D` 는 **자기 방식으로 콜리전을 만드는** 노드라
+`CollisionShape3D` 를 자식으로 받지 않는다 (각각 `MeshLibrary` 의 셰이프 /
+소프트바디 자체 / `use_collision` 이 만드는 내부 `StaticBody`).
+
+#### 🛑 중간에 노드를 하나라도 끼우면 안 된다
+
+판정은 **`get_parent()` — 직속 부모 한 칸만** 본다. 조상을 거슬러 올라가지 않는다.
+
+```
+CharacterBody3D                 CharacterBody3D
+└─ CollisionShape3D   ✅ 1개     └─ Node3D            ← 정리하려고 끼운 빈 노드
+                                    └─ CollisionShape3D   🛑 등록 0개
+```
+
+**실측** — `CharacterBody3D > Node3D > CollisionShape3D` 의 등록 shape 은 **0** 이었다.
+캐릭터가 아무것과도 부딪히지 않고 바닥을 뚫고 떨어진다.
+
+> 이것은 [basics.md](basics.md) 의 **"충돌은 씬 트리와 무관하지만, 내 몸을 이루는 부품은
+> 직속 부모에게만 붙는다"** 와 같은 규칙이다. **누구와 부딪히는가**는 물리 공간이 정하므로
+> 트리 위치와 무관하지만, **내가 어떤 형체인가**는 직속 부모 관계로만 조립된다.
+
+#### 엔진이 띄우는 경고 6가지 (`get_configuration_warnings()`, 소스 확인)
+
+씬 트리에서 노드 옆 **노란 삼각형**으로 뜬다. 전부 경고일 뿐 실행은 된다.
+
+| 조건 | 경고 |
+|---|---|
+| 부모가 `CollisionObject3D` 가 아님 | "only serves to provide a collision shape to a CollisionObject3D derived node" |
+| `shape` 이 비어 있음 | "A shape must be provided for CollisionShape3D to function" |
+| `RigidBody3D`(·`VehicleBody3D`) + `ConcavePolygonShape3D` | 정적 바디용이라 제대로 동작하지 않는다 |
+| `RigidBody3D` + `WorldBoundaryShape3D` | static 외의 모드를 지원하지 않는다 |
+| `CharacterBody3D` + `ConcavePolygonShape3D` | 위와 같은 이유 |
+| 비균등 `scale` (`x`·`y`·`z` 가 다름) | 🛑 **셰이프 리소스의 크기를 바꾸라**는 뜻 — `scale` 로 늘리지 않는다 |
+
+#### 그 밖에 실측으로 확인한 동작
+
+| 상황 | 결과 |
+|---|---|
+| 한 부모에 `CollisionShape3D` 3개 | ✅ **shape 3개 · shape_owner 3개** — 여러 개를 조합해 복합 형상을 만든다 |
+| `shape` 이 `null` 인 채로 붙임 | shape_owner 는 1개 생기지만 **shape 수는 0** |
+| 붙인 **뒤에** `shape` 을 대입 | ✅ 그 시점에 **등록된다** (`0` → `1`) |
+| 부모에서 `remove_child()` | ✅ **해제된다** (`1` → `0`, `NOTIFICATION_UNPARENTED`) |
+| `CollisionPolygon3D` 를 대신 씀 | ✅ **완전히 같은 규칙** — 직속 부모가 `CollisionObject3D` 여야 한다 |
+
+#### 이 프로젝트의 실제 사용례
+
+```
+# scenes/demo/map_test/map_test_play.tscn
+Ground   (StaticBody3D)      ← 움직이지 않는 지면
+└─ CollisionShape3D          shape = BoxShape3D
+Player   (CharacterBody3D)   ← 조작하는 캐릭터
+├─ CollisionShape3D          shape = CapsuleShape3D · position.y = 0.9
+└─ claudy                    (.glb 인스턴스 — 보이는 몸)
+```
+
+**보이는 것(`.glb`)과 부딪히는 것(`CollisionShape3D`)은 형제로 나란히 둔다.**
+모델을 갈아 끼워도 콜리전은 그대로다.
+
+반면 [claudy_player_demo.tscn](../../../../scenes/demo/claudy/claudy_player_demo.tscn) 의
+지면은 `CSGBox3D` + `use_collision = true` 라 **`CollisionShape3D` 를 쓰지 않는다** —
+CSG 가 자기 형상에서 콜리전을 직접 만드는 별개 경로다 (→ [dictionary.md](dictionary.md) CSG).
+
+
 성능 순서: **구 > 캡슐 > 박스 > 실린더 > 볼록 다면체 >> 삼각형 메시**
 
 | 셰이프 | 용도 | 비고 |
