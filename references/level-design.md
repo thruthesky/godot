@@ -58,7 +58,7 @@ A(블록아웃)  →  B(GridMap · 실내·던전)  +  D(프롭)
 
 | 방식 | 함정 |
 |---|---|
-| A. CSG | `use_collision` 기본값 **`false`** — 켜지 않으면 벽을 통과한다. 최상위 `CSGCombiner3D` 에서 한 번만 켠다. 런타임 CPU 실시간 계산이라 **최종물로 쓰면 안 된다** → `bake_static_mesh()` / `bake_collision_shape()` 로 굳히고 CSG 노드를 삭제한다 |
+| A. CSG | `use_collision` 기본값 **`false`** — 켜지 않으면 벽을 통과한다. 최상위 `CSGCombiner3D` 에서 한 번만 켠다. 런타임 CPU 실시간 계산이라 **최종물로 쓰면 안 된다** → `bake_static_mesh()` / `bake_collision_shape()` 로 굳히고 CSG 노드를 삭제한다. 🛑 **`StaticBody3D` 로 손수 옮기면 한 노드가 하던 일이 셋으로 갈라지고 크기가 리소스로 들어간다** → [basics/01-world.md](basics/01-world.md) 의 "`CSGBox3D` 를 `StaticBody3D` 로 바꿨더니 아무것도 안 보인다" |
 | B. GridMap | `cell_size` 기본값이 **`Vector3(2, 2, 2)`** 다 (1m 아님). 타일 메시를 1m 로 만들어 놓고 격자가 안 맞는다고 헤매는 일이 흔하다. `bake_navigation` 도 기본 **`false`** |
 | E. 지형 | Godot 에는 **터레인 에디터가 내장돼 있지 않다.** `HeightMapShape3D` 는 콜리전 셰이프일 뿐이고(`map_data`는 `PackedFloat32Array`), 시각 메시·텍스처 블렌딩·LOD 는 따로 만들거나 Terrain3D 같은 **외부 애드온**을 써야 한다 |
 

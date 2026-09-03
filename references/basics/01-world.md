@@ -696,6 +696,79 @@ Wall (StaticBody3D)          ← ① 몸
 > `CollisionShape3D` 만 놓으면 **보이지 않는 벽**이 된다.
 > "분명히 벽을 만들었는데 캐릭터가 지나간다"의 원인은 대부분 ②가 없어서다.
 
+### 🛑 `CSGBox3D` 를 `StaticBody3D` 로 바꿨더니 아무것도 안 보인다
+
+**CSG 로 블록아웃한 맵을 실제 노드로 옮길 때 반드시 만나는 벽이다.**
+`Floor` 의 타입을 `CSGBox3D` → `StaticBody3D` 로 바꾸면 **화면에서 사라지고,
+인스펙터에 `Size` 칸조차 없다.** 고장이 아니라 **원래 그런 노드**다.
+
+#### 첫 번째 벽 — 한 노드가 하던 일이 셋으로 갈라진다
+
+`CSGBox3D` 는 **혼자서 세 가지를 다 했다.** 그래서 `size` 하나만 고치면 됐다.
+
+```
+CSGBox3D 하나        =  👁 형상(보이는 것)  +  📐 크기  +  🧱 충돌(use_collision)
+```
+
+`StaticBody3D` 로 오면 그 셋이 **각자의 노드로 갈라진다.**
+
+```
+Floor (StaticBody3D)      ← "여기에 움직이지 않는 물체가 있다" 는 자격뿐.
+├─ MeshInstance3D         👁  보이는 것        ← 직접 추가한다
+└─ CollisionShape3D       🧱  부딪히는 것      ← 직접 추가한다
+```
+
+**자식을 하나도 안 달면 화면에도 안 보이고 부딪히지도 않는다.** 씬 트리에
+`StaticBody3D` 만 덩그러니 있다면 그것이 원인이다.
+
+**엔진에서 뽑은 자체 프로퍼티** — 물려받은 것을 빼고 그 클래스가 직접 가진 것만이다.
+
+| 노드 | 자체 프로퍼티 | `size` 를 갖나 |
+|---|---|---|
+| **`CSGBox3D`** | **`size`** · `material` | ✅ **노드가 직접 가진다** |
+| `StaticBody3D` | `physics_material_override` · `constant_linear_velocity` · `constant_angular_velocity` | 🛑 **없다** |
+| `MeshInstance3D` | `mesh` · `skin` · `skeleton` | 🛑 **없다** |
+| `CollisionShape3D` | `shape` · `disabled` · `debug_color` · `debug_fill` | 🛑 **없다** |
+
+> 🔑 **이것이 Godot 의 일반 규칙이다 — 노드 하나 = 역할 하나.**
+> **CSG 가 예외적으로 셋을 겸했던 것**이고, 그래서 편했지만 런타임 CPU 로 형상을
+> 계산하느라 최종물로 쓸 수 없었다(→ 위 "`MeshInstance3D` 와 `CSGBox3D` 를 나란히 놓으면").
+
+#### 두 번째 벽 — 크기는 **노드가 아니라 리소스**에 있다
+
+`MeshInstance3D` 를 추가해도 **인스펙터에 `Size` 가 없다.** 여기서 한 번 더 막힌다.
+
+```
+MeshInstance3D  (노드)  →  mesh  슬롯  →  BoxMesh   (리소스)  →  Size  ← 여기 있다
+CollisionShape3D(노드)  →  shape 슬롯  →  BoxShape3D(리소스)  →  Size  ← 여기 있다
+```
+
+**노드는 "리소스를 담는 그릇"이고, 값은 리소스 안에 있다.** 슬롯이 비어 있으면
+인스펙터에 `<empty>` 라고만 뜨고, **리소스를 먼저 만들어야 `Size` 칸이 나타난다.**
+
+**엔진 실측** — 갓 만든 `MeshInstance3D` 는 `mesh = <Object#null>` 이고 `get_aabb()` 가
+`(0, 0, 0)` 이다. **`BoxMesh` 와 `BoxShape3D` 의 `size` 기본값은 둘 다 `Vector3(1, 1, 1)`** 이라,
+넣자마자 1m 짜리 정육면체가 된다(→ "노드와 리소스는 다르다", "🛑 `MeshInstance3D` 를
+추가하면 왜 아무것도 안 보이나").
+
+#### 고치는 순서
+
+| | 하는 일 | 결과 |
+|---|---|---|
+| 1 | `Floor` 에 **`MeshInstance3D`** 추가 | 아직 안 보인다 (`mesh` 가 비었다) |
+| 2 | 그 노드의 **`Mesh` 슬롯 → `New BoxMesh`** | 1m 정육면체가 보인다 |
+| 3 | `BoxMesh` 를 **클릭해 펼치고 `Size`** 입력 | 원하는 크기가 된다 |
+| 4 | `Floor` 에 **`CollisionShape3D`** 추가 | 아직 통과한다 (`shape` 이 비었다) |
+| 5 | **`Shape` 슬롯 → `New BoxShape3D`** 후 같은 `Size` | 부딪힌다 |
+
+> 🛑 **3번과 5번의 크기를 따로 입력한다는 점을 놓치지 않는다.** 둘은 별개 리소스라
+> 한쪽만 바꾸면 **보이는 것과 부딪히는 것이 어긋난다.** CSG 에서는 `size` 하나가
+> 둘 다였기 때문에 이 실수가 나올 수 없었다.
+
+> 💡 **바닥처럼 큰 면 하나는 `MeshInstance3D` 대신 `PlaneMesh`**, 지형 전체는
+> **`bake_static_mesh()` 로 CSG 를 한 번에 구워** 옮기는 방법도 있다
+> (→ [level-design.md](../level-design.md), [dictionary.md](../dictionary.md) 의 CSG).
+
 ### 몸(물리 바디) 4종 — 무엇이 이것을 움직이는가
 
 **고르는 기준은 딱 하나다 — "누가 이 물체의 위치를 정하는가."**
