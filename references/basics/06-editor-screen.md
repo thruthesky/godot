@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **7 / 11**
 > [← 5. 시그널(Signal) — 노드끼리 대화하는 방법](05-signal.md) · [7. 에디터 조작을 내 손에 맞춘다 — 마우스와 단축키 →](07-editor-input.md)
 
+> **이 문서로 오는 상황** — 에디터 화면의 독·툴바·단축키가 낯설 때 · `res://` 가 뭔지 · FileSystem 에서 폴더·파일을 숨기고 싶을 때
+
 > 📄 **메뉴 항목 하나하나와 각 에디터 뷰의 화면은 별도 문서에 정리되어 있다.**
 > → **[Godot 에디터 메뉴·화면 정리 (Google 문서)](https://docs.google.com/document/d/1b9LPX5Lp6AbaSfdsThvtci5HWcj3O3KQ6eFtJFXUvBw/edit?usp=sharing)**
 >
@@ -260,3 +262,13 @@ echo ".gdignore" >> .git/modules/game-server/info/exclude
 → [headless-workflow.md](../headless-workflow.md) §6
 
 ---
+
+---
+
+## 공식 문서
+
+- [First look at Godot's interface](https://docs.godotengine.org/en/stable/getting_started/introduction/first_look_at_the_editor.html) — 프로젝트 매니저와 에디터 화면의 각 부분
+- [Using the Project Manager](https://docs.godotengine.org/en/stable/tutorials/editor/project_manager.html)
+- [Customizing the interface](https://docs.godotengine.org/en/stable/tutorials/editor/customizing_editor.html) — 독 배치·레이아웃·에디터 설정
+- [Project organization](https://docs.godotengine.org/en/stable/tutorials/best_practices/project_organization.html) — `.gdignore` 와 폴더 구조
+- [File system](https://docs.godotengine.org/en/stable/tutorials/scripting/filesystem.html) — `res://`·`user://` 의 정의

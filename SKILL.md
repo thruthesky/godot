@@ -84,12 +84,12 @@ description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 �
 
 ### 새 내용을 어느 문서에 넣을 것인가
 
-**기본은 [basics.md](references/basics.md) 로 모은다.** 문서가 늘어날수록 "기본 개념을
+**기본은 [`basics/`](references/basics/) 의 해당 파트로 모은다**(색인은 [basics.md](references/basics.md)). 문서가 늘어날수록 "기본 개념을
 찾으려면 어디를 봐야 하는가"가 흐려지므로, 아래 기준으로 갈라 놓는다.
 
 | 성격 | 넣을 곳 |
 |---|---|
-| **기본 개념·기본 문법·기본 사용법** — Godot 을 배우는 사람이 알아야 할 것 | **[basics.md](references/basics.md)** |
+| **기본 개념·기본 문법·기본 사용법** — Godot 을 배우는 사람이 알아야 할 것 | **[basics/](references/basics/) 의 해당 파트** (00 공부 목록 · 01 세계관 · 02 씬 · 03 인스턴싱 · 04 스크립트 · 05 시그널 · 06 에디터 화면 · 07 에디터 조작 · 08 강좌 · 09 컨트롤러 · 10 애니메이션) — 색인 [basics.md](references/basics.md) 의 줄 수·요약도 함께 갱신한다 |
 | **저사양(3GB RAM) 60fps 실측·노하우** — 베이킹·병목 진단·본 수·크래시 회피 | **[lowend-3gb-60fps.md](references/lowend-3gb-60fps.md)** |
 | **저사양에서 LOD·컬링·해상도 스케일링·VRS 를 쓸지 말지** — 엔진 기능별 판정 | **[lowend-culling-lod.md](references/lowend-culling-lod.md)** |
 | 용어의 뜻 한 가지 | [dictionary.md](references/dictionary.md) |
@@ -97,9 +97,9 @@ description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 �
 | 문법의 **전수 목록·상세 레퍼런스** | [gdscript.md](references/gdscript.md) |
 
 판단이 애매하면 이렇게 가른다 — **"Godot 을 처음 배우는 사람이 이걸 몰라서 막히는가?"**
-그렇다면 `basics.md` 다. **"이미 아는 사람이 더 잘하려고 찾는 것인가?"** 그렇다면 영역 문서다.
+그렇다면 `basics/` 의 해당 파트다. **"이미 아는 사람이 더 잘하려고 찾는 것인가?"** 그렇다면 영역 문서다.
 
-같은 주제를 양쪽에 쓸 때는 **`basics.md` 에 개념을, 영역 문서에 실전을** 두고 서로 링크한다.
+같은 주제를 양쪽에 쓸 때는 **`basics/` 파트에 개념을, 영역 문서에 실전을** 두고 서로 링크한다.
 인스턴싱이 그 예다 — 개념과 4단계는 [basics/03-instancing.md](references/basics/03-instancing.md), 스포너·풀링 같은 패턴은
 [nodes-scenes.md](references/nodes-scenes.md) §4 에 있다.
 
@@ -116,86 +116,16 @@ description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 �
 > godot --headless --doctool /tmp/gddoc     # 클래스 정의 XML 전체 추출
 > ```
 
-## `/godot init` — 프로젝트에 슬래시 명령과 `./install.sh` 를 설치한다
+## `/godot init` 과 `./install.sh` — 절차는 [references/godot-init.md](references/godot-init.md)
 
-사용자가 **`/godot init`** 이라고 지시하면 두 가지를 한다.
-
-1. 이 스킬이 들고 있는 **명령 파일들을 대상 프로젝트의 `.claude/commands/` 로 복사**한다 —
-   그 뒤로는 `/godot-example` 처럼 짧게 부를 수 있다
-2. 대상 프로젝트 **루트에 `./install.sh` 심볼릭 링크**를 건다 —
-   `.claude/skills/godot/scripts/install.sh` 를 가리키며, 긴 경로 없이 `./install.sh` 로 부른다
-
-### 설치하는 것 ① 슬래시 명령 — **복사한다**
-
-| 원본 (이 스킬 안) | 설치 위치 | 무엇을 하는 명령인가 |
-|---|---|---|
-| `commands/godot-example.md` | `.claude/commands/godot-example.md` | **기본 예제 생성** — 빈 프로젝트에 바닥·벽·플레이어를 세우고 화살표 키로 걸어다니게 한다 (→ [example.md](references/example.md) 1~8단계) |
-
-새 명령을 늘릴 때는 `commands/` 에 파일을 추가하고 이 표에 한 줄을 더한다.
-**표에 없는 파일은 설치하지 않는다.**
-
-### 설치하는 것 ② `./install.sh` — **심볼릭 링크를 건다. 복사하지 않는다**
-
-| 원본 (이 스킬 안) | 설치 위치 | 형태 |
-|---|---|---|
-| `scripts/install.sh` | `<대상>/install.sh` | 🛑 **심볼릭 링크** — `.claude/skills/godot/scripts/install.sh` 를 가리킨다 |
-
-**왜 복사가 아니라 링크인가** — 복사하면 스킬을 고쳐도 프로젝트의 사본은 옛날 그대로 남고,
-프로젝트마다 갈라진 사본이 쌓인다. 링크는 **스킬을 고치면 모든 프로젝트에 즉시 반영**된다.
-스크립트는 preset 이름·패키지 ID·산출물 경로를 `export_presets.cfg` 에서 직접 읽으므로
-**프로젝트별로 고칠 것이 없다** — 그래서 링크로 충분하다.
-
-```bash
-./install.sh            # 장치 목록을 보여주고 골라서 빌드·설치·실행
-./install.sh --list     # 목록만
-./install.sh 1 --console  # 1번 장치에 설치하고 로그를 터미널에 붙인다
-```
-
-### 절차
-
-```bash
-# ── ① 슬래시 명령 ────────────────────────────────────────────
-ls .claude/skills/godot/commands/          # 원본 확인
-mkdir -p <대상>/.claude/commands           # 없으면 만든다
-cp .claude/skills/godot/commands/godot-example.md <대상>/.claude/commands/
-
-# ── ② ./install.sh 심볼릭 링크 ───────────────────────────────
-cd <대상>
-
-# 원본이 실제로 있는지 먼저 확인한다 — 없으면 깨진 링크가 된다
-[ -f .claude/skills/godot/scripts/install.sh ] || echo "스킬이 없다. 링크를 걸지 않는다"
-
-# 이미 있으면 손대지 않는다
-if [ -e install.sh ] || [ -L install.sh ]; then
-  ls -l install.sh                          # 무엇이 있는지 보여주고 사람에게 물어본다
-else
-  ln -s .claude/skills/godot/scripts/install.sh install.sh
-fi
-
-./install.sh --list                          # 검증 — 장치 목록이 나오면 성공
-```
-
-인자로 경로가 오면(`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 **현재 프로젝트**에 설치한다.
-
-### 지킬 것
-
-| 규칙 | 이유 |
-|---|---|
-| **같은 이름의 파일이 이미 있으면 덮어쓰지 않는다** | 사용자가 고쳐 둔 명령·스크립트를 날린다. 차이를 보여주고 물어본다 |
-| 🛑 **`ln -sf` 를 쓰지 않는다** | 루트에 있던 **진짜 `install.sh` 파일을 말없이 지운다.** 존재를 먼저 확인하고 없을 때만 건다 |
-| 🛑 **링크는 반드시 상대경로로 건다** (`ln -s .claude/skills/...`) | 절대경로(`/Users/…`)로 걸면 **폴더를 옮기거나 다른 사람이 클론하면 깨진다** |
-| **`.claude/skills/godot/scripts/install.sh` 가 실제로 있는지 먼저 확인한다** | 스킬이 없는 프로젝트에 걸면 **깨진 링크**만 남는다 |
-| 링크를 만든 뒤 **`./install.sh --list` 로 검증한다** | 링크가 걸렸다는 것과 동작한다는 것은 다르다 |
-| 설치 후 **무엇이 생겼고 어떻게 부르는지** 알린다 | 파일만 복사하고 끝내면 쓸 줄 모른다 |
-| 새 명령은 **`commands/` 에 원본을 두고** 복사한다 | 내용이 두 곳으로 갈라지지 않게 한다 |
-| 슬래시 명령은 **재시작 후 인식**될 수 있다 | 목록에 안 보이면 세션을 다시 열라고 안내한다 |
-
-**심볼릭 링크는 git 에 그대로 커밋된다.** 스킬을 서브모듈로 같은 경로에 두는 저장소라면
-클론한 쪽에서도 그대로 동작한다. 스킬이 없는 환경(또는 심링크를 못 쓰는 Windows)에서는
-링크 대신 `bash .claude/skills/godot/scripts/install.sh` 를 직접 부른다.
-
-**`install.sh` 는 실행 위치에서 위로 올라가며 `project.godot` 을 찾는다.**
-링크로 실행해도 프로젝트 루트를 정확히 잡으며, `export_presets.cfg` 가 없으면 거기서 멈춘다.
+사용자가 **`/godot init`** 이라고 지시하면 두 가지를 한다 — ① 이 스킬의 `commands/godot-example.md` 를 대상
+프로젝트의 `.claude/commands/` 로 **복사**한다(그 뒤로는 `/godot-example` 처럼 짧게 부른다). ② 프로젝트 루트에
+`install.sh` → `.claude/skills/godot/scripts/install.sh` 를 가리키는 **상대경로 심볼릭 링크**를 건다 — 복사가
+아니다. 복사하면 스킬을 고쳐도 사본은 옛날 그대로 남지만, 링크는 모든 프로젝트에 즉시 반영된다.
+🛑 같은 이름의 파일이 이미 있으면 덮어쓰지 않고 차이를 보여주며, `ln -sf` 를 쓰지 않고(진짜 `install.sh` 를
+말없이 지운다), 원본 존재를 먼저 확인하고, 만든 뒤 `./install.sh --list` 로 검증한다. 인자로 경로가 오면
+(`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 현재 프로젝트에 설치한다. 표에 없는 파일은 설치하지 않는다.
+**설치 명령 전문·지킬 것 8가지·Windows 대안·`project.godot` 탐색 규칙은 위 문서에 있다.**
 
 ---
 
@@ -377,40 +307,13 @@ GitHub 이슈·PR, Asset Store. **다만 웹에서 본 것도 그대로 옮기�
 
 #### 파일 배치 규범 — 스크립트는 씬 옆에
 
-Godot에서는 타입별로 `scripts/`에 모으는 방식보다 **씬과 스크립트를 같은 폴더에
-나란히 두는 것이 이 프로젝트의 규범**이다. 공식 문서(*Project organization*)도 "에셋을 그것을 쓰는 씬 가까이" 를 가장 흔한 접근으로 제시하지만 특정 구조를 강제하지는 않는다. Unity의 `Scripts/` 관습을 그대로
-가져오면 Godot에서는 오히려 관리가 어려워진다.
-
-| 근거 | 내용 |
-|------|------|
-| 엔진이 그 관습을 전제로 동작 | Attach Script의 기본 경로가 **현재 씬 폴더 + 노드 이름**이다. `scripts/`로 두려면 매번 손으로 고쳐야 한다 |
-| 씬과 스크립트는 1:1로 강하게 묶임 | `extends`는 루트 타입에, `$Child`는 노드 구조에 종속된다. 재사용 불가능한 **사실상 씬의 일부**다 |
-| 파일명이 충돌 | `ui/player_hud.tscn`과 `entities/player.tscn`이 각각 스크립트를 가지면 결국 `scripts/ui/`, `scripts/entities/`로 **폴더 구조를 두 번 유지**하게 된다 |
-
-**예외 — `scripts/`·`autoload/`에 모으는 것**: 씬에 붙지 않는 스크립트다.
-오토로드 싱글턴(`GameState`, `AudioManager`), `class_name`을 가진 공용 클래스
-(상태 머신 베이스, 수학 유틸), 커스텀 `Resource` 정의(`ItemData`, `SkillData`).
-**`scripts/` 폴더를 없애는 게 아니라 용도를 바꾸는 것이다.**
-
-```
-res://
-├─ scenes/
-│  ├─ main.tscn
-│  ├─ main.gd              ← 씬 옆에
-│  ├─ player/
-│  │  ├─ player.tscn
-│  │  ├─ player.gd
-│  │  └─ player.glb        ← 한 씬에서만 쓰는 모델도 같이
-│  └─ ui/
-│     ├─ hud.tscn
-│     └─ hud.gd
-├─ autoload/
-│  └─ game_state.gd
-└─ scripts/                ← 씬에 안 붙는 공용 코드만
-   └─ save_system.gd
-```
-
-상세 근거와 확장 구조는 [references/nodes-scenes.md](references/nodes-scenes.md) 11절.
+**씬에 붙는 스크립트는 그 씬과 같은 폴더에 둔다** — `scenes/player/player.tscn` + `scenes/player/player.gd`.
+타입별 `scripts/` 폴더는 Unity 관습이고, Godot 에서는 **Attach Script 의 기본 경로가 현재 씬 폴더**이며
+스크립트가 `extends`·`$Child` 로 씬에 1:1 로 묶이고, 폴더를 나누면 파일명이 충돌해 관리가 어려워진다.
+**예외** — 씬에 붙지 않는 코드는 모아 둔다: 오토로드 싱글턴(`GameState`·`AudioManager`) → `autoload/`,
+`class_name` 공용 클래스(상태 머신 베이스·수학 유틸)와 커스텀 `Resource` 정의(`ItemData`·`SkillData`) → `scripts/`.
+`scripts/` 를 없애는 게 아니라 용도를 바꾸는 것이다. 근거 3가지·예외 표·권장 폴더 트리(`res://` 아래 `scenes/`·
+`autoload/`·`scripts/`)는 [references/nodes-scenes.md](references/nodes-scenes.md) §11 에 그대로 있다.
 
 ### 3. GDScript를 작성·수정한 직후 — 필수
 
@@ -485,7 +388,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 |---|---|---|
 | [lowend-3gb-60fps.md](references/lowend-3gb-60fps.md) | 🛑 3GB RAM 폰에서 60fps ★ 저사양 작업 전 필독 | [상세](references/catalog.md#lowend-3gb-60fpsmd---3gb-ram-폰에서-60fps--저사양-작업-전-필독) |
 | [lowend-culling-lod.md](references/lowend-culling-lod.md) | 저사양에서 "그리는 양"을 줄이는 6가지 엔진 기능 | [상세](references/catalog.md#lowend-culling-lodmd--저사양에서-그리는-양을-줄이는-6가지-엔진-기능) |
-| [basics.md](references/basics.md) | Godot 기본 ★ 처음 배울 때 먼저 · 기본은 여기 모은다 | [상세](references/catalog.md#basicsmd--godot-기본--처음-배울-때-먼저--기본은-여기-모은다) |
+| [basics.md](references/basics.md) | Godot 기본 **색인** ★ 처음 배울 때 먼저 · 본문은 [`basics/`](references/basics/) 11파트 · 기본은 거기 모은다 | [상세](references/catalog.md#basicsmd--godot-기본--처음-배울-때-먼저--기본은-여기-모은다) |
 | [example.md](references/example.md) | 예제: 빈 프로젝트에서 캐릭터가 움직이기까지 ★ 손으로 한 번 만들어 본다 | [상세](references/catalog.md#examplemd--예제-빈-프로젝트에서-캐릭터가-움직이기까지--손으로-한-번-만들어-본다) |
 | [lsp.md](references/lsp.md) | Godot LSP 정적 검증 ★ 코드 작성 시 필수 | [상세](references/catalog.md#lspmd--godot-lsp-정적-검증--코드-작성-시-필수) |
 | [gdscript.md](references/gdscript.md) | GDScript 2.0 언어 전체 | [상세](references/catalog.md#gdscriptmd--gdscript-20-언어-전체) |
@@ -520,6 +423,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [best-practices.md](references/best-practices.md) | 공식 Best practices 12편 + GDScript 스타일 가이드(명명·코드 순서) + 공식과 이 스킬이 다른 곳 | "왜 이렇게 하라고 하나"·씬 vs 스크립트·오토로드 남용·명명 규칙 |
 | [debugging.md](references/debugging.md) | 실행 뒤 문제 — Output·Debugger·Remote 씬 트리·오류 읽기·프로파일러·ObjectDB·원격 디버그·Android 심볼화·Troubleshooting·내비 디버그 | 오류 메시지·안 보임·느림·폰에서만 죽음 |
 | [keywords.md](references/keywords.md) | 예전 `description` 의 트리거 키워드 전량(9,319자) — 검색 색인 | 어떤 질문이 어느 문서로 가야 하는지 찾을 때 |
+| [godot-init.md](references/godot-init.md) | `/godot init` 설치 절차 전문 + `install.sh` 옵션·장치 목록 기준 (SKILL.md 에서 이동) | `/godot init` 지시를 받았을 때 · 실기기 빌드·설치 |
 
 ## 번들 스크립트
 
@@ -540,55 +444,15 @@ python3 .claude/skills/godot/scripts/gdscript_lsp.py complete res://a.gd 42 10
 
 Godot 에디터가 실행 중이어야 한다. 상세 사용법은 [references/lsp.md](references/lsp.md).
 
-### scripts/install.sh
+### scripts/install.sh — 상세는 [references/godot-init.md §2](references/godot-init.md)
 
-**빌드·설치·실행 스크립트.** 그냥 실행하면 **지금 쓸 수 있는 장치를 번호로 보여주고**,
-번호를 고르면 그 플랫폼으로 빌드·설치·실행까지 한다. macOS·iOS·Android 를 한 입구에서
-다룬다. preset 이름·패키지 ID·산출물 경로는 `export_presets.cfg` 에서 직접 읽으므로
-프로젝트마다 고쳐 쓸 필요가 없다.
-
-```bash
-.claude/skills/godot/scripts/install.sh          # 장치 목록 → 번호 입력
-.claude/skills/godot/scripts/install.sh --list   # 목록만 보고 끝
-.claude/skills/godot/scripts/install.sh 1        # 1번을 바로 선택
-```
-
-```
-사용 가능한 장치:
-
-  1)  macOS     이 맥에서 실행 (arm64)
-  2)  iOS       JaeHo16 — iPhone 16 Pro Max (iPhone17,2)
-                67BD02AA-6E29-53D7-A5CE-A1619F9CF934
-
-  (Android 기기 없음 — USB 디버깅을 켜고 연결한다)
-```
-
-**목록에 오르는 기준이 플랫폼마다 다르다.** macOS 는 이 맥이라 항상 1번에 있고,
-iOS 는 `devicectl` 이 `available` 로 판정한 것만(신뢰하지 않은 기기는 `unavailable`
-이라 뜨지 않는다), Android 는 `adb devices` 의 `device` 상태만 오른다. 연결이 없는
-플랫폼은 목록에서 빠지는 대신 **왜 없는지**를 한 줄로 알려 준다.
-
-번호 대신 기기 ID 나 `macos` 를 직접 줘도 된다 — 스크립트나 CI 에서 쓸 때 편하다.
-
-```bash
-install.sh macos                     # 이 맥에서 빌드·실행
-install.sh R58X609XXYV               # Android (adb 시리얼)
-install.sh 00008140-001C24C9…        # iOS (UDID·UUID 모두 가능)
-install.sh <선택> --console          # 실행 로그를 터미널에 붙인다
-install.sh <선택> --skip-build       # 설치·실행만 (수 초)
-install.sh <선택> --release          # 릴리즈 빌드
-install.sh <선택> --no-launch        # 설치만
-install.sh <선택> --path ~/game      # 프로젝트 경로 지정
-```
-
-**stdin 이 터미널이 아니면 묻지 않는다** — 목록만 찍고 끝나므로 CI 나 스크립트에서
-멈추지 않는다. 이때는 번호를 인자로 준다.
-
-macOS 는 `export_path` 가 `.zip` 이면 풀어서 `.app` 을 꺼내고, `com.apple.quarantine`
-속성을 지운 뒤 `open` 한다 — 서명 없는 자기 빌드가 Gatekeeper 에 막히는 것을 피한다.
-
-**에디터 Remote Deploy 와 결과가 같으므로, 에디터를 띄우지 않는 작업에서는 이 스크립트를
-쓴다.** 상세는 [references/headless-workflow.md](references/headless-workflow.md) §3.
+**빌드·설치·실행 스크립트.** 그냥 실행하면 지금 쓸 수 있는 장치(macOS·iOS·Android)를 번호로 보여주고,
+번호·기기 ID·`macos` 를 고르면 그 플랫폼으로 빌드·설치·실행까지 한다. preset 이름·패키지 ID·산출물 경로는
+`export_presets.cfg` 에서 직접 읽으므로 프로젝트마다 고칠 것이 없다. `--list`·`--console`·`--skip-build`·`--release`·
+`--no-launch`·`--path` 옵션, 장치가 목록에 오르는 기준(iOS 는 `devicectl` 이 `available` 로 판정한 것만, Android 는
+`adb devices` 의 `device` 상태만), stdin 이 터미널이 아닐 때 묻지 않고 목록만 찍는 동작, macOS `.zip` 풀기와
+`com.apple.quarantine` 제거는 위 문서에 있다. 에디터 Remote Deploy 와 결과가 같으므로 에디터를 띄우지 않는
+작업에서는 이 스크립트를 쓴다 → [references/headless-workflow.md](references/headless-workflow.md) §3.
 
 ## 프로젝트 내 학습 문서
 

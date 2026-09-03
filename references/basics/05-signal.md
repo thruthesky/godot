@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **6 / 11**
 > [← 4. 스크립트 — 노드에 붙는 것](04-script.md) · [6. 에디터 화면 — 어디에 무엇이 있나 →](06-editor-screen.md)
 
+> **이 문서로 오는 상황** — 노드끼리 값을 주고받아야 할 때 · `signal`·`emit()`·`connect()`·`await` 가 처음일 때 · 연결이 `.tscn` 에 저장되는 함정
+
 **노드가 어떤 사건(event)이 일어났음을 외부에 알리는 메커니즘**이다.
 
 핵심은 **알리는 쪽이 받는 쪽을 모른다**는 것이다. 한 노드가 다른 노드의 함수를
@@ -294,3 +296,12 @@ done.emit(42)         → 멈춰 있던 _waiter 가 여기서 재개
 > 불리므로, 그 안에서 씬 트리를 바꾸면 오류가 난다. → [gdscript.md](../gdscript.md) §10
 
 ---
+
+---
+
+## 공식 문서
+
+- [Using signals](https://docs.godotengine.org/en/stable/getting_started/step_by_step/signals.html) — 에디터 연결과 코드 연결, 커스텀 시그널
+- [Instancing with signals](https://docs.godotengine.org/en/stable/tutorials/scripting/instancing_with_signals.html) — 인스턴스가 부모에게 알리는 패턴(통지는 위로)
+- [GDScript reference › Signals](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_basics.html#signals) — `signal` 선언·`emit()`·`connect()` 문법
+- [클래스 레퍼런스 `Signal`](https://docs.godotengine.org/en/stable/classes/class_signal.html) — Godot 4 에서 시그널이 "값"인 이유

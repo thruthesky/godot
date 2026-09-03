@@ -3,7 +3,9 @@
 > **[Godot 기본](../basics.md)** 의 파트 **10 / 11**
 > [← 8. 동영상 강좌 — 손으로 한 번 따라 만들어 본다](08-video.md) · [10. 캐릭터 애니메이션 — 화살표 키만 눌렀는데 왜 걷는가 →](10-animation.md)
 
-여기까지 읽었다면 **노드**(§1), **씬**(§2), **인스턴싱**(§3), **스크립트와 생명주기**(§4)를
+> **이 문서로 오는 상황** — 캐릭터를 걷고·뛰고·점프하게 하는 **첫 스크립트를 한 줄씩** 이해하고 싶을 때 · `transform.basis`·`_physics_process()`·`Input.get_vector()` 가 무엇인지
+
+여기까지 읽었다면 **노드**([파트 1](01-world.md)), **씬**([파트 2](02-scene.md)), **인스턴싱**([파트 3](03-instancing.md)), **스크립트와 생명주기**([파트 4](04-script.md))를
 따로따로는 안다. 이 절은 그 넷이 **한 파일 안에서 어떻게 맞물리는지**를 실제로 도는
 코드로 보여 준다.
 
@@ -77,7 +79,7 @@ script = ExtResource("2_rwgxs")     # ← world.tscn 쪽에서 덧붙인 스크�
 ```
 
 **즉 `pc.tscn` 을 다른 씬에 가져다 놓으면 이 스크립트는 따라가지 않는다.**
-그 씬의 PC 는 움직이지 않는 캡슐이 된다. §4 [`_ready()` 가 실행되지
+그 씬의 PC 는 움직이지 않는 캡슐이 된다. [파트 4](04-script.md) 의 [`_ready()` 가 실행되지
 않는다](#_ready-가-실행되지-않는다--파일이-있다고-실행되는-게-아니다) 와 같은 뿌리의
 문제다 — **스크립트는 "파일"이 아니라 "노드"에 붙는다.**
 
@@ -98,7 +100,7 @@ PC 를 여러 맵에서 쓸 계획이라면 `pc.tscn` 의 **루트 노드에 직
 extends CharacterBody3D
 ```
 
-§4 에서 봤듯 `extends` 는 **이 스크립트가 어떤 노드의 기능을 물려받는가**를 정한다.
+[파트 4](04-script.md) 에서 봤듯 `extends` 는 **이 스크립트가 어떤 노드의 기능을 물려받는가**를 정한다.
 `CharacterBody3D` 를 상속했으므로 `velocity`, `move_and_slide()`, `is_on_floor()` 를
 선언 없이 그냥 쓸 수 있다.
 
@@ -479,7 +481,7 @@ $"../Enemy"                   # 이름에 특수문자가 있으면 따옴표
 
 ### `@onready` — "지금 말고, 트리에 들어간 뒤에 대입하라"
 
-이게 없으면 **거의 확실히 `null` 이 들어간다.** 이유는 §4 의 생명주기에 있다.
+이게 없으면 **거의 확실히 `null` 이 들어간다.** 이유는 [파트 4](04-script.md#생명주기--언제-불리는가) 의 생명주기에 있다.
 
 ```
 ① _init()        객체가 만들어진다. 이때 var 초기값들이 대입된다
@@ -1048,8 +1050,8 @@ pc.tscn 의 Camera3D transform = (0, 0, 1.6885)
 
 | 증상 | 원인 | 고치는 곳 |
 |---|---|---|
-| 캐릭터가 **꿈쩍도 안 한다** | 스크립트가 노드에 안 붙었다 | 인스펙터 맨 아래 `Script` 칸 확인 (§4) |
-| 인스펙터에 **`Size` 가 없다** (`Scale` 만 있다) | 리소스 프로퍼티라 한 겹 안쪽에 있다 | `Mesh`/`Shape` 슬롯을 클릭해 펼친다 (§1) |
+| 캐릭터가 **꿈쩍도 안 한다** | 스크립트가 노드에 안 붙었다 | 인스펙터 맨 아래 `Script` 칸 확인 ([파트 4](04-script.md)) |
+| 인스펙터에 **`Size` 가 없다** (`Scale` 만 있다) | 리소스 프로퍼티라 한 겹 안쪽에 있다 | `Mesh`/`Shape` 슬롯을 클릭해 펼친다 ([파트 1](01-world.md#노드와-리소스는-다르다)) |
 | **특정 키만** 안 먹는다 | InputMap 액션 이름 철자 불일치 | `Project Settings > Input Map` |
 | 캐릭터가 **하늘로 날아간다** | 점프에 `is_action_pressed()` 를 썼다 | `is_action_just_pressed()` 로 |
 | 가만히 있다가 **바닥을 뚫는다** | 땅에서도 중력을 누적했다 | `if not is_on_floor():` 추가 |
@@ -1082,3 +1084,14 @@ pc.tscn 의 Camera3D transform = (0, 0, 1.6885)
 | 이동 키를 WASD 로 | InputMap 에서 키만 교체 | **코드를 안 고쳐도 된다** |
 
 ---
+
+---
+
+## 공식 문서
+
+- [Player scene and input actions](https://docs.godotengine.org/en/stable/getting_started/first_3d_game/02.player_input.html) — `InputMap` 에 이동 액션을 등록한다
+- [Moving the player with code](https://docs.godotengine.org/en/stable/getting_started/first_3d_game/03.player_movement_code.html) — `CharacterBody3D`·`velocity`·`move_and_slide()` 의 공식 첫 예
+- [Using CharacterBody2D/3D](https://docs.godotengine.org/en/stable/tutorials/physics/using_character_body_2d.html) — `move_and_slide()`·`is_on_floor()` 의 동작
+- [Using 3D transforms](https://docs.godotengine.org/en/stable/tutorials/3d/using_transforms.html) — `transform.basis` 가 무엇이고 왜 오일러 대신 쓰는지
+- [Input examples](https://docs.godotengine.org/en/stable/tutorials/inputs/input_examples.html) — `Input.get_vector()`·`_unhandled_input()`·마우스 캡처
+- [클래스 레퍼런스 `CharacterBody3D`](https://docs.godotengine.org/en/stable/classes/class_characterbody3d.html) — `floor_max_angle` 등 기본값

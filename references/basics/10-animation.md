@@ -3,7 +3,9 @@
 > **[Godot 기본](../basics.md)** 의 파트 **11 / 11**
 > [← 9. 실전 — 3D 캐릭터 컨트롤러를 한 줄씩 읽는다](09-controller.md) · [← 색인으로 돌아가기](../basics.md)
 
-§9 의 주인공은 **캡슐**이었다. 캡슐은 아무리 잘 움직여도 팔다리가 없다.
+> **이 문서로 오는 상황** — `.glb` 모델을 넣었는데 **애니메이션이 안 나오거나 T-포즈**로 서 있을 때 · 키 입력과 걷는 동작이 어떻게 이어지는지 알고 싶을 때
+
+[파트 9](09-controller.md) 의 주인공은 **캡슐**이었다. 캡슐은 아무리 잘 움직여도 팔다리가 없다.
 그 자리에 **사람 모양 3D 모델**을 넣으면 곧바로 다음 질문이 생긴다.
 
 > **"애니메이션은 대체 어디서 오는 건가?
@@ -160,7 +162,7 @@ root
 > 하나 더 있어서 `Skeleton3D` 의 본은 **23개**지만, 실제로 움직이는 `mixamorig_*` 은
 > **22개**라 애니메이션 채널은 22개 기준으로 만들어진다.
 
-**부모가 움직이면 자식이 따라 움직인다.** 노드 트리(§1)와 완전히 같은 원리다.
+**부모가 움직이면 자식이 따라 움직인다.** 노드 트리([파트 1](01-world.md))와 완전히 같은 원리다.
 골반을 돌리면 다리·척추·팔·머리가 통째로 따라간다. 그래서 애니메이션은
 "모든 정점의 위치"를 저장할 필요 없이 **뼈 22개의 자세만** 저장하면 된다.
 
@@ -238,7 +240,7 @@ skins/use_named_skins=true
 ```
 
 **`type="PackedScene"` — 이 한 줄이 핵심이다.** `.glb` 는 Godot 안에서
-**이미지가 아니라 씬**이다. `.tscn` 과 똑같이 인스턴싱해서 쓴다(§3).
+**이미지가 아니라 씬**이다. `.tscn` 과 똑같이 인스턴싱해서 쓴다([파트 3](03-instancing.md)).
 
 ### 번역 결과 — 이런 노드 트리가 된다
 
@@ -246,7 +248,7 @@ skins/use_named_skins=true
 
 ```
 Player (CharacterBody3D)          ← 우리 스크립트가 붙은 곳
-├─ CollisionShape3D               ← 부딪히는 몸 (§9)
+├─ CollisionShape3D               ← 부딪히는 몸 (파트 9)
 └─ character (Node3D)             ← .glb 인스턴스. 여기서부터는 임포터가 만든 것
    ├─ root (Node3D)               ⚠️ 이 중간 노드의 이름은 .glb 마다 다르다
    │  └─ Skeleton3D               ★ .glb 의 뼈 23개가 여기로
@@ -347,7 +349,7 @@ Player  (CharacterBody3D)
 **Godot 은 인스턴스된 씬의 내부를 기본적으로 감춘다.** 내부 노드는 **그 파일의 소유**라
 이쪽 씬에서 함부로 건드리지 못하게 막는 것이다.
 
-**`.glb` 만의 특성이 아니다** — 직접 만든 `.tscn` 을 인스턴싱해도 똑같이 접힌다(§3).
+**`.glb` 만의 특성이 아니다** — 직접 만든 `.tscn` 을 인스턴싱해도 똑같이 접힌다([파트 3](03-instancing.md)).
 
 > 🛑 **Inspector 에는 원래 나오지 않는다.** Inspector 는 **선택한 노드 하나의 속성**을
 > 보여주는 곳이지 자식 목록을 보여주는 곳이 아니다. `character` 를 고르면 `Node3D` 의
@@ -514,7 +516,7 @@ func _ready() -> void:
     #    렌더 프레임에 두면 이동과 발이 미묘하게 어긋난다.
     _anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS
 
-    # ③ 1회성 애니(attack·death)가 끝난 시점을 알기 위한 신호 (§5)
+    # ③ 1회성 애니(attack·death)가 끝난 시점을 알기 위한 신호 (파트 5 시그널)
     _anim.animation_finished.connect(_on_animation_finished)
 
     _play(ANIM_IDLE)
@@ -539,7 +541,7 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 `.glb` 는 우리가 손으로 만든 씬이 아니라 **바깥에서 구워 온 것**이라 내부 구조를
 우리가 통제하지 못한다. 그래서 **이름이 아니라 타입으로 찾는다.**
 
-> §4 의 "다른 노드를 가리키는 세 가지 방법"과 같은 문제다. 노드 경로는 **이름에
+> [파트 1](01-world.md#다른-노드를-가리키는-세-가지-방법--export-를-쓴다) 의 "다른 노드를 가리키는 세 가지 방법"과 같은 문제다. 노드 경로는 **이름에
 > 의존하는 약한 연결**이고, 이름이 우리 손에 없을 때는 더욱 그렇다.
 
 ### 위 ①②③ 이 각각 무엇을 막는가
@@ -561,7 +563,7 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 
 ```gdscript
 func _physics_process(delta: float) -> void:
-    # ── ⓐ 이동 (§9 와 완전히 같다. 애니메이션과 무관하다) ──────────────
+    # ── ⓐ 이동 (파트 9 와 완전히 같다. 애니메이션과 무관하다) ──────────────
     var input := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
     var dir := Vector3(input.x, 0.0, input.y)
 
@@ -878,3 +880,14 @@ AnimationPlayer         ← 애니메이션 창고 (지금까지 우리가 직�
 **§1(3계층 구조) → §2(AnimationPlayer) → §5(상태 머신) → §6(블렌드 스페이스)** 순서를 권한다.
 
 ---
+
+---
+
+## 공식 문서
+
+- [Introduction to the animation features](https://docs.godotengine.org/en/stable/tutorials/animation/introduction.html) — `AnimationPlayer`·트랙·루프
+- [Importing 3D scenes](https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/index.html) — `.glb` 가 씬으로 바뀌는 과정
+- [Import configuration](https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/import_configuration.html) — 애니메이션 임포트 옵션(루프·트랙 정리)
+- [Character animation](https://docs.godotengine.org/en/stable/getting_started/first_3d_game/09.adding_animations.html) — 공식 튜토리얼의 애니메이션 단계
+- [Using AnimationTree](https://docs.godotengine.org/en/stable/tutorials/animation/animation_tree.html) — 여기서 부족해지면 가는 곳
+- [클래스 레퍼런스 `AnimationPlayer`](https://docs.godotengine.org/en/stable/classes/class_animationplayer.html) — `play()`·`animation_finished`·`playback_process_mode`

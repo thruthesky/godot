@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **9 / 11**
 > [← 7. 에디터 조작을 내 손에 맞춘다 — 마우스와 단축키](07-editor-input.md) · [9. 실전 — 3D 캐릭터 컨트롤러를 한 줄씩 읽는다 →](09-controller.md)
 
+> **이 문서로 오는 상황** — 글보다 **영상으로 따라 만들며** 배우고 싶을 때 — 강좌 4개와, 각각이 이 스킬의 어느 파트·문서와 맞닿는지
+
 **개념은 한 번 따라 만들어 봐야 손에 붙는다.** 아래 넷은 처음부터 끝까지 따라갈 수
 있는 강좌이고, 이 문서의 어느 절과 맞닿는지를 함께 적어 둔다.
 
@@ -42,14 +44,14 @@
 > your first playable game using only the visual editor. No prior experience needed."
 
 **사전 지식이 전혀 없어도 되고, 비주얼 에디터만으로** 플레이 가능한 게임까지 간다.
-다루는 항목이 이 문서 §1~§7 과 거의 그대로 겹친다.
+다루는 항목이 이 색인의 [파트 1](01-world.md)~[파트 7](07-editor-input.md) 과 거의 그대로 겹친다.
 
 | 강좌가 다루는 것 | 이 문서에서는 |
 |---|---|
-| Godot 엔진 소개 | §1 |
-| 에디터 인터페이스 소개 | §6 |
-| 알아 두면 좋은 에디터 기능 | §6 · §7 |
-| 노드 소개 | §1 |
+| Godot 엔진 소개 | [파트 1](01-world.md) |
+| 에디터 인터페이스 소개 | [파트 6](06-editor-screen.md) |
+| 알아 두면 좋은 에디터 기능 | [파트 6](06-editor-screen.md) · [파트 7](07-editor-input.md) |
+| 노드 소개 | [파트 1](01-world.md) |
 | 유용한 애드온 소개 | [asset-store.md](../asset-store.md) |
 | 스크립팅 경로 선택 — GDScript 인가 비주얼 스크립팅인가 | §4 · [gdscript.md](../gdscript.md) |
 | 빠른 코드 팁 | [gdscript.md](../gdscript.md) |
@@ -90,13 +92,13 @@
 
 | 배우는 것 | 이 문서·다른 문서에서는 |
 |---|---|
-| 에디터 안에서 움직이는 법 | §6 · §7 |
+| 에디터 안에서 움직이는 법 | [파트 6](06-editor-screen.md) · [파트 7](07-editor-input.md) |
 | 프로젝트에 에셋 임포트 | [resources-assets.md](../resources-assets.md) |
 | 잔디·물·하늘 넣기 | [rendering-3d.md](../rendering-3d.md) · [shaders-3d.md](../shaders-3d.md) |
 | 걸어 다닐 수 있는 3D 만들기 | [physics-3d.md](../physics-3d.md) |
 
 **코드가 많은 주제는 뒤로 미루고 에디터에 익숙해지는 것을 먼저 둔다** — 한 단계씩
-직접 만들어 보며 배우는 구성이라, 이 문서 §0 의 1단계와 병행하기 좋다.
+직접 만들어 보며 배우는 구성이라, [파트 0](00-study-list.md) 의 1단계와 병행하기 좋다.
 
 ---
 
@@ -136,3 +138,10 @@ Blender 왕복과 임포트 설정은 [resources-assets.md](../resources-assets.
 > [lowend-3gb-60fps.md](../lowend-3gb-60fps.md) 가 정한다.
 
 ---
+
+---
+
+## 공식 문서
+
+- [Your first 3D game](https://docs.godotengine.org/en/stable/getting_started/first_3d_game/index.html) — 공식 첫 3D 게임 튜토리얼. 강좌 ①·③ 과 병행하기 좋다
+- [Step by step](https://docs.godotengine.org/en/stable/getting_started/step_by_step/index.html) — 강좌를 보다 막히면 해당 개념의 공식 설명

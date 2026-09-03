@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **3 / 11**
 > [← 1. Godot 의 세계관 — 노드 → 씬 → 씬 속의 씬](01-world.md) · [3. 인스턴싱(Instancing) — 설계도로 실체를 찍어낸다 →](03-instancing.md)
 
+> **이 문서로 오는 상황** — "씬" 이 **파일인지 객체인지** 헷갈릴 때 · 루트 노드와 `get_tree().root` 가 다른 이유
+
 같은 "씬"이라는 말이 **세 가지**를 가리킨다. 이 셋을 구분하지 못하면 계속 막힌다.
 
 | 용어 | 정체 | 어디 있나 |
@@ -118,7 +120,7 @@ MeshInstance3D.scene_file_path  = ''
 ```
 
 `.tscn` 에서 **루트 노드에만 `parent=` 가 없는 것**이 눈으로 보이는 증거다.
-위 §2 의 `.tscn` 예시에서 `[node name="Bullet" type="Node3D"]` 에는 `parent` 가 없고
+위의 `.tscn` 예시에서 `[node name="Bullet" type="Node3D"]` 에는 `parent` 가 없고
 `[node name="Body" ... parent="."]` 에는 있다. 엔진은 이 규칙을 강제한다 —
 `Invalid scene: root node %s cannot specify a parent node.`
 
@@ -150,3 +152,11 @@ instantiate() 반환 이름   = Demo        # 루트 노드의 이름 그대로
 
 
 ---
+
+---
+
+## 공식 문서
+
+- [Nodes and Scenes](https://docs.godotengine.org/en/stable/getting_started/step_by_step/nodes_and_scenes.html) — 씬 파일과 씬 인스턴스
+- [Using SceneTree](https://docs.godotengine.org/en/stable/tutorials/scripting/scene_tree.html) — `root` 와 `current_scene` 이 무엇을 가리키는지
+- [클래스 레퍼런스 `PackedScene`](https://docs.godotengine.org/en/stable/classes/class_packedscene.html) — `.tscn` 을 메모리에 올린 것의 정체

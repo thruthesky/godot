@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **2 / 11**
 > [← 0. 기본적으로 공부해야 할 목록](00-study-list.md) · [2. 씬(Scene) — 파일인가 객체인가 →](02-scene.md)
 
+> **이 문서로 오는 상황** — 노드·씬·씬 트리가 무엇인지, 인스펙터 속성이 어디서 오는지, `MeshInstance3D` 를 넣어도 왜 안 보이는지, 충돌이 왜 안 되는지 — **Godot 의 구조 자체**가 궁금할 때
+
 Godot 의 구조는 세 문장으로 끝난다.
 
 ```
@@ -996,3 +998,14 @@ Main
 > [SSOT §3](../../../game/references/SSOT.md) 에 있다.
 
 ---
+
+---
+
+## 공식 문서
+
+- [Nodes and Scenes](https://docs.godotengine.org/en/stable/getting_started/step_by_step/nodes_and_scenes.html) — 노드·씬·씬 트리의 공식 정의
+- [Overview of Godot's key concepts](https://docs.godotengine.org/en/stable/getting_started/introduction/key_concepts_overview.html)
+- [Using SceneTree](https://docs.godotengine.org/en/stable/tutorials/scripting/scene_tree.html) — 씬 트리가 정하는 것(트리·루트·현재 씬)
+- [Physics introduction](https://docs.godotengine.org/en/stable/tutorials/physics/physics_introduction.html) — 바디 4종·`CollisionShape3D`·레이어와 마스크(몸·모양·그림 절의 근거)
+- [Introduction to 3D](https://docs.godotengine.org/en/stable/tutorials/3d/introduction_to_3d.html) — `Node3D`·`MeshInstance3D`·3D 뷰포트
+- [클래스 레퍼런스 `Node3D`](https://docs.godotengine.org/en/stable/classes/class_node3d.html) — 이 파트에서 센 프로퍼티 9개의 정의

@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **8 / 11**
 > [← 6. 에디터 화면 — 어디에 무엇이 있나](06-editor-screen.md) · [8. 동영상 강좌 — 손으로 한 번 따라 만들어 본다 →](08-video.md)
 
+> **이 문서로 오는 상황** — 뷰포트 회전이 **안 될** 때(Magic Mouse · 가운데 버튼 없음) · 왼손잡이·macOS 에서 에디터 조작을 바꿀 때
+
 **Godot 의 기본 조작은 "오른손 마우스 + 3버튼 마우스"를 전제로 만들어져 있다.**
 그 전제에서 벗어나면 **일부 기능이 아예 동작하지 않는다.** 익숙해지려 애쓰지 말고
 설정을 바꾼다. 3D 작업은 뷰포트를 하루에 수백 번 돌리므로 이 차이가 크게 쌓인다.
@@ -197,3 +199,12 @@ InputMap.action_add_event("move_forward", ev)
 > 저장·불러오기 구현은 [input-ui.md](../input-ui.md) 에 있다.
 
 ---
+
+---
+
+## 공식 문서
+
+- [Customizing the interface › Customizing editor settings](https://docs.godotengine.org/en/stable/tutorials/editor/customizing_editor.html) — `Editor > Editor Settings` 가 무엇을 바꾸는지
+- [Introduction to 3D](https://docs.godotengine.org/en/stable/tutorials/3d/introduction_to_3d.html) — 3D 뷰포트 조작(궤도·팬·줌·프리룩)의 공식 설명
+- [Using InputEvent](https://docs.godotengine.org/en/stable/tutorials/inputs/inputevent.html) — 게임 안의 입력은 에디터 설정과 별개다
+- [Input examples](https://docs.godotengine.org/en/stable/tutorials/inputs/input_examples.html) — `InputMap` 액션·리바인딩 API

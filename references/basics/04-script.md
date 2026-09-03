@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **5 / 11**
 > [← 3. 인스턴싱(Instancing) — 설계도로 실체를 찍어낸다](03-instancing.md) · [5. 시그널(Signal) — 노드끼리 대화하는 방법 →](05-signal.md)
 
+> **이 문서로 오는 상황** — 스크립트가 노드에 어떻게 붙는지, 들여쓰기·`:=`·`@export`·`@tool` 이 무엇인지, **`_ready()` 가 왜 안 불리는지**, `pass` 가 뭔지
+
 GDScript 파일은 혼자 돌지 않는다. **노드에 붙어야** 실행된다.
 
 ```gdscript
@@ -557,7 +559,7 @@ light_scene.tscn  LightScene (Node3D)         ← light_scene.gd
 
 씬 독에서 부모가 될 노드를 선택하고 **Instantiate Child Scene**
 (체인 모양 아이콘, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> · Windows·Linux 는 `Ctrl+Shift+A`) 으로 `.tscn` 을 고른다.
-파일 독에서 씬 트리로 **드래그 앤 드롭** 해도 같다. 코드로 넣는 방법은 §3 참고.
+파일 독에서 씬 트리로 **드래그 앤 드롭** 해도 같다. 코드로 넣는 방법은 [파트 3](03-instancing.md) 참고.
 
 ### 🛑 실행 단축키는 macOS 에서 다르다 — F5·F6 이 아니다
 
@@ -613,7 +615,7 @@ godot --path . scenes/demo/player_demo.tscn
 | **함수 이름 오타** | `_Ready`, `ready`, `_redy` | GDScript 는 **`_ready` 정확히** 소문자·언더스코어 하나 |
 | **`extends` 가 노드 타입과 불일치** | 스크립트가 아예 안 붙는다 | `extends Node3D` 인데 `MeshInstance3D` 에 붙이려 함 |
 | **부모가 `_ready()` 를 오버라이드하고 `super()` 안 부름** | 상속받은 클래스에서만 발생 | 부모 클래스의 `_ready()` 를 부르려면 `super()` |
-| **`add_child()` 를 안 했다** | 코드로 `.new()`/`instantiate()` 만 함 | §3 "메모리에 올린다가 무슨 뜻인가" 4단계 |
+| **`add_child()` 를 안 했다** | 코드로 `.new()`/`instantiate()` 만 함 | [파트 3](03-instancing.md#메모리에-올린다가-무슨-뜻인가--4단계) "메모리에 올린다가 무슨 뜻인가" 4단계 |
 
 > **`_ready()` 는 노드당 평생 한 번이다.** `remove_child()` 로 뺐다가 다시 붙이면
 > `_enter_tree()` 는 다시 불리지만 `_ready()` 는 불리지 않는다.
@@ -686,3 +688,14 @@ func _ready() -> void:
 `match` 의 분기도 마찬가지다.
 
 ---
+
+---
+
+## 공식 문서
+
+- [Creating your first script](https://docs.godotengine.org/en/stable/getting_started/step_by_step/scripting_first_script.html) — 스크립트를 노드에 붙이고 `_ready()`·`_process()` 를 처음 쓴다
+- [Listening to player input](https://docs.godotengine.org/en/stable/getting_started/step_by_step/scripting_player_input.html) — `_process()` 안에서 입력을 읽는 첫 예
+- [GDScript reference](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_basics.html) — 들여쓰기·`:=`·어노테이션·`pass` 의 정의
+- [GDScript exported properties](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_exports.html) — `@export` 전부
+- [Running code in the editor](https://docs.godotengine.org/en/stable/tutorials/plugins/running_code_in_the_editor.html) — `@tool` 의 공식 설명
+- [클래스 레퍼런스 `Node`](https://docs.godotengine.org/en/stable/classes/class_node.html) — `_ready`·`_process`·`_physics_process`·`_enter_tree`·`_exit_tree` 의 호출 순서

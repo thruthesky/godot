@@ -3,6 +3,8 @@
 > **[Godot 기본](../basics.md)** 의 파트 **4 / 11**
 > [← 2. 씬(Scene) — 파일인가 객체인가](02-scene.md) · [4. 스크립트 — 노드에 붙는 것 →](04-script.md)
 
+> **이 문서로 오는 상황** — 씬을 **코드로 찍어내야** 할 때(`load → instantiate → add_child`) · 만든 노드 묶음을 씬으로 **떼어낼** 때(`Save Branch as Scene`)
+
 **미리 만들어 둔 씬을 불러와 새 노드 묶음을 만들어 내는 것**이다.
 탄막 슈팅에서 총알 씬 하나를 만들어 두고 **쏠 때마다 찍어내는** 것이 전형적인 예다.
 
@@ -315,4 +317,6 @@ light_scene.tscn                   boxes.tscn          ← ① 새 파일로 저
 - [노드와 씬 인스턴스 (4.x, stable)](https://docs.godotengine.org/en/stable/tutorials/scripting/nodes_and_scene_instances.html) — 코드에서 다루기
 - [씬 구성 모범 사례 (4.x, stable)](https://docs.godotengine.org/en/stable/tutorials/best_practices/scene_organization.html) — **어디서 씬을 나눌 것인가**의 판단 기준
 
+- [Instancing with signals](https://docs.godotengine.org/en/stable/tutorials/scripting/instancing_with_signals.html) — 찍어낸 인스턴스와 시그널로 대화하기(파트 5 와 이어진다)
+- [Using SceneTree](https://docs.godotengine.org/en/stable/tutorials/scripting/scene_tree.html) — `add_child()` 가 트리에 연결한다는 것의 정확한 뜻
 ---

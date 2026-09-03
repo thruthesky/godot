@@ -732,6 +732,41 @@ Attach Script 대화상자의 기본 경로는 **현재 씬 파일이 있는 폴
 | `class_name`을 가진 공용 클래스 | 상태 머신 베이스, 수학 유틸 | `scripts/` |
 | 커스텀 `Resource` 정의 | `ItemData`, `SkillData` | `scripts/` 또는 `scripts/resources/` |
 
+#### 한 장으로 — `SKILL.md` 에서 옮겨 온 요약 표와 권장 트리 (2026-09-03)
+
+`SKILL.md` 「파일 배치 규범」에 있던 근거 표·예외 문단·폴더 트리를 그대로 옮겼다(SKILL.md 500줄 규격). 위 근거 1~3 을 한 표로 본 것이다.
+
+> SKILL.md 원문 — Godot에서는 타입별로 `scripts/`에 모으는 방식보다 **씬과 스크립트를 같은 폴더에 나란히 두는 것이 이 프로젝트의 규범**이다. 공식 문서(*Project organization*)도 "에셋을 그것을 쓰는 씬 가까이" 를 가장 흔한 접근으로 제시하지만 특정 구조를 강제하지는 않는다. Unity의 `Scripts/` 관습을 그대로 가져오면 Godot에서는 오히려 관리가 어려워진다.
+
+| 근거 | 내용 |
+|------|------|
+| 엔진이 그 관습을 전제로 동작 | Attach Script의 기본 경로가 **현재 씬 폴더 + 노드 이름**이다. `scripts/`로 두려면 매번 손으로 고쳐야 한다 |
+| 씬과 스크립트는 1:1로 강하게 묶임 | `extends`는 루트 타입에, `$Child`는 노드 구조에 종속된다. 재사용 불가능한 **사실상 씬의 일부**다 |
+| 파일명이 충돌 | `ui/player_hud.tscn`과 `entities/player.tscn`이 각각 스크립트를 가지면 결국 `scripts/ui/`, `scripts/entities/`로 **폴더 구조를 두 번 유지**하게 된다 |
+
+**예외 — `scripts/`·`autoload/`에 모으는 것**: 씬에 붙지 않는 스크립트다.
+오토로드 싱글턴(`GameState`, `AudioManager`), `class_name`을 가진 공용 클래스
+(상태 머신 베이스, 수학 유틸), 커스텀 `Resource` 정의(`ItemData`, `SkillData`).
+**`scripts/` 폴더를 없애는 게 아니라 용도를 바꾸는 것이다.**
+
+```
+res://
+├─ scenes/
+│  ├─ main.tscn
+│  ├─ main.gd              ← 씬 옆에
+│  ├─ player/
+│  │  ├─ player.tscn
+│  │  ├─ player.gd
+│  │  └─ player.glb        ← 한 씬에서만 쓰는 모델도 같이
+│  └─ ui/
+│     ├─ hud.tscn
+│     └─ hud.gd
+├─ autoload/
+│  └─ game_state.gd
+└─ scripts/                ← 씬에 안 붙는 공용 코드만
+   └─ save_system.gd
+```
+
 이런 코드는 특정 씬에 종속되지 않으므로 `scripts/`나 `autoload/`에 두는 게 자연스럽다.
 **`scripts/` 폴더를 없애는 게 아니라 용도를 바꾸는 것이다** —
 "모든 스크립트"가 아니라 "씬에 안 붙는 공용 코드"를 담는 곳이 된다.

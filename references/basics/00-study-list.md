@@ -3,10 +3,12 @@
 > **[Godot 기본](../basics.md)** 의 파트 **1 / 11**
 > [← 색인](../basics.md) · [1. Godot 의 세계관 — 노드 → 씬 → 씬 속의 씬 →](01-world.md)
 
+> **이 문서로 오는 상황** — Godot 을 시작했는데 **무엇부터 알아야 하는지** 모를 때 — 6단계 체크리스트. 각 항목이 어느 파트·문서에 있는지 안내한다
+
 **Godot 으로 게임을 만들려면 최소한 이만큼은 알아야 한다.**
 각 항목은 "설명할 수 있는가"로 판단한다 — 코드를 베껴 쓸 수 있는 것과 다르다.
 
-## 1단계 — 엔진 구조 (이 문서 §1~§5)
+## 1단계 — 엔진 구조 (파트 1~5 — [01-world](01-world.md) · [02-scene](02-scene.md) · [03-instancing](03-instancing.md) · [04-script](04-script.md) · [05-signal](05-signal.md))
 
 - [ ] **노드**가 무엇이고 왜 상속 계층을 갖는가
 - [ ] **씬**이 무엇이고, `.tscn` 파일 / 씬 인스턴스 / SceneTree **셋의 차이**
@@ -24,12 +26,12 @@
 - [ ] **시그널** — 노드가 서로 직접 부르지 않고 알리는 방법, 그리고 **Godot 4 에서 시그널이 "값"이라는 것**
 - [ ] 에디터 4개 독(Scene·Inspector·FileSystem·Output)의 역할
 
-**에디터 조작이 손에 안 맞으면 §7 을 먼저 본다** — 마우스에 가운데 버튼이 없거나
+**에디터 조작이 손에 안 맞으면 [파트 7](07-editor-input.md) 을 먼저 본다** — 마우스에 가운데 버튼이 없거나
 (Magic Mouse) 마우스를 왼손에 두면 **기본 설정으로는 일부 조작이 아예 안 된다.**
 
-**메뉴와 각 에디터 뷰 화면은 [별도 Google 문서](https://docs.google.com/document/d/1b9LPX5Lp6AbaSfdsThvtci5HWcj3O3KQ6eFtJFXUvBw/edit?usp=sharing) 에 정리되어 있다** (§6).
+**메뉴와 각 에디터 뷰 화면은 [별도 Google 문서](https://docs.google.com/document/d/1b9LPX5Lp6AbaSfdsThvtci5HWcj3O3KQ6eFtJFXUvBw/edit?usp=sharing) 에 정리되어 있다** ([파트 6](06-editor-screen.md)).
 
-> **개념을 한 바퀴 돌았으면 §9 의 캐릭터 컨트롤러를 한 줄씩 읽는다** —
+> **개념을 한 바퀴 돌았으면 [파트 9](09-controller.md) 의 캐릭터 컨트롤러를 한 줄씩 읽는다** —
 > 위 항목들이 실제로 도는 코드 한 파일 안에서 어떻게 맞물리는지 보여 준다.
 
 ## 2단계 — GDScript 문법 ([gdscript.md](../gdscript.md))
@@ -37,7 +39,7 @@
 - [ ] **정적 타입 선언**과 `:=` 를 언제 쓰고 언제 쓰면 안 되는가
 - [ ] `@export` — 인스펙터에 값을 노출하는 것
 - [ ] `@onready` 와 노드 참조(`$`, `%`)
-- [ ] **시그널 문법 상세** — 연결 플래그, 인자 바인딩 (개념은 이 문서 §5)
+- [ ] **시그널 문법 상세** — 연결 플래그, 인자 바인딩 (개념은 [파트 5](05-signal.md))
 - [ ] `Array[T]` 같은 타입 컨테이너
 - [ ] `await` 가 무엇을 기다리는가
 - [ ] `class_name` 과 상속
@@ -62,7 +64,7 @@
 - [ ] 카메라를 놓고 실행해 보기
 - [ ] 씬을 나누고 인스턴싱으로 조립하기
 
-## 6단계 — 캐릭터를 살아 움직이게 (이 문서 §10)
+## 6단계 — 캐릭터를 살아 움직이게 ([파트 10](10-animation.md))
 
 - [ ] **애니메이션이 `.glb` 파일 안에 들어 있다**는 것 — 어디서 오는가
 - [ ] 애니메이션의 실체가 **"뼈의 시간별 자세표"** 라는 것. 움직이는 그림이 아니다
@@ -75,6 +77,15 @@
 > **순서대로 다 읽고 시작할 필요는 없다.** 1단계만 이해하면 바로 만들기 시작해도 되고,
 > 막히는 곳에서 해당 단계를 펴 보는 편이 실제로는 더 빨리 는다.
 >
-> **글보다 손으로 먼저 익히고 싶으면 §8 의 동영상 강좌부터 본다.**
+> **글보다 손으로 먼저 익히고 싶으면 [파트 8](08-video.md) 의 동영상 강좌부터 본다.**
 
 ---
+
+---
+
+## 공식 문서
+
+- [공식 입문 색인](https://docs.godotengine.org/en/stable/getting_started/introduction/index.html) — 이 파트의 6단계와 대응하는 공식 순서
+- [Overview of Godot's key concepts](https://docs.godotengine.org/en/stable/getting_started/introduction/key_concepts_overview.html) — 씬·노드·씬 트리·시그널 네 개념을 한 페이지에
+- [Learn to code with GDScript](https://docs.godotengine.org/en/stable/getting_started/introduction/learn_to_code_with_gdscript.html) — 프로그래밍 자체가 처음이면 여기부터
+- [Step by step](https://docs.godotengine.org/en/stable/getting_started/step_by_step/index.html) — 노드와 씬 → 인스턴싱 → 첫 스크립트 → 입력 → 시그널 (파트 1~5 와 같은 순서)
