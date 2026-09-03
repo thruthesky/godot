@@ -57,6 +57,7 @@ description: 최신 Godot 으로 3D 게임을 개발할 때 따라야 할 개발
 
 
 **Godot 을 처음 접하는 질문이면 [basics.md](references/basics.md) 를 먼저 읽는다.**
+그 문서는 색인이고, 본문은 [`references/basics/`](references/basics/) 아래 11개 파트에 있다.
 노드·씬·인스턴싱·리소스·생명주기·에디터 화면 구성이 거기 있다.
 
 ### 새 내용을 어느 문서에 넣을 것인가
@@ -77,7 +78,7 @@ description: 최신 Godot 으로 3D 게임을 개발할 때 따라야 할 개발
 그렇다면 `basics.md` 다. **"이미 아는 사람이 더 잘하려고 찾는 것인가?"** 그렇다면 영역 문서다.
 
 같은 주제를 양쪽에 쓸 때는 **`basics.md` 에 개념을, 영역 문서에 실전을** 두고 서로 링크한다.
-인스턴싱이 그 예다 — 개념과 4단계는 `basics.md` §3, 스포너·풀링 같은 패턴은
+인스턴싱이 그 예다 — 개념과 4단계는 [basics/03-instancing.md](references/basics/03-instancing.md), 스포너·풀링 같은 패턴은
 [nodes-scenes.md](references/nodes-scenes.md) §4 에 있다.
 
 특정 패치 버전에 묶인 문서가 아니다. 새 기능은 **도입 버전을 표기**해
@@ -459,7 +460,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 각 문서는 **핵심 개념 → 핵심 로직 → 실제 소스코드** 순으로 구성되어 있으며,
 문서만 보고 해당 기능을 완전히 재구현할 수 있도록 작성되었다. 필요한 것만 읽는다.
 
-**처음 배우는 순서**: [basics.md](references/basics.md)(노드·씬·인스턴싱) → **[example.md](references/example.md)(손으로 한 번 만들어 본다)** →
+**처음 배우는 순서**: [basics.md](references/basics.md)(색인 → 파트 0~4: 노드·씬·인스턴싱) → **[example.md](references/example.md)(손으로 한 번 만들어 본다)** →
 [dictionary.md](references/dictionary.md)(용어) → [gdscript.md](references/gdscript.md)(문법) →
 [nodes-scenes.md](references/nodes-scenes.md)(구조 심화) →
 [3d-core.md](references/3d-core.md)(좌표·카메라) →
@@ -511,6 +512,26 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | §9 MMORPG | §2~§7 은 전부 **기물** 이야기다. **캐릭터에는 거의 안 듣는다** |
 
 ### [basics.md](references/basics.md) — Godot 기본 ★ 처음 배울 때 먼저 · 기본은 여기 모은다
+
+> 🗂 **이 문서는 색인이다(223줄). 본문은 [`references/basics/`](references/basics/) 아래
+> **11개 파트**에 있다.** 한 파일이 5,000줄에 가까워져 파트별로 나눴다.
+>
+> | # | 파트 | 다루는 것 | 줄 |
+> |---|---|---|---|
+> | 0 | [무엇부터 공부하나](references/basics/00-study-list.md) | 6단계 체크리스트 — 엔진 구조부터 캐릭터 애니메이션까지 | 80 |
+> | 1 | [Godot 의 세계관](references/basics/01-world.md) | 노드 → 씬 → 씬 속의 씬. 씬 트리·충돌·인스펙터 상속 사슬·리소스 | 983 |
+> | 2 | [씬 — 파일인가 객체인가](references/basics/02-scene.md) | 같은 "씬"이 가리키는 세 가지와 루트 노드 | 141 |
+> | 3 | [인스턴싱](references/basics/03-instancing.md) | 설계도로 실체를 찍어낸다. load → instantiate → add_child 4단계 | 303 |
+> | 4 | [스크립트](references/basics/04-script.md) | 노드에 붙는 것. GDScript 기초 문법·들여쓰기·:=·어노테이션·@tool | 676 |
+> | 5 | [시그널](references/basics/05-signal.md) | 노드끼리 대화하는 방법. 연결이 .tscn 에 저장되는 함정 | 278 |
+> | 6 | [에디터 화면](references/basics/06-editor-screen.md) | 4개 독의 역할·단축키·res://·FileSystem 에서 파일 숨기기 | 252 |
+> | 7 | [에디터 조작](references/basics/07-editor-input.md) | 궤도 회전과 프리룩·3버튼 없는 마우스·왼손 사용자 리바인딩 | 186 |
+> | 8 | [동영상 강좌](references/basics/08-video.md) | 손으로 한 번 따라 만들어 보는 강좌 4개 | 127 |
+> | 9 | [캐릭터 컨트롤러](references/basics/09-controller.md) | 3D 컨트롤러 전체 코드를 한 줄씩. 좌표 규약·중력·transform.basis | 1,054 |
+> | 10 | [캐릭터 애니메이션](references/basics/10-animation.md) | .glb 애니메이션이 도는 원리. 화살표 키만 눌렀는데 왜 걷는가 | 862 |
+>
+> **0→1→2→3→4 가 학습 순서**이고, 5~8 은 필요할 때 찾아본다.
+> **9·10 은 앞 파트를 읽은 뒤** 코드를 한 줄씩 뜯는 실전 파트다.
 
 맨 앞에 **기본적으로 공부해야 할 목록**(6단계 체크리스트 — 엔진 구조 → GDScript 문법 →
 3D 기초 → 움직임·충돌 → 만들어 보기 → **캐릭터 애니메이션**)이 있어, 무엇을 알아야 하는지부터 판단하게 한다.

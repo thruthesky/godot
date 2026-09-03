@@ -164,10 +164,10 @@ func _ready() -> void:
 ## 4. 씬 인스턴싱
 
 **미리 만들어 둔 씬을 불러와 새 노드 묶음을 만들어 내는 것**이다. 개념과 "설계도 → 실체"
-흐름은 [basics.md](basics.md) §3 에 있고, 여기서는 실전 패턴을 다룬다.
+흐름은 [basics/03-instancing.md](basics/03-instancing.md) 에 있고, 여기서는 실전 패턴을 다룬다.
 
 **반대 방향** — 이미 현재 씬 안에 만들어 놓은 노드 묶음을 재사용 가능한 씬으로 떼어내는
-`Save Branch as Scene...` 은 [basics.md](basics.md) §3 에 있다(브랜치의 정의, `.tscn` 이
+`Save Branch as Scene...` 은 [basics/03-instancing.md](basics/03-instancing.md) 에 있다(브랜치의 정의, `.tscn` 이
 어떻게 바뀌는지, `Reset Position` 기본값, 거부당하는 5가지 경우).
 
 ### 에디터에서 인스턴싱하기
@@ -607,7 +607,7 @@ enemy.process_mode = Node.PROCESS_MODE_PAUSABLE           # 기본값 — 일시
 
 **핵심 원칙: 자식은 부모를 몰라야 한다. 통지는 시그널로 올리고, 명령은 아래로 내린다.**
 
-> 시그널의 **개념과 기본 사용법**은 [basics.md §5](basics.md#5-시그널signal--노드끼리-대화하는-방법),
+> 시그널의 **개념과 기본 사용법**은 [basics/05-signal.md](basics/05-signal.md),
 > **문법과 연결 플래그**는 [gdscript.md §10](gdscript.md#10-시그널) 에 있다.
 > 이 절은 **그것으로 무엇을 조립하는가**를 다룬다.
 

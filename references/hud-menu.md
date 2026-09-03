@@ -609,7 +609,7 @@ func _on_quit_pressed() -> void:
 ```
 
 에디터의 **`Node` 독 → `Signals` 탭 → `pressed()` 더블클릭**으로 연결하면
-수신 메서드가 자동 생성된다. 시그널의 전체 개념은 [basics.md](basics.md) 를 본다.
+수신 메서드가 자동 생성된다. 시그널의 전체 개념은 [basics/05-signal.md](basics/05-signal.md) 를 본다.
 
 > **버튼 시그널 4종을 구분한다** — `pressed`(눌렀다 뗐을 때), `button_down`,
 > `button_up`, `toggled`(`toggle_mode = true` 일 때). **평범한 버튼은 `pressed` 다.**

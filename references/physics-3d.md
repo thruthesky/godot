@@ -212,7 +212,7 @@ CharacterBody3D                 CharacterBody3D
 **실측** — `CharacterBody3D > Node3D > CollisionShape3D` 의 등록 shape 은 **0** 이었다.
 캐릭터가 아무것과도 부딪히지 않고 바닥을 뚫고 떨어진다.
 
-> 이것은 [basics.md](basics.md) 의 **"충돌은 씬 트리와 무관하지만, 내 몸을 이루는 부품은
+> 이것은 [basics/01-world.md](basics/01-world.md) 의 **"충돌은 씬 트리와 무관하지만, 내 몸을 이루는 부품은
 > 직속 부모에게만 붙는다"** 와 같은 규칙이다. **누구와 부딪히는가**는 물리 공간이 정하므로
 > 트리 위치와 무관하지만, **내가 어떤 형체인가**는 직속 부모 관계로만 조립된다.
 

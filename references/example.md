@@ -450,7 +450,7 @@ Galaxy A12(3GB RAM · PowerVR GE8320) 실측이다.
 | **콜리전·물리에서 문제가 된다** | 셰이프에 스케일을 주면 엔진에 따라 동작이 달라진다 |
 
 **메시의 크기는 메시에서, 노드의 배치는 Transform 에서.**
-자세한 개념은 [basics.md](basics.md) §1 "노드와 리소스는 다르다".
+자세한 개념은 [basics/01-world.md](basics/01-world.md) 의 "노드와 리소스는 다르다".
 
 ## `main.tscn` 에 플레이어 놓기
 
@@ -730,7 +730,7 @@ Invalid access to property or key 'global_position' on a base object of type 'nu
 `@export` 는 **씬 데이터에 저장되어 에디터가 관리**하므로 나중에 이름을 바꾸거나
 다른 부모 밑으로 옮겨도 연결이 유지된다(`.tscn` 에 `node_paths=` 표시와 함께
 `NodePath` 로 저장되고, 에디터가 그 값을 추적해 갱신한다 —
-근거는 [basics.md](basics.md) 의 "다른 노드를 가리키는 세 가지 방법"). 대신 **씬에서 한 번 지정해 줘야** 하고,
+근거는 [basics/01-world.md](basics/01-world.md) 의 "다른 노드를 가리키는 세 가지 방법"). 대신 **씬에서 한 번 지정해 줘야** 하고,
 잊으면 역시 `null` 이 된다.
 
 > 💡 **`%` 고유 이름**은 Scene 독에서 노드 우클릭 → `Access as Unique Name` 으로 켠다.
@@ -1471,7 +1471,7 @@ var dir := Vector3(input.x, 0.0, input.y)
 > 🛑 **이건 카메라 yaw 가 0 이라서 성립한다.**
 > 카메라를 좌우로 돌리면 "화면 위쪽"과 "월드 `-Z`" 가 어긋나고,
 > 그때는 **`transform.basis` 로 카메라 기준 변환**이 필요해진다
-> (→ [basics.md](basics.md) §9.12). 라리엔 3D 는 **yaw 를 고정**하므로 이 변환이
+> (→ [basics/09-controller.md](basics/09-controller.md) §9.12). 라리엔 3D 는 **yaw 를 고정**하므로 이 변환이
 > 영원히 필요 없다 — 카메라를 고정해서 얻는 이득 중 하나다.
 
 #### ④ 방향 → 속도 → 실제 이동
