@@ -450,6 +450,27 @@ CJK 폰트가 15~20MB 라 SSOT 번들 용량 규칙과 정면으로 부딪치는
 4.5 AccessKit 통합으로 `Control` 에 들어온 `accessibility_name`/`description`/`live` 등
 실측 속성과, 아이콘 버튼부터 채우라는 우선순위를 담는다.
 
+### [i18n.md](i18n.md) — 다국어 (i18n)
+
+**화면 문구를 여러 언어로 바꾸는 일 전체를 다룬다.** 공식 문서(Internationalizing games ·
+Localization using spreadsheets · gettext · Locales)를 정본으로 삼고, 그 위에 **실제로 돌려 본 결과**를 더했다.
+번역 표를 CSV 로 만들 때의 형식(`keys,en,ko,…`·`_` 로 시작하는 주석 열·UTF-8 no-BOM·`?plural` 을 쓰면
+자동 번역이 꺼진다는 공식 제약)과 gettext 와의 선택 기준, **임포트 → 등록 순서**(CSV 를 넣는 것만으로는
+로드되지 않고 `.translation` 은 CSV 옆에 생긴다), 씬 `text` 에 키를 넣으면 엔진이 번역한다는 것과
+`auto_translate_mode`(플레이어 이름·채팅을 그리는 노드는 `DISABLED` 여야 하는 이유), `tr()`·`format()`·문맥·복수형,
+`OS.get_locale_language()` → `TranslationServer.set_locale()` 의 공식 4줄 예제와 `compare_locales` 점수 규칙
+(`ko_KR`↔`ko`=5 · `zh_TW`↔`zh`=3 · 다른 언어=0), 언어 변경이 `NOTIFICATION_TRANSLATION_CHANGED` 로 트리 전체에
+전파되므로 **씬은 공짜이고 코드가 만든 문구만 다시 번역하면 된다**는 것을 코드와 함께 설명한다.
+
+**폰트 절이 특히 실측 중심이다** — 기본 폰트에 한글·한자·데바나가리·아랍·벵골 글리프가 하나도 없다는 것,
+`fallbacks` 체인과 `allow_system_fallback`, 그리고 **삼성 기기에서 한자만 □ 로 뜨는 현상의 원인**
+(`fonts.xml` 이 `lang="ko"` 에 한자 없는 폰트를 앞세우고 엔진이 글리프 보유를 확인하지 않는다)을 소스와
+실기기 스크린샷으로 규명하고, 서브셋 폰트로 20MB 를 2MB 로 줄이는 절차와 중국식·일본식 한자 자형을
+`fallbacks` **순서**로 고르는 방법(`language_support_overrides` 는 폴백 선택에 영향이 없다 — 실측)을 담는다.
+RTL 은 엔진이 자동 미러링하지만 **조작 버튼만은 `LAYOUT_DIRECTION_LTR` 로 막아야 한다**는 것과
+`CanvasLayer` 에는 그 속성이 없다는 함정, 마지막으로 헤드리스·창·실기기 3단 검증과
+**영어 폴백이 미번역을 가리는 함정**(sentinel 키로 잡는다), `tr()` 로 자동 번역을 검사하면 안 되는 이유(`atr()` 이다)를 정리한다.
+
 ### [resources-assets.md](resources-assets.md) — 리소스와 에셋 임포트
 
 `Resource`의 개념과 **참조 공유 규칙**(같은 경로를 여러 번 `load()`하면 같은 인스턴스),

@@ -400,6 +400,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [navigation-3d.md](references/navigation-3d.md) | 길찾기와 적 AI | [상세](references/catalog.md#navigation-3dmd--길찾기와-적-ai) |
 | [input-ui.md](references/input-ui.md) | 입력 처리와 Control UI | [상세](references/catalog.md#input-uimd--입력-처리와-control-ui) |
 | [hud-menu.md](references/hud-menu.md) | HUD·메뉴·버튼 만들기 (화면 UI 조립) | [상세](references/catalog.md#hud-menumd--hud메뉴버튼-만들기-화면-ui-조립) |
+| [i18n.md](references/i18n.md) | 다국어 — 번역·언어 전환·폰트 폴백·RTL | [상세](references/catalog.md#i18nmd--다국어-i18n) |
 | [resources-assets.md](references/resources-assets.md) | 리소스와 에셋 임포트 | [상세](references/catalog.md#resources-assetsmd--리소스와-에셋-임포트) |
 | [audio.md](references/audio.md) | 3D 오디오 | [상세](references/catalog.md#audiomd--3d-오디오) |
 | [shaders-3d.md](references/shaders-3d.md) | 셰이더 | [상세](references/catalog.md#shaders-3dmd--셰이더) |
