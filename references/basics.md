@@ -29,7 +29,7 @@
 |---|---|---|---|
 | **0** | **[무엇부터 공부해야 하나](basics/00-study-list.md)** | 6단계 체크리스트 — 엔진 구조부터 캐릭터 애니메이션까지 | 91 |
 | **1** | **[Godot 의 세계관](basics/01-world.md)** | 노드 → 씬 → 씬 속의 씬. 씬 트리·충돌·인스펙터 상속 사슬·리소스 | 1,011 |
-| **2** | **[씬 — 파일인가 객체인가](basics/02-scene.md)** | 같은 "씬"이 가리키는 세 가지와 루트 노드 | 162 |
+| **2** | **[씬 — 파일인가 객체인가](basics/02-scene.md)** | 같은 "씬"이 가리키는 세 가지와 루트 노드 · 새 씬의 루트 타입 고르기 | 230 |
 | **3** | **[인스턴싱](basics/03-instancing.md)** | 설계도로 실체를 찍어낸다. load → instantiate → add_child 4단계 | 322 |
 | **4** | **[스크립트](basics/04-script.md)** | 노드에 붙는 것. GDScript 기초 문법·들여쓰기·`:=`·어노테이션·`@tool` | 701 |
 | **5** | **[시그널](basics/05-signal.md)** | 노드끼리 대화하는 방법. 연결이 `.tscn` 에 저장되는 함정 | 307 |
@@ -85,13 +85,14 @@ Godot 으로 게임을 만들려는 초보 독자에게 최소한 알아야 할 
 
 ### 2. [씬 — 파일인가 객체인가](basics/02-scene.md)
 
-`references/basics/02-scene.md` · **162줄** · 소제목 1개
+`references/basics/02-scene.md` · **230줄** · 소제목 1개
 
 같은 "씬"이 가리키는 세 가지와 루트 노드.
 
-같은 "씬"이라는 말이 셋을 가리켜 계속 막히는 초보에게 씬 파일(`.tscn` 텍스트 설계도)·씬 인스턴스(메모리의 실체)·`SceneTree`(실행 중인 활성 트리)를 갈라 주는 파트다. Scene 독 맨 위의 `Demo` 는 씬이 아니라 루트 노드 하나이고, 씬은 `Demo` 와 그 아래 전부를 묶은 것이라는 점을 4.7.2 바이너리의 UI 문자열(`Create Root Node:`·`Make Scene Root`)로 뒷받침한다. 진짜 함정은 `root` 라는 말이 둘이라는 것으로, `get_tree().root` 는 엔진이 얹은 `Window` 이고 내 씬의 루트 노드는 `get_tree().current_scene` 이다. 루트 노드만 `owner` 가 `null` 이고 `.tscn` 에 `parent=` 가 없으며 `scene_file_path` 가 `res://demo.tscn` 이라는 실측을 표로 보이고, `instantiate()` 가 돌려주는 것도 루트 노드라 씬의 타입은 루트 노드 타입이 정하므로 씬을 만들 때 루트 타입을 먼저 정해야 한다고 결론짓는다.
+같은 "씬"이라는 말이 셋을 가리켜 계속 막히는 초보에게 씬 파일(`.tscn` 텍스트 설계도)·씬 인스턴스(메모리의 실체)·`SceneTree`(실행 중인 활성 트리)를 갈라 주는 파트다. Scene 독 맨 위의 `Demo` 는 씬이 아니라 루트 노드 하나이고, 씬은 `Demo` 와 그 아래 전부를 묶은 것이라는 점을 4.7.2 바이너리의 UI 문자열(`Create Root Node:`·`Make Scene Root`)로 뒷받침한다. 진짜 함정은 `root` 라는 말이 둘이라는 것으로, `get_tree().root` 는 엔진이 얹은 `Window` 이고 내 씬의 루트 노드는 `get_tree().current_scene` 이다. 루트 노드만 `owner` 가 `null` 이고 `.tscn` 에 `parent=` 가 없으며 `scene_file_path` 가 `res://demo.tscn` 이라는 실측을 표로 보이고, `instantiate()` 가 돌려주는 것도 루트 노드라 씬의 타입은 루트 노드 타입이 정하므로 씬을 만들 때 루트 타입을 먼저 정해야 한다고 결론짓는다. 마지막 절은 **그래서 새 씬을 만들 때 실제로 무엇을 누르는가** — `Scene > New Scene` 이 띄우는 **`Create Root Node:`** 패널의 네 항목(`2D Scene`·`3D Scene`·`User Interface`·**`Other Node`**, 4.7.2 실측)에서 **앞의 셋은 한 타입 고정 바로가기이고 `Other Node` 만 `Create Node` 대화상자를 열어 모든 노드 타입을 검색하게 한다**(`Favorites:`·`Recent:`·`Matches:`). 🛑 **3D 게임이라고 늘 `3D Scene` 이 답은 아니다** — `Node3D` 에는 이동 기능이 없어 **움직이는 캐릭터는 `Other Node` 로 `CharacterBody3D` 를 골라야** `velocity`·`move_and_slide()`·`is_on_floor()` 를 물려받는다. 흔히 듣는 *"루트 타입은 나중에 못 바꾼다"* 는 **사실이 아니다** — 우클릭 **`Change Type...`** 이 있다(에디터 액션 `scene_tree/change_node_type`, 4.7.2 확인). 다만 새 타입에 없는 속성이 버려지고 스크립트 `extends`·그 씬을 쓰던 곳을 직접 확인해야 하므로 **"못 바꾼다"가 아니라 "바꾸면 손이 간다"** 가 정확한 이유다.
 
 > - 트리 맨 위의 그것은 "씬"이 아니라 루트 노드다
+> - 　새 씬을 만들 때 무엇을 고르나 — `Create Root Node:` 패널
 
 ### 3. [인스턴싱](basics/03-instancing.md)
 

@@ -102,7 +102,7 @@ SceneTree = 실행 중인 트리). 여기에 **트리 맨 위의 노드는 씬�
 **루트 노드**다(에디터 UI 문자열 `Create Root Node:`·`Make Scene Root`·`A root node is required to save the scene.` 로 확인). 🛑 **`root` 가 두 곳에서 쓰이는 함정** —
 **`get_tree().root` 는 엔진이 자동으로 얹는 `Window` 이지 내 씬의 루트가 아니고**, 내 씬의 루트는 **`get_tree().current_scene`**(doctool 확인 — `root` 는 `type="Window"`,
 `current_scene` 은 `type="Node"`). **루트 노드만 다른 점 4가지**(씬마다 정확히 하나 · `owner` 가 `null` · `.tscn` 에 `parent=` 가 없다 · `scene_file_path` 가 채워진다 — 실측)와
-**`instantiate()` 가 돌려주는 것도 루트 노드**라서 **씬의 타입은 루트 노드 타입이 정한다**는 것(`Node3D` 면 3D, `Control` 이면 UI — 나중에 못 바꾼다). 중심은 **인스턴싱** — 왜 필요한지 3가지, 에디터 방법
+**`instantiate()` 가 돌려주는 것도 루트 노드**라서 **씬의 타입은 루트 노드 타입이 정한다**는 것(`Node3D` 면 3D, `Control` 이면 UI — 나중에 `Change Type...` 으로 바꿀 수는 있지만 속성이 버려진다). 이어서 **새 씬을 만들 때 누르는 `Create Root Node:` 패널**(`2D Scene`·`3D Scene`·`User Interface`·**`Other Node`**) — **`Other Node` 만 `Create Node` 대화상자를 열어 모든 타입을 검색**하므로 **움직이는 캐릭터(`CharacterBody3D`)는 여기서 고른다.** 중심은 **인스턴싱** — 왜 필요한지 3가지, 에디터 방법
 (체인 버튼 `Instantiate Child Scene`·**Cmd+Shift+A**·드래그), 코드 방법 3단계, 그리고
 **"메모리에 올린다"의 정확한 의미를 4단계로 분해**한다 — ① `.tscn` 은 설계도일 뿐
 ② `load()` 는 설계도를 메모리로 읽을 뿐 **아직 노드 0개** ③ `instantiate()` 에서 **비로소
