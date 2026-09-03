@@ -48,7 +48,7 @@ Godot 의 프로젝트 파일은 **기본이 사람이 읽고 편집할 수 있�
 |------|----------|
 | `project.godot`에 설정 추가 | 안전 |
 | `.tscn`의 노드 프로퍼티 값 변경 | 안전 (형식 준수 시) |
-| `.tscn`에 노드 추가/삭제 | 위험 — `load_steps`, 참조 ID를 정확히 맞춰야 함 |
+| `.tscn`에 노드 추가/삭제 | 주의 — `ExtResource`/`SubResource` id 를 유일하게 맞춘다. `load_steps` 는 계산하지 않는다(아래 헤더 절) |
 | `.tres` 값 변경 | 안전 |
 | `.import` 편집 | 가능하나 재임포트 필요 |
 | UID 값 임의 변경 | **금지** — 참조가 깨진다 |
@@ -312,7 +312,7 @@ common/physics_ticks_per_second.mobile=60
 ### 전체 구조
 
 ```ini
-[gd_scene load_steps=6 format=3 uid="uid://bqx8k2vn1m3rt"]
+[gd_scene format=3 uid="uid://bqx8k2vn1m3rt"]
 
 [ext_resource type="Script" path="res://scenes/player/player.gd" id="1_abc12"]
 [ext_resource type="PackedScene" uid="uid://c3v8x2mqk1nrt" path="res://scenes/weapon.tscn" id="2_def34"]
@@ -356,17 +356,19 @@ damage = 25
 ### 헤더
 
 ```ini
-[gd_scene load_steps=6 format=3 uid="uid://bqx8k2vn1m3rt"]
+[gd_scene format=3 uid="uid://bqx8k2vn1m3rt"]
 ```
 
 | 필드 | 의미 |
 |------|------|
-| `load_steps` | `ext_resource` + `sub_resource` 개수 + 1. **틀리면 로드 경고가 뜬다** |
+| `load_steps` | **4.7 에디터는 쓰지 않는다.** 옛 파일에 남아 있어도 무시된다 — `scene/resources/resource_format_text.cpp` 에 4.6·4.7 모두 `load_steps` 문자열이 없다(엔진 소스 확인 2026-09-03). 프로젝트의 `main.tscn`·`player.tscn`·`hud.tscn` 저장본에도 없다 |
 | `format` | Godot 4.x는 `3` |
 | `uid` | 이 씬의 고유 ID. 다른 파일이 이 값으로 참조한다 |
 
-**`load_steps`를 직접 계산하는 것은 오류가 나기 쉽다.** 노드를 추가/삭제할 때는
-에디터를 쓰거나, 편집 후 에디터에서 씬을 열어 저장해 자동 정정시킨다.
+**손으로 노드·리소스를 추가할 때 맞출 것은 `id` 뿐이다** — `ExtResource("2_xxxxx")`·`SubResource("StyleBoxFlat_xxxxx")`
+가 가리키는 id 가 유일하고 실제로 선언되어 있으면 된다. `unique_id=` 는 4.7 에디터가 노드마다 붙이는 값인데
+**없어도 로드되고 다음 저장 때 에디터가 채운다**(`hud.tscn` 에 `DebugText` 를 손으로 넣어 확인 2026-09-03).
+편집 후 에디터에서 한 번 저장해 형식을 맞춘다.
 
 ### ext_resource — 외부 파일 참조
 
@@ -478,9 +480,9 @@ omni_range = 5.0      →  omni_range = 8.0
 ```
 
 ```ini
-; 이건 위험하다 — load_steps와 id 관리가 필요하다
-[ext_resource ...]    ; 추가 시 load_steps도 +1
-[sub_resource ...]    ; 추가 시 load_steps도 +1
+; 이건 주의한다 — id 가 유일해야 하고, 참조하는 줄과 선언이 짝이어야 한다
+[ext_resource ...]    ; id="2_xxxxx" 를 새로 짓는다
+[sub_resource ...]    ; id="Type_xxxxx" 를 새로 짓는다
 ```
 
 ---
@@ -488,7 +490,7 @@ omni_range = 5.0      →  omni_range = 8.0
 ## 6. .tres 리소스 파일 포맷
 
 ```ini
-[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3 uid="uid://dk2m9v4x"]
+[gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://dk2m9v4x"]
 
 [ext_resource type="Script" path="res://scripts/resources/weapon_data.gd" id="1_script"]
 [ext_resource type="AudioStream" uid="uid://b7x2" path="res://assets/audio/swing.ogg" id="2_sfx"]
@@ -509,7 +511,7 @@ swing_sound = ExtResource("2_sfx")
 |------|------|
 | `type` | 기본 리소스 타입 (`Resource`, `StandardMaterial3D` 등) |
 | `script_class` | 커스텀 스크립트의 `class_name` |
-| `load_steps` | 로드 단계 수 — 외부·내부 리소스 개수 + 1. **틀리면 로드가 깨진다** |
+| `load_steps` | **4.7 은 쓰지 않는다** — 위 `.tscn` 헤더 절과 같다 |
 | `uid` | `ResourceUID` — 경로가 바뀌어도 참조를 유지한다 |
 | `[resource]` | 리소스 본체 프로퍼티 |
 | `resource_name` | 사람이 읽는 이름. **`script` 줄보다 위에 온다**(엔진 확인) |
@@ -603,7 +605,7 @@ for f in resources/weapons/*.tres; do
 done
 ```
 
-단 **프로퍼티를 새로 추가하는 편집은 피한다** — `load_steps` 나 리소스 ID 를 함께
+단 **프로퍼티를 새로 추가하는 편집은 피한다** — 리소스 ID 를 함께
 맞춰야 하는 경우가 있다. 새 리소스를 만들 때는 손으로 쓰지 말고
 `ResourceSaver.save()` 가 직렬화하게 둔다
 ([resources-assets.md](resources-assets.md) §3 의 헤드리스 생성 절).
@@ -944,7 +946,7 @@ var rel := ProjectSettings.localize_path("/home/u/proj/assets/data.json")
 
 | 실수 | 결과 | 해결 |
 |------|------|------|
-| `.tscn`에 노드 추가하며 `load_steps` 미갱신 | 로드 경고 | 에디터로 저장해 자동 정정 |
+| `.tscn`에 손으로 노드 추가 | `unique_id` 가 빠진다 — 로드는 된다 | 에디터로 한 번 저장해 채운다 |
 | `ExtResource` id 중복/누락 | 씬 깨짐 | id를 유일하게 유지 |
 | `uid` 값을 임의 변경 | 참조 끊김 | UID는 건드리지 않는다 |
 | `.import` 파일 gitignore | 팀원마다 다른 임포트 결과 | 커밋한다 |

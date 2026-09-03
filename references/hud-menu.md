@@ -107,6 +107,10 @@ Godot 공식 문서([Multiple resolutions](https://docs.godotengine.org/en/stabl
 > 약 **0.67 배로 축소되어** 그려진다. `canvas_items` 는 필터링을 적용하므로
 > 레이아웃이 깨지지는 않지만, **얇은 선과 작은 글자는 뭉갠다.**
 > → 1px 구분선을 쓰지 않고 2px 이상으로 잡는다. 폰트는 [§9](#9-폰트--한글이-먼저다).
+>
+> **에디터 F5 실행 창도 같은 비율이다** — `window/size/window_width_override = 1280`(×720) 이라
+> 데스크톱 기준 1920 의 **0.667 배**로 그려진다. 폰트 14 가 실행 창에서 9px 로 보이는 이유이고,
+> 개발용 라벨은 18~20 으로 두어야 실행 창에서 읽힌다(실측 2026-09-03).
 
 ### Stretch 설정 3×5 — 무엇을 고르는가
 
@@ -368,6 +372,14 @@ HUD (CanvasLayer)
 > **`custom_maximum_size`** 는 4.7 에 있는 속성으로 기본값이 `Vector2(-1, -1)`(제한 없음)이다.
 > 글자가 길어져도 버튼이 무한정 넓어지지 않게 막을 때 쓴다.
 
+> 🛑 **`RichTextLabel` 을 컨테이너 안에 넣고 `fit_content` 만 켜면 한 글자씩 접힌다.**
+> autowrap 이 기본(`WORD_SMART`)이고 최대 폭 제한이 없으면 **최소 폭이 1px** 로 계산되기 때문이다
+> (엔진 4.7 `scene/gui/rich_text_label.cpp` `get_minimum_size()` 확인 — `fit_content` 는 높이만 잡고,
+> 폭은 `autowrap_mode == OFF` 이거나 `custom_maximum_size.x > 0` 일 때만 내용 폭을 쓴다).
+> 고치는 법은 둘 — **`autowrap_mode = OFF`**(가장 긴 줄이 곧 폭. 디버그 패널처럼 줄바꿈이 필요 없을 때)
+> 또는 **`custom_maximum_size.x`** 를 주기(그 폭까지 자연스럽게 늘고 넘치면 접힘).
+> `custom_minimum_size.x` 는 최소 폭만 정하므로 이것만으로는 자연 폭이 나오지 않는다. 헤드리스 실측 2026-09-03.
+
 ### 전형적인 중첩
 
 ```
@@ -442,6 +454,7 @@ UI 가 터치를 먹어버린 것이다. 노드별 실측 기본값은 이렇게
 |---|---|---|
 | **`Control`** | **`0` (STOP)** | 🛑 **입력을 먹는다** |
 | **`PanelContainer`** | **`0` (STOP)** | 🛑 **먹는다** |
+| **`RichTextLabel`** | **`0` (STOP)** | 🛑 **먹는다** — 같은 글자 노드인 `Label` 과 다르다 (`Control` 기본값 상속, override 없음 — doctool 확인) |
 | `TextureRect` | `1` (PASS) | 자기도 받고 아래로도 넘긴다 |
 | `TextureProgressBar` | `1` (PASS) | |
 | **`Label`** | **`2` (IGNORE)** | 통과시킨다 |
@@ -680,6 +693,20 @@ func toggle_pause() -> void:
 `default_font_size`(`-1`), `default_base_scale`(`0.0`). 나머지는 전부 타입별 항목이다.
 
 ### `StyleBox` — 버튼의 "모양"은 여기서 나온다
+
+> 🛑 **Theme Overrides 의 값이 회색이고 못 고친다면 — 아직 오버라이드가 없는 것이다.**
+> 오버라이드 속성은 `PROPERTY_USAGE_CHECKABLE` 이고 실제 오버라이드가 있을 때만 `CHECKED` 가 붙는다
+> (엔진 4.7 `scene/gui/control.cpp` `_get_property_list` 확인). 오버라이드가 없으면 인스펙터가 **테마에서
+> 상속되는 값을 읽기 전용으로** 보여준다 — 드롭다운에 `StyleBoxFlat` 이 보여도 내 것이 아니다.
+>
+> **켜는 법은 타입마다 다르다.** 색·상수·폰트 크기는 **왼쪽 체크박스**를 켠다. 그러나 **StyleBox·Font·Icon
+> 같은 리소스 항목은 체크박스가 막혀 있다** — 클릭하면 *"Toggling the checkbox is disabled for Resource
+> properties. Modify the property directly instead."* 가 뜬다(4.7.2 실제로 겪음 2026-09-03). 리소스 항목은
+> **드롭다운(∨)을 열어 `New StyleBoxFlat` 을 고르면** 오버라이드가 생기고 체크가 저절로 켜진다. 그때부터
+> 값이 흰색이 되어 편집되고 `.tscn` 에 `theme_override_styles/panel = SubResource(...)` 로 저장된다.
+>
+> 색은 색 막대를 클릭해 뜨는 컬러 피커에서 넣는다 — 모드 **RAW(Linear)** 는 0~1 실수, **RGB** 는 0~255,
+> Hex 는 `RRGGBBAA`(예: 반투명 검정 0.55 = `0000008c`).
 
 버튼의 배경·테두리·둥근 모서리는 전부 `StyleBox` 다.
 

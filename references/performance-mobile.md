@@ -266,6 +266,38 @@ UI            CanvasLayer
 | `DebugOverlay` | `bbcode_enabled = true` · `fit_content = true` · `scroll_active = false` | 색을 칠하려면 BBCode, 내용만큼만 커지게 하려면 `fit_content` |
 | `DebugOverlay` | `crowd` 를 인스펙터에서 **캐릭터를 세는 노드**에 연결 | 연결하지 않으면 캐릭터 수가 0 으로 나온다 |
 
+#### 메인 게임 화면에서는 — `hud.tscn` 의 `DebugPanel` (`scenes/ui/debug_panel.gd`)
+
+위 데모 오버레이를 **메인 HUD 로 그대로 가져오지 않는다.** 데모 것은 `crowd` 참조·ESC 종료가 있고
+좌표(`offset_right = 430`)로 놓여 있다. 메인 화면은 왼쪽 위에 **앵커로 붙인 하나의 패널**에
+세 덩어리를 모은다 — 왼쪽 위에 진단이 둘 이상 겹치면 서로 가린다.
+
+```
+hud.tscn
+└─ HUD (CanvasLayer)
+   ├─ DebugPanel (PanelContainer)   앵커 Top Left · offset (12, 12) · StyleBoxFlat 반투명 검정 · debug_panel.gd
+   │  └─ DebugText (RichTextLabel)  custom_minimum_size (440, 0) · normal/bold_font_size 20
+   └─ Bottom (MarginContainer)      기존 버튼
+```
+
+| 덩어리 | 출처 | |
+|---|---|---|
+| **PERF** | `Performance.get_monitor` | 위 표와 같다. 예산 상수는 SSOT §3 그대로 |
+| **ZONE** | `Player.get_net_debug_text()` | 접속·tick·서버 위치·dir256·클릭 목표. 문구의 정본은 `player.gd` |
+| **CAMERA** | 카메라 부모의 `get_debug_text()` | `get_viewport().get_camera_3d().get_parent()` 에서 찾는다 — 인스펙터 참조를 하나 더 두지 않는다 |
+
+데모와 다른 점 — ① `crowd`·ESC 없음, ② **F3 로 켜고 끈다**(숨기면 `set_process(false)` 로 갱신도 멈춘다),
+③ 라벨이 **영문**이다(기본 폰트에 한글 글리프가 없어 실기기에서 □ — [hud-menu.md §9](hud-menu.md)),
+④ `mouse_filter`·`bbcode_enabled`·`fit_content`·`scroll_active`·`autowrap_mode = OFF` 를 **스크립트 `_ready` 가
+보장**한다(씬 체크박스를 빠뜨려도 동작), ⑤ `player` 는 HUD 가 `_ready` 에서 넣고 setter 가 즉시 다시 그린다.
+
+> 🛑 **`fit_content` 만 켜고 autowrap 을 기본으로 두면 한 글자씩 접힌다** — 최소 폭이 1px 이 되기 때문이다
+> (엔진 4.7 `rich_text_label.cpp` `get_minimum_size()` 확인). `autowrap_mode = OFF` 또는 `custom_maximum_size`
+> 를 준다 → [hud-menu.md §4](hud-menu.md). 데모 씬은 `offset_right = 430` 으로 폭을 박아 이 문제를 비켜 갔다.
+
+헤드리스 실측(2026-09-03, 1920 기준) — 글자 20 에서 패널 **631 × 496 px**. 세로 모바일 1080 폭의 58%,
+실행 창 1280 에서는 421 px. F3 토글·`mouse_filter = 2`·`player` setter 즉시 반영을 같은 실행에서 확인했다.
+
 #### 완성 코드
 
 **이 프로젝트의 정본은 `res://scenes/demo/mecath/debug_overlay.gd` 이고,
