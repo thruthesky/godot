@@ -1,13 +1,19 @@
 # MultiMeshInstance3D — 같은 것을 수천 개 그리고, 콜리전은 따로 푼다
 
-> **이 문서로 오는 상황** — 나무·바위·풀처럼 **같은 메시를 대량으로** 놓아야 할 때,
-> 에디터의 **Populate Surface** 로 뿌리는 법, 그리고 **뿌린 것들에 왜 충돌이 없는지**와
-> 그것을 어디서 푸는지. 드로우콜 예산 전반은 [lowend-culling-lod.md](lowend-culling-lod.md),
+> **이 문서로 오는 상황** — 나무·바위·풀처럼 **같은 메시를 대량으로** 놓아야 할 때.
+> 씬을 처음부터 만드는 법, 에디터 **Populate Surface** 로 뿌리는 법, **뿌린 것들에 왜
+> 충돌이 없는지**, 그리고 **콜리전을 붙이는 여섯 가지 방법** 전부.
+> 드로우콜 예산 전반은 [lowend-culling-lod.md](lowend-culling-lod.md),
 > 메모리 계산은 [lowend-3gb-60fps.md](lowend-3gb-60fps.md) §5.3.
 
 이 문서의 숫자는 전부 **엔진에서 직접 뽑은 것**이다. 기준은 **4.7.2.stable.official** 이고,
-물리 판정은 [`tests/multimesh_collision_probe.gd`](../../../../tests/multimesh_collision_probe.gd) 로
-직접 쟀다(실행 명령과 출력을 §5 에 그대로 붙였다).
+물리 판정은 아래 세 프로브로 직접 쟀다(명령과 출력을 각 절에 그대로 붙였다).
+
+| 프로브 | 무엇을 재나 |
+|---|---|
+| [`tests/multimesh_collision_probe.gd`](../../../../tests/multimesh_collision_probe.gd) | MultiMesh 에 물리가 없다 · GridMap 에는 있다 |
+| [`tests/mm_add_collision_probe.gd`](../../../../tests/mm_add_collision_probe.gd) | 콜리전을 직접 붙이는 두 방법 |
+| [`tests/protonscatter_collision_probe.gd`](../../../../tests/protonscatter_collision_probe.gd) | ProtonScatter 의 `Keep Static Colliders` |
 
 ---
 
@@ -15,13 +21,17 @@
 
 1. [한눈에 — 무엇이고 무엇이 아닌가](#1-한눈에--무엇이고-무엇이-아닌가)
 2. [구조 — 리소스와 노드가 나뉘어 있다](#2-구조--리소스와-노드가-나뉘어-있다)
-3. [에디터로 뿌린다 — Populate Surface](#3-에디터로-뿌린다--populate-surface)
-4. [Create Collision Shape — 9가지 중 무엇을 고르나](#4-create-collision-shape--9가지-중-무엇을-고르나)
-5. [🛑 콜리전은 복제되지 않는다 (실측)](#5--콜리전은-복제되지-않는다-실측)
-6. [그러면 충돌은 어디서 푸나 — 해법 여섯](#6-그러면-충돌은-어디서-푸나--해법-여섯)
-7. [🛑 세 가지 함정 — 컬링·LOD·삼각형](#7--세-가지-함정--컬링lod삼각형)
-8. [코드로 다룰 때](#8-코드로-다룰-때)
-9. [라리엔 3D 에서 이것이 걸리는 곳](#9-라리엔-3d-에서-이것이-걸리는-곳)
+3. [씬을 처음부터 만든다](#3-씬을-처음부터-만든다)
+4. [에디터로 뿌린다 — Populate Surface](#4-에디터로-뿌린다--populate-surface)
+5. [Create Collision Shape — 9가지 중 무엇을 고르나](#5-create-collision-shape--9가지-중-무엇을-고르나)
+6. [🛑 콜리전은 복제되지 않는다 (실측)](#6--콜리전은-복제되지-않는다-실측)
+7. [콜리전을 붙이는 여섯 가지 방법](#7-콜리전을-붙이는-여섯-가지-방법)
+8. [ProtonScatter 완전 안내](#8-protonscatter-완전-안내)
+9. [GridMap + MeshLibrary 완전 안내](#9-gridmap--meshlibrary-완전-안내)
+10. [🛑 세 가지 함정 — 컬링·LOD·삼각형](#10--세-가지-함정--컬링lod삼각형)
+11. [코드로 다룰 때](#11-코드로-다룰-때)
+12. [직접 해 본다 — 실습 씬 넷](#12-직접-해-본다--실습-씬-넷)
+13. [라리엔 3D 에서 이것이 걸리는 곳](#13-라리엔-3d-에서-이것이-걸리는-곳)
 
 ---
 
@@ -47,11 +57,13 @@
 | 애니메이션 | | 🛑 스킨드 메시(캐릭터)는 묶이지 않는다 |
 
 > **핵심 한 줄** — MultiMesh 는 **렌더링 서버에만 존재한다.** 물리 서버는 이것을 모른다.
-> 그래서 §5 의 결과가 나온다.
+> 그래서 §6 의 결과가 나오고, §7 이 필요해진다.
 
 ---
 
 ## 2. 구조 — 리소스와 노드가 나뉘어 있다
+
+처음 만지면 여기서 한 번 헷갈린다. **노드와 리소스가 두 층으로 나뉘어 있다.**
 
 ```
 MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레이어에 그릴지
@@ -64,6 +76,9 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
         └ use_custom_data         셰이더로 넘길 4채널 값을 쓸 것인가
 ```
 
+**`MultiMeshInstance3D` 를 씬에 추가하면 `multimesh` 칸이 `<empty>` 다.** Populate Surface 를
+쓰면 자동으로 채워지고, 코드로 만들 때는 `MultiMesh.new()` 를 넣어 줘야 한다.
+
 | 알아 둘 것 | |
 |---|---|
 | **메시는 하나뿐이다** | 나무 3종을 섞으려면 MultiMesh 도 3개다 |
@@ -73,26 +88,114 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
 
 ---
 
-## 3. 에디터로 뿌린다 — Populate Surface
+## 3. 씬을 처음부터 만든다
 
-**노드 셋이 필요하다.** 셋 다 있어야 다이얼로그가 열린다.
+**Populate Surface 를 쓰려면 노드 셋이 한 씬 안에 있어야 한다.** 하나라도 빠지면 다이얼로그가
+열리지 않거나 거절당한다.
 
-| 역할 | 무엇 | 제약 |
+| 역할 | 노드 타입 | 하는 일 |
 |---|---|---|
-| **Target Surface** | 뿌릴 바닥 | 🛑 **`MeshInstance3D` 여야 한다.** 메시에 면이 있어야 한다 |
-| **Source Mesh** | 복제할 것 (나무 1그루) | 🛑 **`MeshInstance3D` 여야 한다** |
-| **MultiMeshInstance3D** | 결과가 담길 노드 | 이것을 선택해야 툴바에 메뉴가 뜬다 |
+| **Target Surface** | 🛑 `MeshInstance3D` | 인스턴스가 **놓일 바닥**. 면이 있어야 한다 |
+| **Source Mesh** | 🛑 `MeshInstance3D` | **복제할 것** (나무 1그루) |
+| **결과** | `MultiMeshInstance3D` | 뿌려진 결과가 담긴다 |
 
-> 🛑 **둘 다 `MeshInstance3D` 다.** `Node3D` 나 glTF 인스턴스 루트를 고르면
-> `Surface source is invalid (not a MeshInstance3D).` 로 거절당한다. glTF 를 씬에 넣었다면
-> **그 안의 `MeshInstance3D` 를 골라야** 하고, 그러려면 인스턴스에서
-> **`Editable Children`(우클릭 메뉴)** 를 켜거나 **`Make Local`** 해야 한다.
+### 최소 절차
+
+```
+1. Scene ▸ New Scene ▸ 3D Scene            루트가 Node3D 로 생긴다
+2. 루트 우클릭 ▸ Add Child Node
+     MeshInstance3D        → Inspector ▸ Mesh ▸ New PlaneMesh (Size 30 × 30)   … 바닥
+     DirectionalLight3D                                                        … 빛
+     Camera3D                                                                  … 시점
+     MultiMeshInstance3D                                                       … 결과가 담길 곳
+3. 바닥에 콜리전을 준다 (캐릭터가 서 있으려면 필요하다)
+     바닥 선택 ▸ 툴바 Mesh ▸ Create Collision Shape
+       Placement = Static Body Child · Type = Trimesh → Create
+4. 뿌릴 나무를 씬에 넣는다  (아래 두 경로 중 하나)
+5. MultiMeshInstance3D 선택 ▸ 툴바 MultiMesh ▸ Populate Surface
+6. Ctrl/Cmd + S 로 저장
+```
+
+### 🛑 4단계 — `.glb` 를 넣었다면 한 단계가 더 있다
+
+**여기가 처음 하는 사람이 반드시 걸리는 곳이다.**
+
+`.glb` 파일을 FileSystem 에서 뷰포트로 끌어다 놓으면, 씬 트리에는 이렇게 들어온다:
+
+```
+Node3D
+└── grass-trees2          ← 🎬 씬 인스턴스 아이콘. 이 노드의 타입은 Node3D 다
+```
+
+**이 노드를 Source Mesh 로 고르면 거절당한다** — `MeshInstance3D` 가 아니기 때문이다.
+
+```
+Surface source is invalid (not a MeshInstance3D).
+```
+
+메시는 그 **안쪽**에 있는데, 인스턴스는 기본적으로 내부가 접혀 있어 보이지 않는다.
+꺼내는 방법은 둘이다.
+
+| 방법 | 어떻게 | 결과 | 언제 |
+|---|---|---|---|
+| **Editable Children** | 인스턴스 우클릭 ▸ **Editable Children** 체크 | 자식이 펼쳐진다. 이름이 **다른 색**으로 표시된다(원본 씬 소유라는 뜻) | 원본 `.glb` 와의 연결을 유지하고 싶을 때 |
+| **Make Local** | 인스턴스 우클릭 ▸ **Make Local** | 인스턴스 연결이 끊기고 **평범한 노드 묶음**이 된다 | 이 씬에서만 자유롭게 고칠 때 |
+
+`Editable Children` 을 켜면 이렇게 된다:
+
+```
+Node3D
+├── WorldEnvironment
+├── grass-trees2                     🎬 인스턴스 (Editable Children ✅)
+│   └── grass-trees                  ← MeshInstance3D. 이것을 Source Mesh 로 고른다
+├── MeshInstance3D                   ← 바닥 (Target Surface)
+│   └── StaticBody3D
+│       └── CollisionShape3D
+├── MultiMeshInstance3D              ← 결과가 담길 곳
+└── Camera3D
+```
+
+> **이름 색이 다른 이유** — 그 노드는 **원본 씬이 소유**한다. 값을 바꾸면 되돌리기 화살표가
+> 뜨고, 원본 `.glb` 를 다시 임포트하면 덮어써진다.
+
+### 🛑 `MultiMeshInstance3D` 를 인스턴스 **안에** 넣지 않는다
+
+`Editable Children` 을 켜 두면 인스턴스 안에도 노드를 추가할 수 있다. **하지만 그렇게 하지 않는다.**
+
+```
+🛑 이렇게 하지 않는다                    ✅ 이렇게 한다
+Node3D                                  Node3D
+└── grass-trees2  (인스턴스)             ├── grass-trees2  (인스턴스)
+    ├── grass-trees                      │   └── grass-trees      ← Source Mesh 로만 쓴다
+    └── MultiMeshInstance3D  ← 여기       ├── MultiMeshInstance3D  ← 루트 바로 아래
+                                         └── ...
+```
+
+| 왜 |
+|---|
+| 인스턴스 안의 노드는 **원본 씬의 구조에 얹힌 덧붙임**이라, 원본 `.glb` 를 다시 임포트하거나 구조가 바뀌면 **자리를 잃거나 사라질 수 있다** |
+| 인스턴스의 transform 이 **결과 전체에 곱해진다** — 나무 한 그루를 옮겼을 뿐인데 뿌린 숲이 통째로 움직인다 |
+| 나중에 **Source Mesh 를 지우고 싶어도** MultiMesh 가 그 안에 있어 같이 지워진다 |
+
+**결과 노드는 항상 바깥에, 뿌릴 좌표의 기준이 되는 자리에 둔다.**
+
+### 다 뿌린 뒤 Source Mesh 는 어떻게 하나
+
+**지워도 된다.** 변환 배열은 이미 `MultiMesh` 리소스 안에 복사됐다.
+
+다만 **나무 한 그루가 화면에 계속 서 있는 게 싫다면** 지우고, **나중에 다시 뿌릴 생각이면**
+남겨 두거나 `Visibility ▸ Visible` 를 꺼 둔다. (`.glb` 인스턴스는 지워도 원본 파일은 그대로다.)
+
+---
+
+## 4. 에디터로 뿌린다 — Populate Surface
 
 ### 클릭 순서
 
 ```
-1. MultiMeshInstance3D 를 씬에 추가하고 선택한다
-2. 3D 뷰포트 상단 툴바에  ▸ MultiMesh  메뉴가 나타난다 → 클릭
+1. 씬 트리에서 MultiMeshInstance3D 를 클릭해 선택한다
+     🛑 선택하지 않으면 툴바에 MultiMesh 메뉴가 나타나지 않는다
+2. 3D 뷰포트 상단 툴바 ▸ MultiMesh  → 클릭
 3. Populate Surface
 4. Target Surface  ▸ [..] → 바닥 MeshInstance3D 선택 → OK
 5. Source Mesh     ▸ [..] → 나무 MeshInstance3D 선택 → OK
@@ -116,13 +219,19 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
 > **면적 가중치** — 넓은 삼각형에 더 많이 떨어진다. 그래서 지형이 균일하지 않아도
 > 밀도가 눈으로 고르게 보인다.
 
-### 뿌린 뒤
+### 🛑 막히는 곳과 원인
 
-- **Source Mesh 노드는 지워도 된다.** 변환 배열은 이미 `MultiMesh` 리소스 안에 복사됐다.
-- 다시 `Populate` 하면 **덮어쓴다**(더해지지 않는다).
-- 배치가 마음에 안 들면 `Ctrl/Cmd+Z` 로 되돌아간다.
+| 증상 | 원인 |
+|---|---|
+| 툴바에 `MultiMesh` 메뉴가 **없다** | `MultiMeshInstance3D` 를 **선택하지 않았다**. 다른 노드를 선택 중이면 안 뜬다 |
+| `Surface source is invalid (not a MeshInstance3D).` | 고른 노드가 `MeshInstance3D` 가 아니다 → §3 의 `Editable Children` |
+| `Surface source is invalid (no faces).` | 바닥 메시에 면이 없다. `PlaneMesh` 등 실제 면이 있는 메시여야 한다 |
+| `No mesh source specified…` | Source Mesh 를 안 골랐거나, 고른 노드의 `Mesh` 가 비어 있다 |
+| 나무가 **누워서** 심긴다 | `Mesh Up Axis` 를 소스 메시의 위쪽 축에 맞춘다 |
+| 다시 Populate 했더니 **더해지지 않는다** | 정상이다. **덮어쓴다** |
+| 뿌린 나무가 **전부 같은 방향** | `Random Rotation` 을 올린다 |
 
-### 실측 — 나무 3그루를 뿌렸을 때 (강좌 영상, 4.7.2)
+### 실측 — 나무 3그루를 뿌렸을 때 (4.7.2)
 
 | | 뿌리기 전 | 뿌린 뒤 | 변화 |
 |---|---|---|---|
@@ -131,11 +240,11 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
 | **Draw Calls** | 23 | **24** | **+1** |
 
 **나무가 3그루든 300그루든 드로우콜은 +1 이다.** 이것이 MultiMesh 를 쓰는 유일한 이유다.
-반대로 **삼각형은 전혀 줄지 않는다** — 개수만큼 그대로 늘어난다(§7).
+반대로 **삼각형은 전혀 줄지 않는다** — 개수만큼 그대로 늘어난다(§10).
 
 ---
 
-## 4. Create Collision Shape — 9가지 중 무엇을 고르나
+## 5. Create Collision Shape — 9가지 중 무엇을 고르나
 
 `MeshInstance3D` 선택 → 툴바 **Mesh** → **Create Collision Shape**.
 엔진 소스(`editor/scene/3d/mesh_instance_3d_editor_plugin.cpp`) 기준으로 다음이 전부다.
@@ -151,7 +260,7 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
 
 | 항목 | 만드는 것 | 비용 | 언제 |
 |---|---|---|---|
-| **Trimesh** | 메시 삼각형 전부 | 🛑 **가장 비싸다** | 정적 지형. 움직이는 바디에는 못 쓴다 |
+| **Trimesh** | 메시 삼각형 전부 | 🛑 **가장 비싸다** | 정적 지형·바닥. 움직이는 바디에는 못 쓴다 |
 | **Single Convex** | 볼록 껍질 1개 | 중간 | 단순 볼록 물체 |
 | **Simplified Convex** | 단순화한 볼록 껍질 | 중간 | Single Convex 가 무거울 때 |
 | **Multiple Convex** | 볼록 분해 N개 | 🛑 비싸다 | 오목한 형상을 정확히 |
@@ -166,10 +275,6 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
 
 ### 🌳 나무에는 왜 Capsule 인가
 
-강좌 영상의 설명이 정확하다 —
-
-> "We're not gonna use this trimesh single convex **since it will create, use more triangles**."
-
 **나무 한 그루의 Trimesh 콜리전은 잎사귀 삼각형까지 전부 물리 형상이 된다.**
 그런데 게임에서 필요한 건 **"줄기에 부딪힌다"** 뿐이다. 잎은 통과해도 아무도 모른다.
 
@@ -181,13 +286,11 @@ MultiMeshInstance3D          노드 — 씬의 어디에 놓을지, 어느 레�
 
 ---
 
-## 5. 🛑 콜리전은 복제되지 않는다 (실측)
+## 6. 🛑 콜리전은 복제되지 않는다 (실측)
 
 > # 원본에 콜리전을 만들어 두어도, Populate Surface 로 뿌린 인스턴스에는 콜리전이 없다.
 
-이것이 이 문서에서 가장 중요한 사실이다. **버그가 아니라 설계다.**
-
-### 왜 그런가
+**버그가 아니라 설계다.**
 
 ```
 MultiMesh  →  RenderingServer   (변환 배열을 GPU 버퍼로)   ← 인스턴스는 여기에만 있다
@@ -197,7 +300,9 @@ MultiMesh  →  RenderingServer   (변환 배열을 GPU 버퍼로)   ← 인스�
 `MultiMesh` 는 **렌더링 서버의 자료구조**다. 물리 서버는 `CollisionObject3D` 를 상속한 **노드**만
 안다. MultiMesh 인스턴스는 노드가 아니므로 **물리 세계에 존재하지 않는다.**
 
-에디터 플러그인 소스(`multimesh_editor_plugin.cpp`)에도 **콜리전을 만드는 코드가 한 줄도 없다.**
+그리고 `Populate Surface` 는 **`Mesh` 리소스만** 복사한다 — 원본 씬 트리에 매달린
+`StaticBody3D` 는 구조적으로 따라올 수가 없다. 에디터 플러그인 소스
+(`multimesh_editor_plugin.cpp`)에도 **콜리전을 만드는 코드가 한 줄도 없다.**
 
 ### 실측
 
@@ -215,15 +320,13 @@ godot --headless --path . -s res://tests/multimesh_collision_probe.gd
   ✅ 인스턴스 2 (x=20) 에 레이 — 기대 충돌없음 / 실제 충돌없음
 
 [B] 원본 MeshInstance3D 아래 StaticBody3D 를 두면 인스턴스에도 생기는가
-    (영상의 'Create Collision Shape > Capsule' 과 같은 구조)
-  원본(x=-20) — StaticBody3D 를 직접 붙였다
+    (에디터의 'Create Collision Shape > Capsule' 과 같은 구조)
   ✅ 원본에 레이                    — 기대 충돌함   / 실제 충돌함
   ✅ MultiMesh 사본 (x=-40) 에 레이 — 기대 충돌없음 / 실제 충돌없음
   ✅ MultiMesh 사본 (x=-60) 에 레이 — 기대 충돌없음 / 실제 충돌없음
 
 [C] GridMap + MeshLibrary(shape 포함) 는 콜리전이 자동으로 생기는가
   셀 3개 배치 · 노드 수 = 1 · get_used_cells = 3
-  MeshLibrary.get_item_shapes(0).size() = 2  (shape 1개 + Transform 1개 = 2)
   ✅ 셀 0 (x=0) 에 레이 — 기대 충돌함 / 실제 충돌함
   ✅ 셀 1 (x=4) 에 레이 — 기대 충돌함 / 실제 충돌함
   ✅ 셀 2 (x=8) 에 레이 — 기대 충돌함 / 실제 충돌함
@@ -231,137 +334,336 @@ godot --headless --path . -s res://tests/multimesh_collision_probe.gd
 실패 0 건
 ```
 
-**[B] 가 답이다.** 원본에 `Create Collision Shape > Capsule` 로 `StaticBody3D` 를 붙여도,
-그 메시를 MultiMesh 로 뿌린 사본에는 **충돌이 생기지 않는다.** 원본만 충돌한다.
-
-**[C] 가 대안이다.** 같은 "노드 1개로 N 개"를 `GridMap` 으로 하면 **콜리전이 셀마다 자동으로 생긴다.**
+**[B] 가 답이다** — 원본만 충돌하고 사본은 통과한다.
 
 ### 화면에서 어떻게 보이나
 
-- 뿌린 나무를 **뷰포트에서 클릭해도 선택되지 않는다** (선택은 물리가 아니라 별개지만,
-  MultiMesh 인스턴스는 개별 객체가 아니라서 마찬가지로 못 고른다)
+- 뿌린 나무를 **뷰포트에서 클릭해도 선택되지 않는다** (개별 객체가 아니다)
 - 캐릭터가 **나무를 그냥 통과한다**
 - `RayCast3D` · `intersect_ray` 가 **아무것도 못 맞힌다**
 
 ---
 
-## 6. 그러면 충돌은 어디서 푸나 — 해법 여섯
+## 7. 콜리전을 붙이는 여섯 가지 방법
 
-**엔진 내장에는 "원본 콜리전을 인스턴스에 자동 복제" 하는 버튼이 없다.** 관련 제안이 열려 있으나
-(godot-proposals **#10828** `Add collision detection / raycast to MultiMeshInstance3D` — 2024-09-26
-개설, **여전히 open · 담당자 없음**; #4344 `MultiColliderInstance` 와 godot#23019 는 **closed**)
-아직 기능으로 들어오지 않았다.
+**엔진 내장에는 "원본 콜리전을 인스턴스에 자동 복제" 하는 버튼이 없다.** 제안
+[#10828](https://github.com/godotengine/godot-proposals/issues/10828) 은 2024-09-26 에 열린 뒤
+아직 **open** 이고 담당자도 없다. (#4344 `MultiColliderInstance`, godot#23019 는 **closed**.)
 
-대신 **목적에 따라 다섯 갈래**로 나뉜다.
+그래서 방법이 갈린다. **먼저 두 갈래를 구분해야 한다.**
 
-| # | 방법 | 클릭만으로? | 드로우콜 | 콜리전 | 언제 |
-|---|---|---|---|---|---|
-| **1** | **ProtonScatter + `Keep Static Colliders`** | ✅ **체크박스 하나** | 1 | ✅ **자동** | **자유 배치 + 충돌이 둘 다 필요할 때** |
-| **2** | **GridMap + MeshLibrary** (내장) | ✅ **된다** | 배칭됨 | ✅ **자동** | 격자에 놓아도 되는 것 |
-| **3** | 충돌이 필요한 것만 개별 노드 | ✅ | 개수만큼 | ✅ | 큰 나무 수십 개 |
-| **4** | 콜리전을 아예 안 준다 | ✅ | 1 | ❌ | 풀·꽃·자갈·먼 배경 |
-| **5** | 넓은 형상으로 뭉뚱그린다 | ✅ | 1 | ✅ 대략 | 숲 덩어리를 벽으로 |
+```
+[한꺼번에 붙인다]   인스턴스 N개에 대응하는 shape N개를, 바디 1개에 몰아 넣는다
+                    → 방법 A · B · C · D.  노드 수가 폭발하지 않는다
 
-### 1. ProtonScatter + `Keep Static Colliders` — 요구한 그대로를 해 주는 유일한 도구 ✅
+[하나씩 붙인다]     인스턴스마다 StaticBody3D 를 따로 만든다
+                    → 방법 E.  MultiMesh 를 쓰는 의미가 절반 사라진다
+```
 
-**"원본 씬에 콜리전을 넣어 두면 뿌린 전부에 자동으로 생긴다"를 체크박스 하나로 해 준다.**
-엔진 기능이 아니라 애드온([HungryProton/scatter](https://github.com/HungryProton/scatter))이다.
+| # | 방법 | 클릭만으로? | 드로우콜 | 만드는 노드 | 에디터에 보이나 | 언제 |
+|---|---|---|---|---|---|---|
+| **A** | **ProtonScatter + `Keep Static Colliders`** | ✅ 체크박스 하나 | 1 | **0** | ❌ | **자유 배치 + 충돌** |
+| **B** | **GridMap + MeshLibrary** (내장) | ✅ 된다 | 배칭됨 | 0 | ✅ | 격자에 놓아도 되는 것 |
+| **C** | 스크립트 — `StaticBody3D` 1개 + `CollisionShape3D` N개 | ❌ 코드 | 1 | **N+1** | ✅ | 디버그 뷰로 **보고 싶을 때** |
+| **D** | 스크립트 — `PhysicsServer3D` 직접 | ❌ 코드 | 1 | **0** | ❌ | 인스턴스가 **아주 많을 때** |
+| **E** | 충돌이 필요한 것만 개별 노드 | ✅ | 개수만큼 | N | ✅ | 큰 나무 **수십 그루** |
+| **F** | 콜리전을 아예 안 준다 / 넓게 뭉뚱그린다 | ✅ | 1 | 0~1 | ✅ | 풀·꽃·자갈·먼 배경 |
 
-소스(`addons/proton_scatter/src/scatter.gd`)를 열면 왜 되는지가 분명하다 —
+**A·B 는 §8·§9 에서 따로 다룬다.** 여기서는 코드로 붙이는 C·D 를 본다.
+
+### 방법 C — `StaticBody3D` 1개 + `CollisionShape3D` N개
+
+**가장 이해하기 쉽고, 에디터 디버그 뷰에서 눈으로 확인된다.**
+
+```gdscript
+# MultiMeshInstance3D 아래에 바디 하나를 두고, 인스턴스마다 shape 노드를 붙인다
+var body := StaticBody3D.new()
+mmi.add_child(body)                       # MultiMesh 와 같은 좌표계에 둔다
+
+var shape := CapsuleShape3D.new()         # 🛑 shape 리소스는 하나만 만들어 공유한다
+shape.radius = 0.45
+shape.height = 3.2
+
+for i in mmi.multimesh.instance_count:
+    var col := CollisionShape3D.new()
+    col.shape = shape                     # 같은 리소스를 N개가 함께 쓴다 (메모리 1벌)
+    col.transform = mmi.multimesh.get_instance_transform(i)
+    body.add_child(col)
+```
+
+| 장점 | 단점 |
+|---|---|
+| ✅ `Debug ▸ Visible Collision Shapes` 로 **보인다** | 🛑 노드가 **N+1개** 생긴다 |
+| ✅ 레이어·마스크를 `body` 에서 한 번에 정한다 | 🛑 인스턴스가 수천이면 씬 트리가 무거워진다 |
+| ✅ 나중에 하나씩 지우거나 옮길 수 있다 | |
+
+### 방법 D — `PhysicsServer3D` 에 직접 등록
+
+**노드를 하나도 만들지 않는다.** ProtonScatter 가 내부에서 쓰는 방식이다.
+
+```gdscript
+# 바디 하나를 물리 서버에 직접 만든다
+var body_rid := PhysicsServer3D.body_create()
+PhysicsServer3D.body_set_mode(body_rid, PhysicsServer3D.BODY_MODE_STATIC)
+PhysicsServer3D.body_set_space(body_rid, get_world_3d().space)
+PhysicsServer3D.body_set_state(
+    body_rid, PhysicsServer3D.BODY_STATE_TRANSFORM, mmi.global_transform)
+
+# shape 도 하나만 만들어 N번 재사용한다
+var shape_rid := PhysicsServer3D.capsule_shape_create()
+PhysicsServer3D.shape_set_data(shape_rid, {"radius": 0.45, "height": 3.2})
+
+for i in mmi.multimesh.instance_count:
+    PhysicsServer3D.body_add_shape(
+        body_rid, shape_rid, mmi.multimesh.get_instance_transform(i))
+
+# 🛑 RID 는 직접 지운다. 노드가 아니라서 queue_free() 가 챙겨 주지 않는다
+# PhysicsServer3D.free_rid(body_rid)
+# PhysicsServer3D.free_rid(shape_rid)
+```
+
+| 장점 | 단점 |
+|---|---|
+| ✅ 노드 **0개**. 씬 트리가 그대로다 | 🛑 `Debug ▸ Visible Collision Shapes` 에 **안 보인다** |
+| ✅ 인스턴스가 수천이어도 가볍다 | 🛑 **RID 를 직접 해제**해야 한다 (안 하면 샌다) |
+| | 🛑 레이어·마스크도 `body_set_collision_layer` 로 직접 설정해야 한다 |
+
+> **레이어를 잊지 말 것** — `body_create()` 의 기본 레이어는 1이다.
+> `PhysicsServer3D.body_set_collision_layer(body_rid, 원하는_비트)` 를 반드시 부른다.
+
+### 실측 — C·D 둘 다 동작한다
+
+```bash
+godot --headless --path . -s res://tests/mm_add_collision_probe.gd
+```
+
+```
+=== Godot 4.7.2-stable (official) · MultiMesh 에 콜리전 붙이기 실측 ===
+
+[기준선] MultiMesh 만 놓았을 때
+  ✅ 레이 24발 중  0발 명중 · 만들어진 노드  0개
+
+[방법 C] StaticBody3D 1개 + CollisionShape3D N개
+         노드가 보이고 Debug ▸ Visible Collision Shapes 로 확인된다
+  ✅ 레이 24발 중 24발 명중 · 만들어진 노드 25개
+
+[방법 D] PhysicsServer3D 에 shape 을 직접 등록 (ProtonScatter 방식)
+         노드가 0개다. 그래서 Debug 뷰에도 안 보인다
+  ✅ 레이 24발 중 24발 명중 · 만들어진 노드  0개
+
+실패 0 건
+```
+
+### 🛑 방법 E 를 고를 때의 판단
+
+"인스턴스마다 `StaticBody3D` 를 하나씩" 은 **MultiMesh 를 쓰는 의미를 절반 없앤다.**
+드로우콜은 1로 남지만 **노드 수·메모리·씬 트리 부담이 개별 배치와 같아진다.**
+
+**충돌이 필요한 것이 수십 개뿐이라면 애초에 MultiMesh 를 쓰지 말고 개별 노드로 두는 편이 낫다.**
+MultiMesh 는 "수백~수천 개를 싸게 그린다" 가 목적이지 "콜리전을 붙인다" 가 목적이 아니다.
+
+---
+
+## 8. ProtonScatter 완전 안내
+
+**"원본 씬에 콜리전을 넣어 두면 뿌린 전부에 자동으로 생긴다" 를 체크박스 하나로 해 주는
+유일한 도구다.** 엔진 기능이 아니라 애드온([HungryProton/scatter](https://github.com/HungryProton/scatter))이다.
+
+### 왜 되는가 — 소스가 근거다
+
+`addons/proton_scatter/src/scatter.gd` 를 열면 분명하다.
 **MultiMesh 인스턴스를 채우는 바로 그 루프가, 같은 `Transform3D` 로 물리 서버에 shape 을 등록한다.**
 
 ```gdscript
-# scatter.gd:74-76 — 프로퍼티
+# scatter.gd:74-76 — 프로퍼티 선언
 ## If enabled, creates static collision shapes for scattered objects.
 ## Uses the Physics server directly instead of creating actual collision nodes
 @export var keep_static_colliders := false
 
+# scatter.gd:45-51 — render_mode 의 의미
+## Use Instancing (0): Uses MultiMesh instances for efficient rendering of identical objects.
+## Create Copies (1): Creates individual node copies for each scattered object.
+## Use Particles (2): Uses GPU particles system for very large numbers of objects.
+
 # scatter.gd:448-450 — 결정적. 렌더와 물리가 같은 t 를 쓴다
 t = item.process_transform(transforms.list[offset + i])
-mmi.multimesh.set_instance_transform(i, t)
-_create_collision(static_body, t)
+mmi.multimesh.set_instance_transform(i, t)   # 렌더
+_create_collision(static_body, t)            # 물리
+
+# scatter.gd:609-611 — MultiMesh 모드(0)에서 작동한다. 끄는 것은 1(Create Copies)뿐
+func _create_collision(body: StaticBody3D, t: Transform3D) -> void:
+	if not keep_static_colliders or render_mode == 1:
+		return
 ```
 
+즉 **§7 의 방법 D 를 애드온이 대신 해 주는 것**이다.
+지원 shape 은 Sphere · Box · **Capsule** · Cylinder · ConcavePolygon · ConvexPolygon ·
+HeightMap · SeparationRay.
+
+> ⚠️ **공식 위키는 이 기능을 모른다.** 위키 `Multimesh and duplicates` 에는
+> "Multimesh mode … only cares for the MeshInstances, scripts and **colliders are ignored**"
+> 라고 적혀 있지만, `keep_static_colliders` 가 생기기 전에 쓰인 문서다. **소스가 정본이다.**
+
+### 설치
+
 ```
-① AssetLib 에서 ProtonScatter 설치 → Project Settings ▸ Plugins 에서 활성화
-② ProtonScatter 노드 추가
-③ 자식으로 ScatterItem   → Path 에 나무 씬 지정 (그 씬에 StaticBody3D + CapsuleShape3D 를 넣어 둔다)
-④ 자식으로 ScatterShape  → 뿌릴 영역
-⑤ 루트 선택 ▸ Inspector
-     Render Mode           = Use Instancing   (0 — MultiMesh)
-     Keep Static Colliders = ✅ 체크           ← 이 한 번이 전부다
+방법 A  에디터 ▸ AssetLib 탭 ▸ "ProtonScatter" 검색 ▸ Download ▸ Install
+방법 B  저장소를 받아 addons/proton_scatter/ 에 직접 넣는다 (버전 고정 벤더링)
+그다음  Project ▸ Project Settings ▸ Plugins ▸ ProtonScatter 를 Enable
 ```
 
-| 알아 둘 것 | |
+**Godot 4.7 호환** — 최신 커밋 **2026-07-26 "fix compatibility issue with 4.7"**,
+`plugin.cfg` version `4.2.0`.
+
+### 노드 구성
+
+```
+ProtonScatter                     ← 여기에 Keep Static Colliders 가 있다
+├── ScatterItem                     무엇을 뿌릴 것인가
+│     Source = From disk
+│     Path   = res://…/mm_tree.tscn   🛑 프로퍼티 이름은 path 다 (source_scene 아니다)
+└── ScatterShape                    어디에 뿌릴 것인가
+      Shape  = ProtonScatterBoxShape (Size 11 × 2 × 11)
+```
+
+### 인스펙터에서 켤 것
+
+| 위치 | 값 |
 |---|---|
-| 지원 shape | Sphere · Box · **Capsule** · Cylinder · ConcavePolygon · ConvexPolygon · HeightMap · SeparationRay |
-| `Render Mode` | `Use Instancing`(0)·`Use Particles`(2) 에서 작동한다. 🛑 **`Create Copies`(1) 에서는 무시된다**(그때는 노드가 진짜로 복제되므로 콜리전도 따라온다) |
-| 🛑 **씬 트리에 노드가 없다** | `PhysicsServer3D` 에 직접 등록한다. **`Debug ▸ Visible Collision Shapes` 에도 안 보인다**(소스 주석에 명시). 검증은 실제로 부딪혀 보는 수밖에 없다 |
-| 🛑 **조상 변환이 반영되지 않는다** | `body_add_shape(..., t * c.transform)` — 곱해지는 건 인스턴스 변환과 **`CollisionShape3D` 로컬 transform** 뿐이다. **[SSOT §3.2](../../game/references/SSOT.md) 의 `Body` 노드 `scale` 은 콜리전에 반영되지 않는다** — 메시만 커지고 콜리전은 원래 크기로 남는다 |
-| 🛑 **collision layer 를 설정하지 않는다** | 소스에 `body_set_collision_layer` 호출이 **0회**. 전부 기본 레이어로 들어간다 |
-| Godot 4.7 | 최신 커밋 **2026-07-26 "fix compatibility issue with 4.7"** · `plugin.cfg` `4.2.0` |
+| `ProtonScatter` ▸ **Render Mode** | **`Use Instancing`** (= MultiMesh) |
+| `ProtonScatter` ▸ **Keep Static Colliders** | **✅ 체크** ← 이 한 번이 전부다 |
 
-> ⚠️ **공식 위키는 이 기능을 모른다.** 위키 `Multimesh and duplicates` 는 "Multimesh mode …
-> only cares for the MeshInstances, scripts and **colliders are ignored**" 라고 적혀 있지만
-> **`keep_static_colliders` 가 생기기 전에 쓰인 문서**다. 소스가 정본이다.
+### 🛑 Modifier Stack 이 비면 아무것도 안 나온다
 
-### 2. GridMap + MeshLibrary — 클릭만으로 되는 유일한 *내장* 경로 ✅
+**가장 많이 막히는 곳이다.** ProtonScatter 는 "몇 개를 어디에 놓을지" 를 **Modifier Stack**
+에서 정한다. 비어 있으면 인스턴스가 **0개**이고 화면에 아무것도 안 보인다.
 
-**MeshLibrary 아이템에 콜리전을 넣어 두면, GridMap 이 셀을 놓을 때마다 콜리전을 자동으로 만든다.**
-§5 [C] 로 실측 확인했다.
+인스펙터 아래쪽 `Modifier Stack` 에서 `+` 를 눌러 최소 두 개를 넣는다:
+
+| Modifier | 하는 일 |
+|---|---|
+| **Create Inside (Random)** | 영역 안에 무작위로 N개 생성 (`Amount` 로 개수) |
+| **Randomize Transforms** | 회전·크기를 흩는다 (`Rotation` 을 `0, 360, 0` 으로) |
+
+자주 함께 쓰는 것 — `Project On Geometry`(지면에 붙이기) · `Relax`(간격 고르게) ·
+`Create Inside (Poisson)`(겹치지 않게).
+
+코드로 만들 때는 이렇게 된다:
+
+```gdscript
+var create = load("res://addons/proton_scatter/src/modifiers/create_inside_random.gd").new()
+create.amount = 40
+var rand_t = load("res://addons/proton_scatter/src/modifiers/randomize_transforms.gd").new()
+rand_t.rotation = Vector3(0, 360, 0)
+var stack := ProtonScatterModifierStack.new()
+var mods: Array[ScatterBaseModifier] = [create, rand_t]
+stack.stack = mods
+scatter.modifier_stack = stack
+```
+
+### 🛑 반드시 알아야 할 제약 넷 — 전부 실측으로 확인했다
+
+**① 씬 트리에 콜리전 노드가 생기지 않는다**
+
+`PhysicsServer3D` 에 직접 등록하므로 **`Debug ▸ Visible Collision Shapes` 를 켜도 안 보인다.**
+소스 주석에 그렇게 적혀 있다("This also means you can't see these colliders").
+확인 방법은 **실제로 걸어가서 부딪혀 보는 것**뿐이다.
+
+**② 부모 노드의 `scale` 이 버려진다**
+
+ProtonScatter 는 원본 씬에서
+- `MeshInstance3D` 를 재귀로 찾아 **그 노드 자신의** transform 만 살리고
+  (`scatter_util.gd` — `mesh_instances[0].duplicate()`)
+- `CollisionShape3D` 를 재귀로 찾아 **그 노드 자신의** 로컬 transform 만 살린다
+  (`get_collision_data()` — `body.remove_child(child)` 후 새 바디로 옮긴다)
+
+**그 사이에 있는 부모 노드의 transform 은 전부 버려진다.** 루트도 `source.transform = Transform3D()`
+로 초기화된다.
 
 ```
-[준비 씬]  아이템마다 이렇게 만든다
-  Tree (MeshInstance3D)          ← 아이템 이름이 된다
-    └ StaticBody3D               ← Mesh ▸ Create Collision Shape ▸ Static Body Child ▸ Capsule
+🛑 이렇게 하면 안 된다                ✅ 이렇게 한다
+MMTree                                MMTree
+└── Body (scale = 5)  ← 버려진다      ├── Visual (MeshInstance3D)  ← 크기를 메시에 넣는다
+     └── MeshInstance3D                └── StaticBody3D
+                                            └── CollisionShape3D
+```
+
+**③ `Source Scale Multiplier` 로 키우면 콜리전이 따라오지 않는다**
+
+```bash
+godot --headless --path . -s res://tests/protonscatter_collision_probe.gd
+```
+
+```
+[A. keep_static_colliders = false]                    레이 12발 중  0발 명중  ✅ 콜리전 없음
+[B. keep_static_colliders = true]                     레이 12발 중 12발 명중  ✅ 콜리전 있음
+   콜리전 윗면 높이 ≈ 2.27 m
+[C. B + source_scale_multiplier = 4 (콜리전 안 따라옴)] 레이 12발 중  0발 명중  ✅ 실측된 한계
+실패 0 건
+```
+
+**크기는 원본 씬에서 정한다.** `Source Scale Multiplier` 는 보기에만 쓴다.
+
+**④ collision layer 를 설정하지 않는다**
+
+소스 전체에 `body_set_collision_layer` 호출이 **0회**다. 전부 **기본 레이어**로 들어간다.
+레이어로 구분하는 프로젝트라면 이것이 곧바로 문제가 된다(§13).
+
+---
+
+## 9. GridMap + MeshLibrary 완전 안내
+
+**애드온 없이 "노드 1개 + 콜리전 자동" 을 얻는 유일한 내장 경로다.**
+
+핵심은 `MeshLibrary` 아이템이 **shape 을 들고 있는 것** 하나뿐이다. 그러면 `GridMap` 이
+셀을 놓을 때마다 콜리전을 자동으로 만든다. 엔진 소스(`modules/gridmap/grid_map.cpp`
+`_octant_update()`)가 같은 함수 안에서 `RS::multimesh_create()` 로 배칭하면서
+`PhysicsServer3D::body_add_shape(g.static_body, …)` 로 콜리전을 만든다.
+
+### MeshLibrary 를 만드는 절차
+
+```
+[준비 씬] 아이템마다 이 형식으로 만든다
+  Tree (MeshInstance3D)        ← 이 노드 이름이 아이템 이름이 된다
+    └ StaticBody3D             ← Mesh ▸ Create Collision Shape ▸ Static Body Child ▸ Capsule
         └ CollisionShape3D
 
-[내보내기]  Scene ▸ Export As... ▸ MeshLibrary...  →  tree_lib.tres
+[내보내기]  Scene ▸ Export As... ▸ MeshLibrary...   →  tree_library.tres
 
-[쓰기]     GridMap 노드 추가 ▸ Inspector 의 Mesh Library 에 tree_lib.tres 지정
-           ▸ 아래 팔레트에서 아이템 고르고 뷰포트를 클릭해 배치
+[쓰기]     GridMap 노드 추가 ▸ Inspector ▸ Mesh Library 에 .tres 지정
+           ▸ 아래 팔레트에서 아이템을 고르고 뷰포트를 클릭해 배치
 ```
 
-| 얻는 것 | 잃는 것 |
+> 🛑 **이 형식만 인식된다.** 공식 문서 원문 — 아이템은 `MeshInstance3D` 여야 하고
+> "Have up to one StaticBody3D child, for collision. The StaticBody3D should have one or more
+> CollisionShape3D children." + "**Only this specific format is recognized.**"
+
+코드로 만들 때는 이 한 줄이 전부다:
+
+```gdscript
+var lib := MeshLibrary.new()
+lib.create_item(0)
+lib.set_item_name(0, "tree")
+lib.set_item_mesh(0, tree_mesh)
+# [shape, transform] 순서로 넣는다 — 이것이 GridMap 콜리전의 전부다
+lib.set_item_shapes(0, [capsule_shape, Transform3D(Basis(), Vector3(0, 1.6, 0))])
+```
+
+### 얻는 것과 잃는 것
+
+| ✅ 얻는 것 | 🛑 잃는 것 |
 |---|---|
-| ✅ **콜리전 자동** — 아이템에 넣은 shape 이 셀마다 생긴다 | 🛑 **격자에만 놓인다** (`Cell Size` 간격) |
-| ✅ 렌더링은 octant 단위로 **배칭된다** | 🛑 회전은 **직교 24방향만** (자유 각도 불가) |
-| ✅ 노드 1개 | 🛑 인스턴스별 **크기 무작위 불가** |
-| ✅ 내비게이션 메시도 아이템에 넣을 수 있다 | 🛑 아이템 종류가 많으면 배칭이 갈라진다 |
+| **콜리전 자동** — 아이템에 넣은 shape 이 셀마다 생긴다 | **격자에만** 놓인다 (`Cell Size` 간격) |
+| 렌더링은 **octant 단위로 배칭**된다 | 회전은 **직교 24방향만** (자유 각도 불가) |
+| 노드 1개 | 인스턴스별 **크기 무작위 불가** (`cell_scale` 은 전체 공통) |
+| 내비게이션 메시도 아이템에 넣을 수 있다 | 아이템 종류가 많으면 배칭이 갈라진다 |
 
 > **판단 기준 하나** — "격자에 놓여도 어색하지 않은가?"
 > 건물·바닥·벽·울타리·가로등은 ✅. 자연스러운 숲은 ❌(격자 티가 난다).
 
-### 3. 충돌이 필요한 것만 개별 노드로
-
-**대부분의 게임이 실제로 쓰는 방법이다.** 나무 500그루 중 캐릭터가 닿을 수 있는 건 몇십 그루다.
-
-```
-큰 나무 30그루  → MeshInstance3D + StaticBody3D + CapsuleShape3D  (드로우콜 30)
-작은 풀 5,000  → MultiMeshInstance3D, 콜리전 없음                 (드로우콜 1)
-```
-
-### 4. 콜리전을 아예 주지 않는다
-
-**풀·꽃·자갈·먼 배경 나무는 통과해도 아무도 모른다.** 가장 싸고, 대부분 이걸로 충분하다.
-
-### 5. 넓은 형상으로 뭉뚱그린다
-
-숲 한 덩어리를 `StaticBody3D` + `BoxShape3D` **하나로** 막는다.
-"이 숲에는 못 들어간다" 가 규칙이면 나무마다 콜리전을 줄 이유가 없다.
-
-### 6. 애드온 없이 스크립트로
-
-- **godot-multimesh-scatter** — 뿌리기 자체를 노드로 만든 애드온. 파라미터를 바꾸면 에디터에서
-  즉시 다시 뿌린다. 다만 **콜리전 자동 생성은 이 애드온의 기능이 아니다**(설정에 있는
-  collision layer/mask 는 뿌릴 지면을 찾는 레이캐스트용이다).
-- **직접 스크립트** — `MultiMesh.get_instance_transform(i)` 를 돌며 `StaticBody3D` 를 만들어 붙인다.
-  🛑 **그 순간 노드가 N 개로 늘어나** MultiMesh 의 이점 절반(노드 수·메모리)이 사라진다.
-  드로우콜만 1로 남는다.
-
 ---
 
-## 7. 🛑 세 가지 함정 — 컬링·LOD·삼각형
+## 10. 🛑 세 가지 함정 — 컬링·LOD·삼각형
 
 ### ① 컬링이 전부-아니면-전무
 
@@ -388,7 +690,7 @@ MultiMesh 안의 인스턴스는 **거리와 무관하게 전부 같은 LOD** �
 ### ③ 삼각형은 줄지 않는다
 
 **MultiMesh 는 드로우콜을 줄이는 것이지 삼각형을 줄이는 것이 아니다.**
-§3 실측에서 Primitives 가 12,045 → 18,310 으로 **늘어난 것**이 그 증거다.
+§4 실측에서 Primitives 가 12,045 → 18,310 으로 **늘어난 것**이 그 증거다.
 
 | 병목이 무엇인가 | MultiMesh 가 | |
 |---|---|---|
@@ -398,7 +700,7 @@ MultiMesh 안의 인스턴스는 **거리와 무관하게 전부 같은 LOD** �
 
 ---
 
-## 8. 코드로 다룰 때
+## 11. 코드로 다룰 때
 
 ```gdscript
 var mm := MultiMesh.new()
@@ -426,7 +728,44 @@ add_child(node)
 
 ---
 
-## 9. 라리엔 3D 에서 이것이 걸리는 곳
+## 12. 직접 해 본다 — 실습 씬 넷
+
+**[`scenes/demo/multimesh/`](../../../../scenes/demo/multimesh/)** 에 실습 씬이 있다.
+에디터에서 열어 **F5** 로 실행한다. 방향키로 이동, 마우스 휠로 줌.
+주황색 캡슐이 사람이고, 화면 왼쪽 위에 실시간 **드로우콜·삼각형·FPS** 가 뜬다.
+
+| 순서 | 씬 | 무엇을 보나 |
+|---|---|---|
+| ① | `01_basics.tscn` | 화면 왼쪽 `MeshInstance3D` 300개 vs 오른쪽 `MultiMeshInstance3D` 1개 — **드로우콜 차이** |
+| ② | `02_populate.tscn` | **Populate Surface 를 직접 눌러 본다.** 재료(Ground · SourceTree · 빈 MultiMeshInstance3D)만 들어 있다 |
+| ③ | `03_collision.tscn` | 🛑 **핵심.** 왼쪽 MultiMesh(통과) vs 오른쪽 ProtonScatter(막힘) |
+| ④ | `04_gridmap.tscn` | GridMap + MeshLibrary — 애드온 없이 콜리전 자동 |
+
+> 🛑 **드로우콜은 F5 로 실행해서 봐야 한다.** 에디터 뷰포트의 숫자에는 기즈모·그리드가 섞인다.
+
+**씬을 다시 굽고 싶으면**(초기 상태로 되돌리기):
+
+```bash
+godot --headless --path . -s res://tools/build_multimesh_demo.gd
+```
+
+### ③ 이 주장하는 것은 실측으로 확인했다
+
+사람이 걸어가 보기 전에 캐릭터와 **똑같은 캡슐**로 숲을 가로지르는 직선을 훑었다
+([`tests/autopilot_mm_walk_test.gd`](../../../../tests/autopilot_mm_walk_test.gd)):
+
+```
+[왼쪽 MultiMesh]       숲 중심까지 4.5 m 를 훑었으나 걸리는 것이 없었다   ✅ 통과
+[오른쪽 ProtonScatter]  출발 0.2 m 지점에서 막혔다                       ✅ 막힘
+실패 0 건
+```
+
+콜리전이 실제로 어디에 있는지 격자로 스캔해 아스키 지도로 찍는
+[`tests/mm_collision_map.gd`](../../../../tests/mm_collision_map.gd) 도 있다.
+
+---
+
+## 13. 라리엔 3D 에서 이것이 걸리는 곳
 
 카메라가 **직교 · 피치 −45° 고정**([SSOT](../../game/references/SSOT.md))이라는 점이
 MultiMesh 의 단점 대부분을 무력화한다.
@@ -451,7 +790,6 @@ MultiMesh 의 단점 대부분을 무력화한다.
 
 > 🛑 **클라이언트에 콜리전을 촘촘히 깔고 싶어지면 먼저 물어야 한다** —
 > "이것이 서버 walkable 과 어긋나면 어느 쪽이 맞나?" 답은 언제나 **서버**다.
-> 클라 콜리전은 **연출·클릭 판정**을 위한 것이지 이동 규칙이 아니다.
 
 ### 🛑 지금 나무에 콜리전을 붙이면 클릭-이동이 깨진다
 
@@ -467,11 +805,15 @@ var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
 클릭 광선이 **모든 레이어**를 맞힌다. 지금은 지면만 콜리전을 가지고 있어 문제가 없지만,
 나무·바위에 콜리전이 생기는 순간 **나무를 클릭하면 나무 표면이 이동 목표**가 된다.
 
-특히 ProtonScatter 의 `Keep Static Colliders`(§6-1)는 **collision layer 를 아예 설정하지 않아**
+특히 ProtonScatter 의 `Keep Static Colliders`(§8 제약 ④)는 **collision layer 를 설정하지 않아**
 전부 기본 레이어로 들어가므로 **반드시** 이 광선에 걸린다.
 
 > **순서가 있다** — 기물 콜리전을 켜기 **전에** `_pick_ground()` 의 `collision_mask` 를
 > 지면 레이어로 잠근다. 레이어 번호를 정하는 것은 기획 결정이다.
+
+또 하나 — ProtonScatter 의 "부모 `scale` 이 버려진다"(§8 제약 ②)는
+[SSOT §3.2](../../game/references/SSOT.md)("정적 기물의 크기는 기물 씬 `Body` 노드의 `scale` 로
+맞춘다")와 **정면으로 충돌한다.** 실제 맵에 쓰려면 이 점을 먼저 정리해야 한다.
 
 ---
 
@@ -480,8 +822,8 @@ var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
 | | |
 |---|---|
 | 공식 | [Using MultiMeshInstance3D](https://docs.godotengine.org/en/stable/tutorials/3d/using_multi_mesh_instance.html) · [Optimization using MultiMeshes](https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html) · [Using GridMaps](https://docs.godotengine.org/en/stable/tutorials/3d/using_gridmaps.html) |
-| 엔진 소스 | `editor/scene/3d/multimesh_editor_plugin.cpp` · `editor/scene/3d/mesh_instance_3d_editor_plugin.cpp` |
+| 엔진 소스 | `editor/scene/3d/multimesh_editor_plugin.cpp` · `editor/scene/3d/mesh_instance_3d_editor_plugin.cpp` · `modules/gridmap/grid_map.cpp` |
 | 제안 | [#10828 collision/raycast for MultiMeshInstance3D](https://github.com/godotengine/godot-proposals/issues/10828) (open) · [#4344 MultiColliderInstance](https://github.com/godotengine/godot-proposals/issues/4344) (closed) |
 | 애드온 | [HungryProton/scatter (ProtonScatter)](https://github.com/HungryProton/scatter) — `keep_static_colliders` 는 `addons/proton_scatter/src/scatter.gd` |
-| 이 저장소 | [tests/multimesh_collision_probe.gd](../../../../tests/multimesh_collision_probe.gd) — §5 의 실측 |
+| 실습 | [scenes/demo/multimesh/](../../../../scenes/demo/multimesh/) · 굽는 도구 [tools/build_multimesh_demo.gd](../../../../tools/build_multimesh_demo.gd) |
 | 이어서 | [lowend-culling-lod.md](lowend-culling-lod.md) 드로우콜 예산 · [lowend-3gb-60fps.md](lowend-3gb-60fps.md) §5.3 메모리 |
