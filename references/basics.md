@@ -33,7 +33,7 @@
 | **3** | **[인스턴싱](basics/03-instancing.md)** | 설계도로 실체를 찍어낸다. load → instantiate → add_child 4단계 | 322 |
 | **4** | **[스크립트](basics/04-script.md)** | 노드에 붙는 것. GDScript 기초 문법·들여쓰기·`:=`·어노테이션·`@tool` | 701 |
 | **5** | **[시그널](basics/05-signal.md)** | 노드끼리 대화하는 방법. 연결이 `.tscn` 에 저장되는 함정 | 307 |
-| **6** | **[에디터 화면](basics/06-editor-screen.md)** | 4개 독의 역할·단축키·`res://`·FileSystem 에서 파일 숨기기 | 274 |
+| **6** | **[에디터 화면](basics/06-editor-screen.md)** | **어떤 파일을 어디서 고치나**·4개 독의 역할·저장 단축키·`res://`·FileSystem 에서 파일 숨기기 | 351 |
 | **7** | **[에디터 조작을 손에 맞춘다](basics/07-editor-input.md)** | 궤도 회전과 프리룩·3버튼 없는 마우스·왼손 사용자 리바인딩 | 210 |
 | **8** | **[동영상 강좌](basics/08-video.md)** | 손으로 한 번 따라 만들어 보는 강좌 4개 | 147 |
 | **9** | **[실전 — 캐릭터 컨트롤러](basics/09-controller.md)** | 3D 컨트롤러 전체 코드를 한 줄씩. 좌표 규약·중력·`transform.basis` | 1,097 |
@@ -147,12 +147,13 @@ Godot 으로 게임을 만들려는 초보 독자에게 최소한 알아야 할 
 
 ### 6. [에디터 화면](basics/06-editor-screen.md)
 
-`references/basics/06-editor-screen.md` · **274줄** · 소제목 3개
+`references/basics/06-editor-screen.md` · **351줄** · 소제목 4개
 
-4개 독의 역할·단축키·res://·FileSystem 에서 파일 숨기기.
+어떤 파일을 어디서 고치나·4개 독의 역할·저장 단축키·res://·FileSystem 에서 파일 숨기기.
 
-Godot 에디터를 처음 여는 입문자에게 화면의 뼈대를 세워 주는 파트다. 상단 `2D`·`3D`·`Script`·`AssetLib` 모드 전환 아래 `Scene`·`Inspector`·`FileSystem`·`Output` 독이 각각 무엇을 하는지와 `Cmd+A` 같은 단축키, `res://`와 `user://`의 뜻을 표로 정리한다. 3D 뷰포트 툴바의 압정 `Preserve Children Transform`(단축키 `P`)이 켜져 있으면 부모를 옮겨도 자식이 제자리에 남아 캐릭터가 늘어난 것처럼 보이므로 이것부터 확인하라고 경고한다. 새 프로젝트에 생기는 `.editorconfig`·`.gitattributes`·`.gitignore`는 외부 도구용이며, 4.7.2 확인 결과 내장 스크립트 에디터는 `.editorconfig`를 읽지 않는다. FileSystem 독에서 숨기려면 폴더는 빈 `.gdignore`(내용 무관, `.godotignore`는 무시됨), 파일은 `Editor > Editor Settings`에서 `Advanced Settings`를 켜고 `Textfile Extensions`의 `md`를 빼는 에디터 전역 설정을 쓰며, 제외된 것은 `res://`로 로드할 수 없음을 엔진 소스로 보인다. 라리엔에서는 `game-assets/`·`game-server/`에 `.gdignore`를 두고 `CLAUDE.md`는 `md`를 빼서 감춘다.
+Godot 에디터를 처음 여는 입문자에게 화면의 뼈대를 세워 주는 파트다. **코드 에디터와 가장 다른 점 — 파일 종류마다 여는 창이 다르다**를 표 하나로 먼저 정리한다. `.gd`·`.md`·`.json` 은 Script 에디터, `.tscn` 은 뷰포트+Scene 독+Inspector 독, `.tres` 는 Inspector 독, `project.godot` 은 `Project > Project Settings…`, `.import` 는 Import 독, `export_presets.cfg` 는 `Project > Export…` 이고 `.glb`·`.png` 원본은 Godot 에서 고치지 않는다. `.tscn`·`.tres` 는 실제로는 텍스트지만 에디터가 텍스트로 열어 주지 않는데, 노드 `id`·`ext_resource` 참조가 얽혀 손으로 고치면 씬이 깨지기 때문이다. 저장 단축키는 4.7 엔진 소스에서 직접 확인한 값으로 실었다 — 씬 `Cmd/Ctrl+S`(`editor_node.cpp:9082`), 스크립트 `Cmd/Ctrl+Alt+S`(`script_editor_plugin.cpp:4197`), 이름 변경 `F2`·복제 `Cmd/Ctrl+D`·외부 프로그램 `Cmd/Ctrl+Alt+E`(`filesystem_dock.cpp:4506-4518`). **씬을 저장하면 열어 둔 스크립트도 함께 저장되는데** `editor_data.save_editor_external_data()` 를 같이 부르기 때문이다(`editor_node.cpp:2572`). 에디터 밖(명령줄·외부 에디터·AI 자율 개발)에서 같은 파일을 고칠 때는 나중에 저장한 쪽이 이기며, 특히 같은 씬이 에디터에 열려 있으면 `Cmd/Ctrl+S` 한 번에 밖의 수정이 통째로 사라진다. 상단 `2D`·`3D`·`Script`·`AssetLib` 모드 전환 아래 `Scene`·`Inspector`·`FileSystem`·`Output` 독이 각각 무엇을 하는지와 `Cmd+A` 같은 단축키, `res://`와 `user://`의 뜻을 표로 정리한다. 3D 뷰포트 툴바의 압정 `Preserve Children Transform`(단축키 `P`)이 켜져 있으면 부모를 옮겨도 자식이 제자리에 남아 캐릭터가 늘어난 것처럼 보이므로 이것부터 확인하라고 경고한다. 새 프로젝트에 생기는 `.editorconfig`·`.gitattributes`·`.gitignore`는 외부 도구용이며, 4.7.2 확인 결과 내장 스크립트 에디터는 `.editorconfig`를 읽지 않는다. FileSystem 독에서 숨기려면 폴더는 빈 `.gdignore`(내용 무관, `.godotignore`는 무시됨), 파일은 `Editor > Editor Settings`에서 `Advanced Settings`를 켜고 `Textfile Extensions`의 `md`를 빼는 에디터 전역 설정을 쓰며, 제외된 것은 `res://`로 로드할 수 없음을 엔진 소스로 보인다. 라리엔에서는 `game-assets/`·`game-server/`에 `.gdignore`를 두고 `CLAUDE.md`는 `md`를 빼서 감춘다.
 
+> - 어떤 파일을 어디서 고치나
 > - 3D 뷰포트 위의 툴바 — 파란 압정을 조심한다
 > - 새 프로젝트를 만들면 이미 들어 있는 파일들
 > - FileSystem 독에서 파일·폴더를 숨긴다

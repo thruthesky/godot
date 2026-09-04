@@ -134,9 +134,11 @@ const REPO = 'https://github.com/thruthesky/godot/blob/main/references/' + SLUG 
 document.getElementById('crumb').textContent = 'references/' + SLUG + '.md';
 document.getElementById('gh').href = REPO;
 
+// 🛑 GitHub 의 앵커 규칙과 같아야 한다 — 문서의 목차 링크가 GitHub 기준으로 쓰여 있다.
+// 공백 '하나마다' 하이픈 하나다(\s+ 로 묶으면 "툴바 — 파란" 처럼 공백이 둘인 자리가 어긋난다).
 const slugify = s => s.trim().toLowerCase()
   .replace(/[`*_\[\]()#]/g, '').replace(/[^\w\s가-힣-]/g, '')
-  .replace(/\s+/g, '-').slice(0, 80);
+  .replace(/\s/g, '-').slice(0, 80);
 
 fetch('references/' + SLUG + '.md')
   .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })

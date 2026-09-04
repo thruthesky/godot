@@ -45,11 +45,88 @@
 
 | 절 | 내용 |
 |---|---|
+| [·](#어떤-파일을-어디서-고치나) | **어떤 파일을 어디서 고치나** — 종류마다 여는 창이 다르다 |
 | [·](#3d-뷰포트-위의-툴바--파란-압정을-조심한다) | 3D 뷰포트 위의 툴바 — 파란 압정을 조심한다 |
 | [·](#새-프로젝트를-만들면-이미-들어-있는-파일들) | 새 프로젝트를 만들면 이미 들어 있는 파일들 |
 | [·](#filesystem-독에서-파일폴더를-숨긴다) | FileSystem 독에서 파일·폴더를 숨긴다 |
 
 ---
+
+## 어떤 파일을 어디서 고치나
+
+**코드 에디터와 가장 다른 점이다 — Godot 에서는 파일 종류마다 여는 창이 아예 다르다.**
+`.tscn`·`.tres` 는 실제로는 텍스트 파일이지만 **에디터가 텍스트로 열어 주지 않는다.**
+노드 `id`·`ext_resource` 참조가 서로 얽혀 있어 손으로 고치면 씬이 깨지기 때문이다.
+
+| 파일 | 어디서 고치나 | 텍스트로 보이나 |
+|---|---|---|
+| `.gd` (GDScript) | **Script 에디터** — 상단 `Script` 탭 | ✅ |
+| `.md` · `.txt` · `.json` · `.cfg` · `.ini` | **Script 에디터** — 텍스트 파일도 여기서 열린다 | ✅ |
+| **`.tscn` (씬)** | **뷰포트 + Scene 독 + Inspector 독** | 🛑 노드를 클릭해서 고친다 |
+| **`.tres` (리소스)** | **Inspector 독** | 🛑 속성 칸에 값을 넣는다 |
+| `project.godot` | `Project > Project Settings…` | 🛑 |
+| `.import` (에셋 임포트 설정) | **Import 독** — FileSystem 에서 파일을 **한 번 클릭**하면 나타난다 | 🛑 |
+| `export_presets.cfg` | `Project > Export…` | 🛑 |
+| 에디터 자체 설정 | `Editor > Editor Settings…` — 프로젝트가 아니라 **내 컴퓨터 전역** | 🛑 |
+| `.glb` · `.png` 등 원본 에셋 | 🛑 **Godot 에서 고치지 않는다** — Blender 등 원본 도구로 | — |
+
+### 텍스트 파일 — Script 에디터
+
+**FileSystem 독(좌하단)에서 더블클릭**하면 열린다. `.gd` 뿐 아니라 `.md`·`.json`·`.cfg` 도
+열리는데, 이는 아래 [FileSystem 독에서 파일·폴더를 숨긴다](#filesystem-독에서-파일폴더를-숨긴다)
+절의 **확장자 화이트리스트**에 있기 때문이다. 거기 없는 확장자(`.xyz` 등)는 **독에 아예 뜨지 않는다.**
+
+### 씬 파일 — 뷰포트에서 노드로 고친다
+
+| 하고 싶은 것 | 조작 |
+|---|---|
+| 노드 추가 | Scene 독에서 부모 선택 → <kbd>Cmd/Ctrl</kbd>+<kbd>A</kbd> |
+| 다른 씬을 자식으로 넣기(인스턴싱) | <kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>, 또는 FileSystem 에서 **드래그** |
+| **값 수정** (위치·크기·색·스크립트 붙이기) | 노드를 클릭 → **Inspector 독**에서 입력 |
+
+### 새 파일 만들기
+
+FileSystem 독에서 **우클릭 → `Create New`** 에 넷이 있다 — `Scene…` · `Script…` ·
+`Resource…` · `TextFile…`
+*(엔진 4.7 소스 `editor/docks/filesystem_dock.cpp:3716-3722` 에서 확인)*
+
+### 저장 단축키 — 엔진 소스에서 확인한 값
+
+| 무엇 | macOS | Windows·Linux | 소스 |
+|---|---|---|---|
+| **씬 저장** | <kbd>Cmd</kbd>+<kbd>S</kbd> | <kbd>Ctrl</kbd>+<kbd>S</kbd> | `editor_node.cpp:9082` |
+| 씬 다른 이름으로 | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | `:9083` |
+| 모든 씬 저장 | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | `:9084` |
+| **스크립트 저장** | <kbd>Cmd</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | `script_editor_plugin.cpp:4197` |
+| 스크립트 전부 저장 | <kbd>Cmd</kbd>+<kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | `:4199-4200` (macOS 만 다르다) |
+| 파일 이름 변경 | <kbd>F2</kbd> | <kbd>F2</kbd> | `filesystem_dock.cpp:4513` |
+| 파일 복제 | <kbd>Cmd</kbd>+<kbd>D</kbd> | <kbd>Ctrl</kbd>+<kbd>D</kbd> | `:4506` |
+| 외부 프로그램으로 열기 | <kbd>Cmd</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> | `:4518` |
+
+> 💡 **씬을 저장하면 열어 둔 스크립트도 함께 저장된다.** <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 는
+> 씬을 쓴 뒤 `editor_data.save_editor_external_data()` 를 호출하는데(`editor_node.cpp:2572`),
+> 이것이 스크립트 에디터를 포함한 모든 에디터의 미저장 데이터를 같이 저장한다.
+> 그래서 실무에서는 <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 하나로 대개 끝난다.
+
+### 🛑 에디터 밖에서 같은 파일을 고칠 때
+
+명령줄이나 외부 에디터로 파일을 고치는 작업(AI 자율 개발 포함)과 에디터 편집이 겹치면
+**나중에 저장한 쪽이 이긴다.**
+
+| 상황 | 결과 |
+|---|---|
+| 밖에서 `.gd` 를 고쳤고 에디터에 그 파일이 열려 있다 | 에디터로 포커스를 옮기면 **자동으로 다시 읽는다.** 안전하다 |
+| 밖에서 `.tscn` 을 고쳤는데 **에디터에도 같은 씬이 열려 있다** | 🛑 에디터에서 <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 를 누르면 **밖에서 한 수정이 통째로 사라진다** |
+| 에디터에서 고쳤지만 저장하지 않았다 | 밖에서 읽는 파일에는 그 변경이 **없다** |
+
+**그래서 씬을 밖에서 고쳐야 할 때는 그 씬을 에디터에서 먼저 닫는다.** 또는 노드를
+`.tscn` 이 아니라 `_ready()` 에서 코드로 만든다 — 충돌이 나지 않는다.
+
+### 🛑 라리엔 3D 에서 `.import` 는 주의 대상이다
+
+`.import` 의 `root_scale` 로 모델 크기를 보정하는 것은 **금지**다. `.glb` 가 정본이고,
+크기·자세·축·원점이 틀렸으면 **Blender 로 돌아가 고친다.** `.import` 에 보정값이 들어 있다는
+것 자체가 "`.glb` 가 틀렸다"는 신호다 — SKILL.md 절대 규칙 "임포트한 에셋을 Godot 에서 보정하지 않는다".
 
 ## 3D 뷰포트 위의 툴바 — 파란 압정을 조심한다
 
