@@ -1,6 +1,6 @@
 ---
 name: godot
-description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 때의 개발 규범·검증 도구이자 Godot 을 처음 배우는 사람의 학습 자료. 설치·프로젝트 매니저·노드·씬·인스턴싱·리소스·생명주기·시그널·에디터 사용법 같은 기본 개념부터 GDScript, Node3D 좌표계, Jolt Physics, CharacterBody3D, 머티리얼·조명·셰이더, AnimationTree, 내비게이션, 입력·UI(HUD·메뉴·Theme·한글 폰트), glTF 임포트, 오디오, 저수준 네트워킹(UDP·HTTP·WebSocket), 디버깅, 저사양 Android(3GB RAM) 60fps 최적화, LSP 정적 검증, EditorPlugin, Asset Store, CSG·GridMap 레벨 디자인, 헤드리스 워크플로우, Android·iOS·macOS·Windows 빌드와 실기기 설치까지 다룬다. 다음 때 반드시 사용한다 — GDScript 작성·수정(작성 후 LSP 진단 필수), 씬·노드·.tscn 편집, 이동·충돌·물리, 조명·셰이더, 애니메이션, 길찾기·적 AI, 성능·드로우콜·프레임 문제, HUD·버튼·인벤토리 UI, 맵·블록아웃, 빌드·설치·실기기 실행, project.godot 설정, 에디터 도구·플러그인, 애드온, Godot 용어·기본 개념 학습, "노드가 뭔가요" 같은 입문 질문, 오류·크래시 진단. 성능·조명·저사양 질문이면 references/performance-mobile.md §0 을 먼저 읽는다. 키워드 — Godot, 고도, GDScript, tscn, Node3D, CharacterBody3D, Jolt, AnimationTree, NavigationAgent3D, MultiMesh, LOD, 드로우콜, 60fps, 3GB, 저사양, CSG, 블록아웃, GridMap, HUD, Theme, LSP, export, APK, Xcode, 헤드리스, 라리엔, godot init, 예제, 튜토리얼, 입문.
+description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 때의 개발 규범·검증 도구이자 Godot 을 처음 배우는 사람의 학습 자료. 설치·프로젝트 매니저·노드·씬·인스턴싱·리소스·생명주기·시그널·에디터 사용법 같은 기본 개념부터 GDScript, Node3D 좌표계, Jolt Physics, CharacterBody3D, 머티리얼·조명·셰이더, AnimationTree, 내비게이션, 입력·UI(HUD·메뉴·Theme·한글 폰트), glTF 임포트, 오디오, 저수준 네트워킹(UDP·HTTP·WebSocket), 디버깅, 저사양 Android(3GB RAM) 60fps 최적화, LSP 정적 검증, EditorPlugin, Asset Store, CSG·GridMap 레벨 디자인, 헤드리스 워크플로우, Android·iOS·macOS·Windows 빌드와 실기기 설치까지 다룬다. 다음 때 반드시 사용한다 — GDScript 작성·수정(작성 후 LSP 진단 필수), 씬·노드·.tscn 편집, 이동·충돌·물리, 조명·셰이더, 애니메이션, 길찾기·적 AI, 성능·드로우콜·프레임 문제, HUD·버튼·인벤토리 UI, 맵·블록아웃, 빌드·설치·실기기 실행, project.godot 설정, 에디터 도구·플러그인, 애드온, Godot 용어·기본 개념 학습, "노드가 뭔가요" 같은 입문 질문, 오류·크래시 진단. 성능·조명·저사양 질문이면 references/performance-mobile.md §0 을 먼저 읽는다. 키워드 — Godot, 고도, GDScript, tscn, Node3D, CharacterBody3D, Jolt, AnimationTree, NavigationAgent3D, MultiMesh, LOD, 드로우콜, 60fps, 3GB, 저사양, CSG, 블록아웃, GridMap, HUD, Theme, LSP, export, APK, Xcode, 헤드리스, 라리엔, godot init, 예제, 튜토리얼, 입문, 메시, mesh, 정점, vertex, 꼭짓점, 모서리, edge, 삼각형, triangle, 면, face, 폴리곤, 서피스, surface, 인덱스, 와이어프레임, wireframe, ArrayMesh, SurfaceTool, MeshInstance3D.
 ---
 
 # Godot — 3D 게임 개발·학습 스킬
@@ -394,6 +394,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [gdscript.md](references/gdscript.md) | GDScript 2.0 언어 전체 | [상세](references/catalog.md#gdscriptmd--gdscript-20-언어-전체) |
 | [nodes-scenes.md](references/nodes-scenes.md) | 노드·씬·SceneTree 아키텍처 | [상세](references/catalog.md#nodes-scenesmd--노드씬scenetree-아키텍처) |
 | [3d-core.md](references/3d-core.md) | Node3D·Transform3D·카메라 | [상세](references/catalog.md#3d-coremd--node3dtransform3d카메라) |
+| [mesh-geometry.md](references/mesh-geometry.md) | 메시의 구조 — 정점·모서리·삼각형·면 | [상세](references/catalog.md#mesh-geometrymd--메시의-구조--정점모서리삼각형면) |
 | [physics-3d.md](references/physics-3d.md) | Jolt Physics와 3D 물리 | [상세](references/catalog.md#physics-3dmd--jolt-physics와-3d-물리) |
 | [rendering-3d.md](references/rendering-3d.md) | 렌더러·머티리얼·조명·환경 | [상세](references/catalog.md#rendering-3dmd--렌더러머티리얼조명환경) |
 | [animation-3d.md](references/animation-3d.md) | 애니메이션 시스템 | [상세](references/catalog.md#animation-3dmd--애니메이션-시스템) |

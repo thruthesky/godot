@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>메시의 구조 — 점에서 화면까지</title>
+<meta name="description" content="정점·모서리·삼각형·면·메시가 어떻게 한 줄로 이어지는가. 사각형 한 장을 단계별로 쌓아 보고, 상자의 꼭짓점 8개가 왜 정점 24개가 되는지를 Godot 4.7.2 실측값으로 확인한다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F6F8FA; --card:#FFFFFF; --ink:#16202B; --muted:#5B6B7B;
+  --rule:#C7D0DA; --grid:rgba(22,32,43,.045); --code:#F1F3F5;
+  --accent:#D9480F; --blue:#1864AB; --ok:#2B8A3E;
+  --shadow:0 1px 2px rgba(22,32,43,.06),0 8px 24px -12px rgba(22,32,43,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+    --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+    --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+  --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+  --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px;color:var(--ink);
+  font-family:Chivo,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:16.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:82ch;margin:0 auto;padding:clamp(22px,4vw,48px) clamp(16px,4vw,28px) 90px;
+  display:flex;flex-direction:column;gap:34px}
+.back{text-decoration:none;color:var(--muted);font-size:14px;font-weight:700}
+.back:hover{color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(28px,5.5vw,44px);font-weight:900;line-height:1.12;margin:.25em 0 .3em;letter-spacing:-.025em}
+.lede{font-size:clamp(15.5px,2.1vw,18px);color:var(--muted);margin:0}
+h2{font-size:clamp(19px,3.2vw,25px);font-weight:900;margin:0 0 .5em;
+  padding-bottom:.3em;border-bottom:2px solid var(--ink);letter-spacing:-.015em}
+h3{font-size:17px;font-weight:700;margin:1.5em 0 .4em}
+section>p:first-of-type{margin-top:0}
+p{margin:.9em 0}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.tag{background:var(--card);border:1px solid var(--rule);border-radius:999px;
+  padding:4px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.tag b{color:var(--ok)}
+figure{margin:1.3em 0;background:var(--card);border:1px solid var(--rule);border-radius:14px;
+  padding:14px;box-shadow:var(--shadow)}
+figure img{display:block;width:100%;height:auto;border-radius:8px}
+figcaption{margin-top:11px;font-size:13.5px;color:var(--muted);line-height:1.6}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--rule);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:700;white-space:nowrap}
+tr:nth-child(even) td{background:var(--card)}
+td b{color:var(--accent)}
+code{background:var(--code);border:1px solid var(--rule);padding:.12em .38em;border-radius:4px;font-size:.87em}
+pre{background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.6;box-shadow:var(--shadow);margin:1.1em 0}
+pre code{background:none;border:0;padding:0}
+blockquote{margin:1.2em 0;padding:13px 17px;background:var(--card);
+  border-left:3px solid var(--accent);border-radius:0 10px 10px 0;box-shadow:var(--shadow)}
+blockquote>*:first-child{margin-top:0} blockquote>*:last-child{margin-bottom:0}
+.more{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:18px 20px;box-shadow:var(--shadow)}
+.more h3{margin:0 0 10px;font-size:15px}
+.more p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.blist{display:flex;flex-direction:column;gap:8px}
+.blink{display:flex;align-items:center;gap:9px;text-decoration:none;
+  border:1.5px solid var(--rule);border-radius:10px;padding:11px 14px;
+  font-size:14px;font-weight:700;color:var(--ink);background:var(--paper);
+  transition:border-color .12s ease,transform .12s ease}
+.blink:hover{border-color:var(--accent);transform:translateY(-1px)}
+.blink.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.blink svg{width:16px;height:16px;fill:currentColor;flex:none}
+.blink .sub{margin-left:auto;font-size:12px;font-weight:400;opacity:.7;font-family:"IBM Plex Mono",monospace}
+footer{border-top:1px solid var(--rule);padding-top:20px;font-size:13.5px;color:var(--muted)}
+footer a{color:var(--blue)}
+.k{color:var(--accent);font-weight:700}
+
+/* ══ 단계 도해 ══════════════════════════ */
+.stage{background:var(--card);border:1px solid var(--rule);border-radius:14px;
+  box-shadow:var(--shadow);overflow:hidden;margin:1.3em 0}
+.steps{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--rule)}
+.steps button{flex:1 1 auto;min-width:104px;background:var(--paper);border:0;
+  border-right:1px solid var(--rule);padding:11px 8px;cursor:pointer;
+  font-family:inherit;font-size:13.5px;font-weight:700;color:var(--muted);
+  transition:background .12s ease,color .12s ease;line-height:1.35}
+.steps button:last-child{border-right:0}
+.steps button .en{display:block;font-family:"IBM Plex Mono",monospace;
+  font-size:10.5px;font-weight:400;opacity:.75;letter-spacing:.04em}
+.steps button:hover{color:var(--ink)}
+.steps button.on{background:var(--ink);color:var(--paper)}
+.stage .canvas{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:0;background:#12181D}
+@media (max-width:640px){.stage .canvas{grid-template-columns:1fr}}
+.stage svg{display:block;width:100%;height:auto;background:#12181D}
+.stage .side{padding:16px 18px;border-left:1px solid var(--rule);min-width:0;background:var(--card)}
+@media (max-width:640px){.stage .side{border-left:0;border-top:1px solid var(--rule)}}
+.stage .side h4{margin:0 0 6px;font-size:15.5px;font-weight:900}
+.stage .side h4 span{font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--muted);font-weight:400;margin-left:6px}
+.stage .side p{margin:0 0 12px;font-size:14px;color:var(--muted);line-height:1.65}
+.stage .side pre{margin:0;font-size:12px}
+.cnt{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px}
+.cnt span{background:var(--paper);border:1px solid var(--rule);border-radius:999px;
+  padding:2px 10px;font-size:12px;font-weight:700}
+.cnt span b{color:var(--accent)}
+/* SVG 요소 상태 */
+.vtx circle{fill:#FF7A45;stroke:#12181D;stroke-width:2}
+.vtx text{fill:#FFD8A8;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.edge{stroke:#5DA9E9;stroke-width:2.5;fill:none;stroke-linecap:round}
+.diag{stroke:#69DB7C;stroke-width:2.5;fill:none;stroke-dasharray:6 4;stroke-linecap:round}
+.tri{fill:rgba(105,219,124,.16);stroke:#69DB7C;stroke-width:2}
+.tri2{fill:rgba(93,169,233,.16);stroke:#5DA9E9;stroke-width:2}
+.solid{fill:#E8792B;stroke:#B85C18;stroke-width:2}
+.lbl{fill:#8A9AA8;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.lbl.hi{fill:#FF7A45;font-weight:600}
+.fade{opacity:0;transition:opacity .22s ease}
+.fade.on{opacity:1}
+/* 정육면체 도해 */
+.cube-face{stroke:#2B3742;stroke-width:1.5}
+.cube-hit{cursor:pointer}
+.norm{stroke:#FF7A45;stroke-width:2.5;marker-end:url(#ah)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="back" href="index.html">← 목차</a>
+  <div class="eyebrow" style="margin-top:16px">Godot 4.7 · 메시의 구조</div>
+  <h1>점에서 화면까지<br>한 줄로 이어진다</h1>
+  <p class="lede">
+    <b>정점 · 모서리 · 삼각형 · 면 · 메시</b> 는 외워야 할 낱말 다섯 개가 아니라
+    <b>하나가 다음 하나를 만드는 계보</b>입니다. 사각형 한 장을 단계별로 쌓아 보면
+    그 관계가 한 번에 보이고, 그 다음부터 <b>상자·캐릭터·지형</b>이 전부 같은 이야기가 됩니다.
+  </p>
+  <div class="tags">
+    <span class="tag"><b>✓</b> 4.7.2.stable 실측</span>
+    <span class="tag"><b>✓</b> 스크린샷은 직접 렌더</span>
+    <span class="tag">상세 문서 · <code>mesh-geometry.md</code></span>
+  </div>
+</header>
+
+<!-- ══════════════════ 1. 단계 도해 ══════════════════ -->
+<section>
+  <h2>① 사각형 한 장을 쌓아 본다</h2>
+  <p>
+    버튼을 왼쪽부터 눌러 보세요. <b>바닥에 깔 타일 한 장</b>을 만드는 과정이고,
+    3D 형상은 크든 작든 전부 이 순서로 만들어집니다.
+  </p>
+
+  <div class="stage">
+    <div class="steps" id="steps">
+      <button class="on" data-s="0">① 정점<span class="en">vertex</span></button>
+      <button data-s="1">② 모서리<span class="en">edge</span></button>
+      <button data-s="2">③ 삼각형<span class="en">triangle</span></button>
+      <button data-s="3">④ 면<span class="en">face</span></button>
+      <button data-s="4">⑤ 메시<span class="en">mesh</span></button>
+    </div>
+    <div class="canvas">
+      <svg viewBox="0 0 420 320" role="img" aria-label="정점 4개에서 메시까지 단계별 도해">
+        <!-- ④ 면(채워진 사각형) : 삼각형보다 아래에 깔린다 -->
+        <g id="g-face" class="fade">
+          <polygon class="solid" points="110,70 310,70 310,250 110,250"/>
+        </g>
+        <!-- ③ 삼각형 2개 -->
+        <g id="g-tri" class="fade">
+          <polygon class="tri"  points="110,70 310,250 310,70"/>
+          <polygon class="tri2" points="110,70 110,250 310,250"/>
+          <text class="lbl" x="258" y="118">①</text>
+          <text class="lbl" x="150" y="216">②</text>
+        </g>
+        <!-- ② 모서리 -->
+        <g id="g-edge" class="fade">
+          <path class="edge" d="M110,70 L310,70 L310,250 L110,250 Z"/>
+          <path class="diag" d="M110,70 L310,250"/>
+        </g>
+        <!-- ① 정점 -->
+        <g id="g-vtx" class="vtx">
+          <circle cx="110" cy="70"  r="6.5"/><text x="86"  y="60">0</text>
+          <circle cx="310" cy="70"  r="6.5"/><text x="320" y="60">1</text>
+          <circle cx="310" cy="250" r="6.5"/><text x="320" y="272">2</text>
+          <circle cx="110" cy="250" r="6.5"/><text x="86"  y="272">3</text>
+        </g>
+        <!-- ⑤ 메시 테두리 -->
+        <g id="g-mesh" class="fade">
+          <rect x="86" y="46" width="248" height="228" rx="10" fill="none"
+                stroke="#FF7A45" stroke-width="2" stroke-dasharray="7 5"/>
+          <text class="lbl hi" x="86" y="296">ArrayMesh — surface 0</text>
+        </g>
+        <text class="lbl" x="110" y="308" id="svgcap">점 4개. 아직 아무것도 그려지지 않는다</text>
+      </svg>
+      <div class="side" id="side"></div>
+    </div>
+  </div>
+
+  <blockquote>
+    <b>여기서 놓치기 쉬운 것 두 가지.</b><br>
+    ① <b>모서리는 저장되지 않습니다.</b> 정점을 잇는 순서(인덱스)가 정해지면 변은 자동으로 생깁니다.
+    Godot 의 메시 데이터에 “모서리 배열”은 아예 없습니다.<br>
+    ② <b>사각형 한 장은 삼각형 2개입니다.</b> GPU 는 사각형을 모르기 때문에,
+    처음부터 삼각형으로 저장해 둡니다.
+  </blockquote>
+</section>
+
+<!-- ══════════════════ 2. 실제 화면 ══════════════════ -->
+<section>
+  <h2>② 실제로 켜서 본다 — 와이어프레임</h2>
+  <p>
+    말로 이해한 것과 눈으로 본 것은 다릅니다. Godot 에디터 3D 뷰포트의 왼쪽 위
+    <code>Perspective</code> 버튼을 누르면 <b>Display Wireframe</b> 이 있습니다.
+    아래는 기본 <code>BoxMesh</code> 하나를 네 가지 모드로 <b>직접 렌더해 저장한 화면</b>입니다.
+  </p>
+
+  <figure>
+    <img src="site/img/mesh-box-normal.png" alt="주황색 상자가 보통 모드로 렌더된 화면">
+    <figcaption><b>Display Normal</b> — 평소 보는 화면. 면 3장이 보이고, 삼각형은 보이지 않습니다.</figcaption>
+  </figure>
+
+  <figure>
+    <img src="site/img/mesh-box-wireframe.png" alt="같은 상자를 와이어프레임으로 렌더해 각 면에 대각선이 하나씩 그어져 보이는 화면">
+    <figcaption>
+      <b>Display Wireframe</b> — <span class="k">각 면에 대각선이 하나씩</span> 그어져 있습니다.
+      새로 생긴 선이 아니라 <b>처음부터 그렇게 저장되어 있던 것</b>입니다.
+      보이는 면 3장 × 2 = 삼각형 6개, 뒤까지 합치면 <b>6장 × 2 = 12개</b>입니다.
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="site/img/mesh-wire-box-sphere.png" alt="상자와 구를 와이어프레임으로 나란히 렌더한 화면">
+    <figcaption>
+      같은 화면에 구를 놓으면 차이가 분명합니다. 둥근 것은 <b>삼각형을 많이 써서</b> 둥글어 보이는 것이지
+      곡면이라는 별도의 데이터가 있는 것이 아닙니다. (이 구는 <code>radial 16 · rings 8</code>)
+    </figcaption>
+  </figure>
+
+  <table>
+    <tr><th>모드</th><th>보이는 것</th><th>언제 쓰나</th></tr>
+    <tr><td><b>Display Normal</b></td><td>평소 화면</td><td>기본값</td></tr>
+    <tr><td><b>Display Wireframe</b></td><td>삼각형의 변만 선으로</td><td>형상이 어떻게 쪼개져 있는지 볼 때</td></tr>
+    <tr><td><b>Display Overdraw</b></td><td>겹쳐 그린 만큼 밝아진다</td><td>반투명·파티클이 몇 겹 쌓였는지</td></tr>
+    <tr><td><b>Display Unshaded</b></td><td>조명을 끄고 색만</td><td>어두운 것이 조명 탓인지 텍스처 탓인지 가를 때</td></tr>
+  </table>
+
+  <p>실행 중인 게임에서는 코드로 켭니다. <b>와이어프레임은 선 데이터 생성을 먼저 켜야 나옵니다.</b></p>
+<pre><code>RenderingServer.set_debug_generate_wireframes(true)
+get_viewport().debug_draw = Viewport.DEBUG_DRAW_WIREFRAME   # 값 4</code></pre>
+</section>
+
+<!-- ══════════════════ 3. 정육면체 24 ══════════════════ -->
+<section>
+  <h2>③ 꼭짓점은 8개인데 정점은 24개다</h2>
+  <p>
+    여기가 이 주제에서 가장 자주 막히는 곳입니다. 상자를 보면 꼭짓점이 <b>8개</b>인데,
+    Godot 에서 세어 보면 정점이 <b>24개</b>로 나옵니다. 오류가 아닙니다.
+  </p>
+
+  <div class="stage">
+    <div class="canvas" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+      <svg viewBox="0 0 360 300" role="img" aria-label="정육면체의 한 꼭짓점이 세 면에 속하고 각 면의 노멀이 다름을 보여주는 도해">
+        <defs>
+          <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="#FF7A45"/>
+          </marker>
+        </defs>
+        <!-- 정육면체 3면 -->
+        <polygon class="cube-face" fill="#C96A25" points="80,120 180,70 280,120 180,170"/>   <!-- 윗면 -->
+        <polygon class="cube-face" fill="#A85520" points="80,120 180,170 180,265 80,215"/>   <!-- 왼면 -->
+        <polygon class="cube-face" fill="#8E4519" points="180,170 280,120 280,215 180,265"/> <!-- 오른면 -->
+        <!-- 노멀 화살표 3개 (공유 꼭짓점 180,170 에서) -->
+        <line class="norm" x1="180" y1="170" x2="180" y2="106"/>
+        <line class="norm" x1="180" y1="170" x2="112" y2="140"/>
+        <line class="norm" x1="180" y1="170" x2="248" y2="140"/>
+        <circle cx="180" cy="170" r="7" fill="#FFD8A8" stroke="#12181D" stroke-width="2"/>
+        <text class="lbl hi" x="196" y="192">꼭짓점 1개</text>
+        <text class="lbl" x="150" y="98">노멀 ↑</text>
+        <text class="lbl" x="60"  y="140">노멀 ←</text>
+        <text class="lbl" x="252" y="140">노멀 →</text>
+        <text class="lbl" x="30"  y="288">한 자리에 노멀이 3개 → 정점도 3개다</text>
+      </svg>
+      <div class="side">
+        <h4>왜 3배가 되나</h4>
+        <p>
+          정점은 <b>위치만</b> 담는 것이 아니라 <b>노멀·UV·색</b>을 함께 담은 <b>속성 묶음</b>입니다.
+          상자의 한 꼭짓점은 세 면에 걸쳐 있고, <b>세 면이 향하는 방향이 서로 다릅니다.</b>
+          속성이 다르면 GPU 에게는 서로 다른 정점이므로, 같은 자리에 정점이 3개 놓입니다.
+        </p>
+        <div class="cnt">
+          <span>꼭짓점 <b>8</b></span><span>× 면 <b>3</b></span><span>= 정점 <b>24</b></span>
+        </div>
+        <p style="margin-bottom:6px">엔진에서 뽑은 실제 배열 — 위치는 같고 노멀만 다릅니다.</p>
+<pre><code>[ 2] pos=(0.5,0.5,0.5) normal=(0,0,1)
+[ 8] pos=(0.5,0.5,0.5) normal=(1,0,0)
+[16] pos=(0.5,0.5,0.5) normal=(0,1,0)</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    반대로 <b>구는 면이 매끄럽게 이어져</b> 노멀이 연속이므로 정점이 공유됩니다.
+    그래서 정점보다 삼각형이 훨씬 많아집니다 — 아래 표에서 상자와 정반대입니다.
+  </p>
+
+  <table>
+    <tr><th>메시</th><th>기본 파라미터</th><th>정점</th><th>인덱스</th><th>삼각형</th><th>눈으로 세는 꼭짓점</th></tr>
+    <tr><td><code>QuadMesh</code></td><td>size 1×1</td><td><b>4</b></td><td>6</td><td><b>2</b></td><td>4</td></tr>
+    <tr><td><code>PlaneMesh</code></td><td>size 2×2 · subdivide 0</td><td>4</td><td>6</td><td>2</td><td>4</td></tr>
+    <tr><td><code>PlaneMesh</code></td><td>subdivide 1×1</td><td>9</td><td>24</td><td>8</td><td>9</td></tr>
+    <tr><td><code>BoxMesh</code></td><td>size 1×1×1</td><td><b>24</b></td><td>36</td><td><b>12</b></td><td><b>8</b></td></tr>
+    <tr><td><code>CylinderMesh</code></td><td>radial 64 · rings 4</td><td>522</td><td>2,304</td><td>768</td><td>—</td></tr>
+    <tr><td><code>SphereMesh</code></td><td>radial 64 · rings 32</td><td>2,210</td><td>12,672</td><td>4,224</td><td>—</td></tr>
+  </table>
+
+  <blockquote>
+    <b>“BoxMesh 는 정점 36개”라고 적힌 자료를 보면 인덱스 수를 정점 수로 착각한 것입니다.</b>
+    36은 <b>인덱스</b>(삼각형 12 × 3), 정점은 <b>24</b>입니다.
+    이 스킬의 용어 툴팁에도 같은 오기가 있어 이번에 바로잡았습니다.
+  </blockquote>
+</section>
+
+<!-- ══════════════════ 4. 세는 법 ══════════════════ -->
+<section>
+  <h2>④ “몇 개짜리야?” 에는 답이 다섯 개다</h2>
+  <p>상자 하나를 두고도 무엇을 물었는지에 따라 답이 전부 다릅니다. 이 표를 외우기보다 <b>물음을 정확히 하는 습관</b>이 낫습니다.</p>
+  <table>
+    <tr><th>물음</th><th>코드</th><th>상자의 답</th></tr>
+    <tr><td>눈으로 보는 꼭짓점은?</td><td>고유 위치 좌표 수</td><td><b>8</b></td></tr>
+    <tr><td>GPU 가 세는 정점은?</td><td><code>surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size()</code></td><td><b>24</b></td></tr>
+    <tr><td>인덱스는?</td><td><code>...[Mesh.ARRAY_INDEX].size()</code></td><td><b>36</b></td></tr>
+    <tr><td>삼각형은?</td><td><code>get_faces().size() / 3</code></td><td><b>12</b></td></tr>
+    <tr><td>모델링에서의 면은?</td><td>(도구에서 센다)</td><td><b>6</b></td></tr>
+    <tr><td>드로우콜은?</td><td><code>get_surface_count()</code></td><td><b>1</b></td></tr>
+  </table>
+  <p>
+    그래서 성능을 이야기할 때는 <b>face 나 폴리곤이 아니라 삼각형(tris)</b> 으로 말합니다.
+    사각형 면 1,000개는 삼각형 2,000개일 수 있어 예산의 단위가 되지 못합니다.
+  </p>
+</section>
+
+<!-- ══════════════════ 5. 안 보일 때 ══════════════════ -->
+<section>
+  <h2>⑤ 직접 만든 삼각형이 안 보인다면</h2>
+  <p>
+    코드로 메시를 만들었는데 화면에 아무것도 없다면, 대개 <b>감김 방향(winding)</b> 입니다.
+    삼각형에는 앞뒤가 있고 <b>뒷면은 그리지 않습니다.</b> 앞뒤를 가르는 것은 위치가 아니라
+    <b>정점을 나열한 순서</b>입니다.
+  </p>
+  <blockquote>
+    <b>Godot 은 카메라에서 봤을 때 시계 방향으로 감긴 삼각형을 앞면으로 봅니다.</b>
+    같은 자리에 삼각형 2개를 놓고 순서만 뒤집어 렌더해 픽셀을 읽어 확인했습니다 —
+    시계 방향은 <code>(1,1,1)</code> 로 보이고, 반시계 방향은 <code>(0,0,0)</code> 으로 사라집니다.
+  </blockquote>
+  <table>
+    <tr><th>증상</th><th>고치는 법</th></tr>
+    <tr><td>메시가 통째로 안 보인다</td><td>인덱스에서 <b>둘째·셋째 번호를 맞바꾼다</b> — <code>0,1,2</code> → <code>0,2,1</code></td></tr>
+    <tr><td>안쪽에서만 보인다</td><td>같은 원인</td></tr>
+    <tr><td>양면 다 보이게 하고 싶다</td><td><code>cull_mode = CULL_DISABLED</code> — 🛑 비용 2배. 나뭇잎·천에만</td></tr>
+    <tr><td>면은 보이는데 새까맣다</td><td>노멀이 없다 → <code>SurfaceTool.generate_normals()</code></td></tr>
+  </table>
+</section>
+
+<section class="more">
+  <h3>이어서 읽기</h3>
+  <p>이 페이지는 요약입니다. 배열 상수 13개·서피스와 드로우콜·<code>ArrayMesh</code> 실전 코드는 본문 문서에 있습니다.</p>
+  <div class="blist">
+    <a class="blink primary" href="doc.html?d=mesh-geometry">
+      메시의 구조 — 본문 전체<span class="sub">references/mesh-geometry.md</span>
+    </a>
+    <a class="blink" href="doc.html?d=dictionary&q=삼각형">
+      용어집 — 삼각형 수·폴리곤 수·정점 수<span class="sub">references/dictionary.md</span>
+    </a>
+    <a class="blink" href="node-structure.html">
+      인스펙터는 상속 사슬이다<span class="sub">node-structure.html</span>
+    </a>
+    <a class="blink" href="https://github.com/thruthesky/godot" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      스킬 저장소 전체<span class="sub">thruthesky/godot</span>
+    </a>
+  </div>
+</section>
+
+<footer>
+  정점·인덱스·삼각형 수와 감김 방향은 <code>godot --headless -s</code> 로 4.7.2.stable 에서 직접 측정했고,
+  스크린샷은 <code>--resolution 640x640</code> 으로 렌더해 저장한 실제 화면입니다.
+  <br><br>
+  <a href="index.html">← 문서 목차로</a>
+</footer>
+
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: '① 정점', en: 'vertex',
+    cap: '점 4개. 아직 아무것도 그려지지 않는다',
+    show: [],
+    counts: [['정점', 4]],
+    body: '공간의 점 하나 — 이지만 <b>위치만</b> 담는 것이 아닙니다. 그 점이 향하는 방향(노멀), 텍스처 좌표(UV), 색을 함께 담은 <b>속성 묶음</b>입니다. 이 성질이 나중에 “꼭짓점 8개 → 정점 24개”를 만듭니다.',
+    code: 'arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([\n  Vector3(-0.5, 0, -0.5),   # 0\n  Vector3( 0.5, 0, -0.5),   # 1\n  Vector3( 0.5, 0,  0.5),   # 2\n  Vector3(-0.5, 0,  0.5)])  # 3'
+  },
+  {
+    title: '② 모서리', en: 'edge',
+    cap: '점을 잇는다. 대각선(초록)이 삼각형을 가른다',
+    show: ['g-edge'],
+    counts: [['정점', 4], ['모서리', 5]],
+    body: '두 정점을 잇는 선입니다. <b>다만 데이터로 저장되지는 않습니다</b> — 정점을 잇는 순서만 적어 두면 변은 저절로 생깁니다. Godot 의 메시에 “모서리 배열”이 없는 이유입니다.',
+    code: '# 모서리 배열은 존재하지 않는다.\n# 인덱스가 이음 순서를 정하면\n# 변은 그 결과로 생긴다.'
+  },
+  {
+    title: '③ 삼각형', en: 'triangle',
+    cap: '정점 번호 3개씩 → 삼각형 2개',
+    show: ['g-edge', 'g-tri'],
+    counts: [['정점', 4], ['인덱스', 6], ['삼각형', 2]],
+    body: '점 3개가 닫히면 <b>면이 됩니다</b>. GPU 가 그릴 수 있는 것은 삼각형뿐이라, 사각형 한 장도 <b>삼각형 2개</b>로 저장합니다. 인덱스 배열은 “몇 번 정점을 어떤 순서로 읽어라”라는 번호표입니다.',
+    code: 'arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([\n  0, 1, 2,     # 삼각형 ①\n  0, 2, 3])    # 삼각형 ②\n\n# 정점 0 과 2 를 두 삼각형이 함께 쓴다'
+  },
+  {
+    title: '④ 면', en: 'face',
+    cap: '삼각형 2개가 이어져 겉면 1장이 된다',
+    show: ['g-face'],
+    counts: [['면(모델링)', 1], ['면(렌더링)', 2]],
+    body: '이어진 삼각형들이 만드는 <b>겉면</b>입니다. face 라는 낱말이 문맥에 따라 둘을 가리킵니다 — 모델링에서는 <b>사각형 한 장이 face 1개</b>, 렌더링에서는 <b>삼각형 하나가 face 1개</b>. 그래서 성능 이야기에서는 face 대신 <b>삼각형</b>이라고 말합니다.',
+    code: 'mesh.get_faces().size() / 3   # → 2\n# get_faces() 는 삼각형마다\n# 정점 3개를 펼쳐 준다'
+  },
+  {
+    title: '⑤ 메시', en: 'mesh',
+    cap: '배열들을 묶으면 메시 — MeshInstance3D 가 화면에 놓는다',
+    show: ['g-face', 'g-mesh'],
+    counts: [['서피스', 1], ['드로우콜', 1]],
+    body: '정점·인덱스 배열을 묶은 것이 <b>메시</b>이고, 같은 머티리얼이 걸리는 묶음 하나가 <b>서피스 = 드로우콜 1개</b>입니다. 메시는 <b>노드가 아니라 리소스</b>라서, 바위 하나를 200군데 놓아도 형상은 메모리에 한 벌뿐입니다.',
+    code: 'var mesh := ArrayMesh.new()\nmesh.add_surface_from_arrays(\n    Mesh.PRIMITIVE_TRIANGLES, arrays)\n\nvar mi := MeshInstance3D.new()\nmi.mesh = mesh      # 그릇에 형상을 담는다\nadd_child(mi)'
+  }
+];
+
+const ALL = ['g-edge', 'g-tri', 'g-face', 'g-mesh'];
+const side = document.getElementById('side');
+const cap  = document.getElementById('svgcap');
+
+function render(i) {
+  const s = STEPS[i];
+  ALL.forEach(id => document.getElementById(id).classList.toggle('on', s.show.includes(id)));
+  cap.textContent = s.cap;
+  side.innerHTML =
+    '<h4>' + s.title + '<span>' + s.en + '</span></h4>' +
+    '<div class="cnt">' + s.counts.map(c => '<span>' + c[0] + ' <b>' + c[1] + '</b></span>').join('') + '</div>' +
+    '<p>' + s.body + '</p>' +
+    '<pre><code>' + s.code.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</code></pre>';
+  [...document.querySelectorAll('#steps button')].forEach((b, n) => b.classList.toggle('on', n === i));
+}
+
+document.getElementById('steps').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b) render(+b.dataset.s);
+});
+const S0 = parseInt(new URLSearchParams(location.search).get('s'), 10);
+render(Number.isInteger(S0) && S0 >= 0 && S0 < STEPS.length ? S0 : 0);
+</script>
+<script src="site/glossary.js"></script>
+<script src="site/tooltip.js"></script>
+</body>
+</html>
