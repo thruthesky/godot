@@ -580,6 +580,12 @@ for i in mmi.multimesh.instance_count:
   <!-- ⑥ ProtonScatter -->
   <section id="s6">
     <h2>⑥ ProtonScatter 완전 안내</h2>
+    <blockquote class="ok">
+      <p>
+        📘 <b>클릭 순서만 따라 하려면 <a href="protonscatter.html">ProtonScatter 처음부터 끝까지</a></b> —
+        설치부터 <code>Keep Static Colliders</code> 까지 10단계로 나눠 적었다. 이 절은 요약이다.
+      </p>
+    </blockquote>
     <p>
       <b>"원본 씬에 콜리전을 넣어 두면 뿌린 전부에 자동으로 생긴다" 를 체크박스 하나로 해 주는
       유일한 도구다.</b> 엔진 기능이 아니라 애드온
@@ -642,22 +648,18 @@ func _create_collision(body: StaticBody3D, t: Transform3D) -> void:
       <tr><td><code>ProtonScatter</code> ▸ <b>Keep Static Colliders</b></td><td><b>✅ 체크</b> ← 이 한 번이 전부다</td></tr>
     </table>
 
-    <h3>🛑 Modifier Stack 이 비면 아무것도 안 나온다</h3>
+    <h3>Modifier Stack — 에디터는 자동으로 채운다</h3>
     <p>
-      <b>가장 많이 막히는 곳이다.</b> ProtonScatter 는 "몇 개를 어디에 놓을지" 를
-      <b>Modifier Stack</b> 에서 정한다. 비어 있으면 인스턴스가 <b>0개</b>이고
-      화면에 아무것도 안 보인다. 인스펙터 아래쪽 <code>Modifier Stack</code> 에서
-      <code>+</code> 를 눌러 최소 두 개를 넣는다.
+      ProtonScatter 는 "몇 개를 어디에 놓을지" 를 <b>Modifier Stack</b> 에서 정한다.
+      <b>에디터에서 노드를 추가하고 인스펙터를 열면 기본 프리셋 4개가 자동으로 들어온다</b>
+      (<code>stack_panel.gd:73-76</code>). 🛑 <b>코드로 <code>ProtonScatter.new()</code> 하면
+      비어 있어</b> 인스턴스가 0개가 된다.
     </p>
-    <table>
-      <tr><th>Modifier</th><th>하는 일</th></tr>
-      <tr><td><b>Create Inside (Random)</b></td><td>영역 안에 무작위로 N개 생성 (<code>Amount</code> 로 개수)</td></tr>
-      <tr><td><b>Randomize Transforms</b></td><td>회전·크기를 흩는다 (<code>Rotation</code> 을 <code>0, 360, 0</code> 으로)</td></tr>
-    </table>
-    <p>
-      자주 함께 쓰는 것 — <code>Project On Geometry</code>(지면에 붙이기) ·
-      <code>Relax</code>(간격 고르게) · <code>Create Inside (Poisson)</code>(겹치지 않게).
-    </p>
+<pre><code>  ▸ <span class="hi">Create Inside (Random)</span>   amount = 75
+  ▸ <span class="hi">Randomize Transforms</span>     rotation (20.0, 360.0, 20.0)
+  ▸ <span class="hi">Relax Position</span>           iterations 3 · offset_step 0.2
+  ▸ <span class="hi">Project On Colliders</span>     ray_length 5.0 · collision_mask 1</code></pre>
+    <p><b>뿌리고 → 흩고 → 겹침을 풀고 → 지면에 붙이는</b> 순서다.</p>
 
     <h3>🛑 반드시 알아야 할 제약 넷 — 전부 실측으로 확인했다</h3>
 

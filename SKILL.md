@@ -398,6 +398,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [3d-core.md](references/3d-core.md) | Node3D·Transform3D·카메라 | [상세](references/catalog.md#3d-coremd--node3dtransform3d카메라) |
 | [mesh-geometry.md](references/mesh-geometry.md) | 메시의 구조 — 정점·모서리·삼각형·면 | [상세](references/catalog.md#mesh-geometrymd--메시의-구조--정점모서리삼각형면) |
 | [multimesh-3d.md](references/multimesh-3d.md) | MultiMeshInstance3D — 대량 배치와 🛑 콜리전이 복제되지 않는 문제 | 나무·바위·풀을 수백~수천 개 놓을 때 |
+| [protonscatter.md](references/protonscatter.md) | ProtonScatter 애드온 — 자유 배치 + 콜리전을 얻는 10단계 | 나무·바위를 흩뿌리며 충돌도 필요할 때 |
 | [physics-3d.md](references/physics-3d.md) | Jolt Physics와 3D 물리 | [상세](references/catalog.md#physics-3dmd--jolt-physics와-3d-물리) |
 | [rendering-3d.md](references/rendering-3d.md) | 렌더러·머티리얼·조명·환경 | [상세](references/catalog.md#rendering-3dmd--렌더러머티리얼조명환경) |
 | [animation-3d.md](references/animation-3d.md) | 애니메이션 시스템 | [상세](references/catalog.md#animation-3dmd--애니메이션-시스템) |

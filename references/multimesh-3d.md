@@ -466,6 +466,9 @@ MultiMesh 는 "수백~수천 개를 싸게 그린다" 가 목적이지 "콜리�
 
 ## 8. ProtonScatter 완전 안내
 
+> 📘 **클릭 순서만 따라 하려면 [protonscatter.md](protonscatter.md) 로 간다** —
+> 설치부터 `Keep Static Colliders` 까지 10단계로 나눠 적었다. 이 절은 요약이다.
+
 **"원본 씬에 콜리전을 넣어 두면 뿌린 전부에 자동으로 생긴다" 를 체크박스 하나로 해 주는
 유일한 도구다.** 엔진 기능이 아니라 애드온([HungryProton/scatter](https://github.com/HungryProton/scatter))이다.
 
@@ -533,12 +536,20 @@ ProtonScatter                     ← 여기에 Keep Static Colliders 가 있다
 | `ProtonScatter` ▸ **Render Mode** | **`Use Instancing`** (= MultiMesh) |
 | `ProtonScatter` ▸ **Keep Static Colliders** | **✅ 체크** ← 이 한 번이 전부다 |
 
-### 🛑 Modifier Stack 이 비면 아무것도 안 나온다
+### Modifier Stack — 에디터는 자동으로 채우고, 코드는 비어 있다
 
-**가장 많이 막히는 곳이다.** ProtonScatter 는 "몇 개를 어디에 놓을지" 를 **Modifier Stack**
-에서 정한다. 비어 있으면 인스턴스가 **0개**이고 화면에 아무것도 안 보인다.
+ProtonScatter 는 "몇 개를 어디에 놓을지" 를 **Modifier Stack** 에서 정한다.
 
-인스펙터 아래쪽 `Modifier Stack` 에서 `+` 를 눌러 최소 두 개를 넣는다:
+| 경로 | 스택 |
+|---|---|
+| **에디터에서 노드 추가 → 인스펙터를 연다** | ✅ **기본 프리셋 4개가 자동으로 들어온다** (`stack_panel.gd:73-76` 이 `presets/scatter_default.tscn` 을 적용) |
+| **코드로 `ProtonScatter.new()`** | 🛑 **비어 있다.** 인스턴스가 **0개**가 되고 화면에 아무것도 안 나온다 |
+
+자동으로 들어오는 넷 — `Create Inside (Random)`(amount 75) · `Randomize Transforms`
+(rotation 20/360/20) · `Relax Position` · `Project On Colliders`.
+**뿌리고 → 흩고 → 겹침을 풀고 → 지면에 붙이는** 순서다.
+
+코드로 만들 때는 직접 넣는다. 최소 두 개면 된다:
 
 | Modifier | 하는 일 |
 |---|---|

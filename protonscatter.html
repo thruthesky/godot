@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProtonScatter — 처음부터 끝까지</title>
+<meta name="description" content="나무·바위를 자유롭게 흩뿌리면서 충돌까지 얻는 법. 설치부터 Keep Static Colliders 까지 10단계 클릭 순서. Godot 4.7.2 · ProtonScatter 4.2.0 실측.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F6F8FA; --card:#FFFFFF; --ink:#16202B; --muted:#5B6B7B;
+  --rule:#C7D0DA; --grid:rgba(22,32,43,.045); --code:#F1F3F5;
+  --accent:#D9480F; --blue:#1864AB; --ok:#2B8A3E; --warn:#C92A2A;
+  --shadow:0 1px 2px rgba(22,32,43,.06),0 8px 24px -12px rgba(22,32,43,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+    --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+    --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C; --warn:#FF8787;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --card:#151D24; --ink:#DFE7ED; --muted:#8A9AA8;
+  --rule:#2B3742; --grid:rgba(223,231,237,.05); --code:#0B1116;
+  --accent:#FF7A45; --blue:#5DA9E9; --ok:#69DB7C; --warn:#FF8787;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px;color:var(--ink);
+  font-family:Chivo,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:16.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:84ch;margin:0 auto;padding:clamp(22px,4vw,48px) clamp(16px,4vw,28px) 90px;
+  display:flex;flex-direction:column;gap:30px}
+.back{text-decoration:none;color:var(--muted);font-size:14px;font-weight:700}
+.back:hover{color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:clamp(28px,5.5vw,44px);font-weight:900;line-height:1.12;margin:.25em 0 .3em;letter-spacing:-.025em}
+.lede{font-size:clamp(15.5px,2.1vw,18px);color:var(--muted);margin:0}
+h2{font-size:clamp(19px,3.2vw,25px);font-weight:900;margin:0 0 .5em;
+  padding-bottom:.3em;border-bottom:2px solid var(--ink);letter-spacing:-.015em}
+h3{font-size:17.5px;font-weight:900;margin:1.5em 0 .4em}
+h4{font-size:15px;font-weight:700;margin:1.2em 0 .3em;color:var(--muted)}
+p{margin:.9em 0}
+section>p:first-of-type{margin-top:0}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.tag{background:var(--card);border:1px solid var(--rule);border-radius:999px;
+  padding:4px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.tag b{color:var(--ok)}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--rule);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:700;white-space:nowrap}
+tr:nth-child(even) td{background:var(--card)}
+td b{color:var(--accent)}
+code{background:var(--code);border:1px solid var(--rule);padding:.12em .38em;border-radius:4px;font-size:.87em}
+pre{background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.62;box-shadow:var(--shadow);margin:1.1em 0}
+pre code{background:none;border:0;padding:0}
+pre .c{opacity:.58} pre .hi{color:var(--accent);font-weight:600}
+pre .bad{color:var(--warn);font-weight:600} pre .good{color:var(--ok);font-weight:600}
+blockquote{margin:1.2em 0;padding:13px 17px;background:var(--card);
+  border-left:3px solid var(--accent);border-radius:0 10px 10px 0;box-shadow:var(--shadow)}
+blockquote>*:first-child{margin-top:0} blockquote>*:last-child{margin-bottom:0}
+blockquote.stop{border-left-color:var(--warn)}
+blockquote.ok{border-left-color:var(--ok)}
+.more{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:18px 20px;box-shadow:var(--shadow)}
+.more h3{margin:0 0 10px;font-size:15px}
+.more p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.blist{display:flex;flex-direction:column;gap:8px}
+.blink{display:flex;align-items:center;gap:9px;text-decoration:none;
+  border:1.5px solid var(--rule);border-radius:10px;padding:11px 14px;
+  font-size:14px;font-weight:700;color:var(--ink);background:var(--paper);
+  transition:border-color .12s ease,transform .12s ease}
+.blink:hover{border-color:var(--accent);transform:translateY(-1px)}
+.blink.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.blink .sub{margin-left:auto;font-size:12px;font-weight:400;opacity:.7;font-family:"IBM Plex Mono",monospace}
+footer{border-top:1px solid var(--rule);padding-top:20px;font-size:13.5px;color:var(--muted)}
+footer a{color:var(--blue)}
+
+/* ══ 단계 ══════════════════════════ */
+.step{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);
+  border-radius:0 14px 14px 0;padding:18px 22px;box-shadow:var(--shadow)}
+.step.key{border-left-color:var(--warn);border-left-width:6px}
+.step.prep{border-left-color:var(--muted)}
+.step>h2{display:flex;align-items:baseline;gap:12px;border-bottom:0;padding-bottom:0;margin:0 0 .35em}
+.step .num{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:700;
+  background:var(--accent);color:#fff;border-radius:999px;padding:3px 12px;flex:none;letter-spacing:.02em}
+.step.key .num{background:var(--warn)}
+.step.prep .num{background:var(--muted)}
+.step>h2 .t{font-size:clamp(18px,3vw,23px);font-weight:900;letter-spacing:-.015em}
+.step .why{margin:0 0 1em;font-size:14.5px;color:var(--muted)}
+
+/* ══ 씬 트리 ══════════════════════════ */
+.tree{background:var(--code);border:1px solid var(--rule);border-radius:10px;
+  padding:15px 17px;font-family:"IBM Plex Mono",monospace;font-size:13px;
+  line-height:1.75;overflow-x:auto;box-shadow:var(--shadow);margin:1.1em 0;white-space:pre}
+.tree .n{color:var(--blue);font-weight:600}
+.tree .cm{opacity:.6}
+.tree .mark{color:var(--accent);font-weight:700}
+
+/* ══ 인스펙터 흉내 ══════════════════════════ */
+.insp{border:1px solid var(--rule);border-radius:10px;overflow:hidden;
+  box-shadow:var(--shadow);margin:1.1em 0;font-size:13.5px;background:var(--card)}
+.insp .hd{background:var(--ink);color:var(--paper);padding:7px 14px;
+  font-weight:900;font-size:13px;letter-spacing:.02em}
+.insp .row{display:flex;gap:10px;padding:7px 14px;border-top:1px solid var(--rule);align-items:baseline}
+.insp .row:first-of-type{border-top:0}
+.insp .k{flex:0 0 44%;font-weight:600;color:var(--muted)}
+.insp .v{flex:1;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.insp .row.on{background:rgba(217,72,15,.09)}
+.insp .row.on .k,.insp .row.on .v{color:var(--accent);font-weight:700}
+.insp .grp{padding:6px 14px;background:var(--paper);font-weight:900;font-size:12px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--rule)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back" href="index.html">← 목차</a>
+
+  <header>
+    <div class="eyebrow" style="margin-top:16px">Godot 4.7 · ProtonScatter 4.2.0</div>
+    <h1>ProtonScatter<br>처음부터 끝까지</h1>
+    <p class="lede">
+      나무·바위를 <b>자유롭게 흩뿌리면서 충돌까지</b> 얻는 유일한 방법.
+      설치부터 <code>Keep Static Colliders</code> 까지 <b>클릭 순서 그대로</b> 적었다.
+    </p>
+    <div class="tags">
+      <span class="tag"><b>✓</b> 4.7.2.stable 실측</span>
+      <span class="tag"><b>✓</b> 애드온 소스 확인</span>
+      <span class="tag"><b>✓</b> 기본 프리셋 값 직접 읽음</span>
+      <span class="tag">상세 문서 · <code>protonscatter.md</code></span>
+    </div>
+  </header>
+
+  <blockquote>
+    <p>
+      <b>왜 이것을 쓰나</b> — <code>MultiMeshInstance3D</code> 의 <code>Populate Surface</code> 로
+      뿌린 것들은 <b>물리 세계에 존재하지 않는다.</b> 캐릭터가 그대로 통과한다.
+      엔진 내장에는 이를 자동으로 해결하는 버튼이 없고,
+      <b>클릭만으로 되는 방법은 이것뿐이다.</b>
+      → <a href="multimesh.html">MultiMeshInstance3D 문서</a>
+    </p>
+  </blockquote>
+
+  <!-- Step 0 -->
+  <section class="step prep">
+    <h2><span class="num">STEP 0</span><span class="t">시작 전에 있어야 하는 것</span></h2>
+    <p class="why">ProtonScatter 는 "무엇을" 과 "어디에" 를 스스로 만들지 않는다. 씬에 먼저 있어야 한다.</p>
+
+    <table>
+      <tr><th>있어야 하는 것</th><th>왜</th></tr>
+      <tr><td><b>뿌릴 대상</b> — <code>MeshInstance3D</code> 또는 씬 파일</td><td>Step 5 에서 지정한다</td></tr>
+      <tr><td><b>바닥</b> — <code>MeshInstance3D</code> + <code>StaticBody3D</code> + <code>CollisionShape3D</code></td><td>Step 8 의 <code>Project On Colliders</code> 가 <b>레이캐스트로 지면을 찾는다.</b> 콜리전이 없으면 지면에 붙지 못한다</td></tr>
+    </table>
+
+    <blockquote class="stop">
+      <p>
+        🛑 <b>바닥에 콜리전이 없으면</b> 나무가 지면에 붙지 않고 영역 안에 공중부양한다.
+        바닥 <code>MeshInstance3D</code> 를 선택하고 툴바
+        <code>Mesh ▸ Create Collision Shape ▸ Static Body Child ▸ Trimesh</code> 로 먼저 만들어 둔다.
+      </p>
+    </blockquote>
+
+    <p><b>충돌까지 원한다면 뿌릴 대상에도 콜리전이 있어야 한다.</b></p>
+<div class="tree"><span class="n">Tree</span> (MeshInstance3D)         <span class="cm">← 이것을 뿌린다</span>
+  └ <span class="n">StaticBody3D</span>              <span class="cm">← Mesh ▸ Create Collision Shape ▸ Capsule</span>
+      └ <span class="n">CollisionShape3D</span>      <span class="mark">← 이 shape 이 인스턴스마다 복제된다</span></div>
+  </section>
+
+  <!-- Step 1 -->
+  <section class="step">
+    <h2><span class="num">STEP 1</span><span class="t">설치</span></h2>
+    <p class="why">두 경로 중 하나를 고른다.</p>
+
+    <h4>A. AssetLib — 클릭만으로 (권장)</h4>
+<pre><code>에디터 상단 ▸ <span class="hi">AssetLib</span> 탭 ▸ "ProtonScatter" 검색 ▸ Download ▸ Install</code></pre>
+
+    <h4>B. 저장소에서 직접 — 버전 고정이 필요할 때</h4>
+<pre><code>git clone --depth 1 https://github.com/HungryProton/scatter.git
+<span class="c"># scatter/addons/proton_scatter/ 를 프로젝트의 addons/ 로 복사한다</span></code></pre>
+
+    <blockquote>
+      <p>
+        <b>용량 주의</b> — <code>addons/proton_scatter/</code> 는 <b>13MB</b> 이고
+        그중 <b>11MB 가 <code>demos/</code></b> 다. 저장소에 넣을 거라면
+        <code>demos/</code> 와 <code>tests/</code> 를 빼면 <b>1.5MB</b> 로 줄어든다.<br>
+        🛑 단 <code>demos/</code> 를 빼면 기본 프리셋의 <code>ScatterItem</code> 이
+        <code>demos/assets/brick.tscn</code> 을 가리켜 콘솔에
+        <code>Cannot open file</code> 이 한 번 뜬다.
+        <b>Step 5 에서 Path 를 자기 모델로 바꾸면 사라진다.</b>
+      </p>
+    </blockquote>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="step">
+    <h2><span class="num">STEP 2</span><span class="t">플러그인 활성화</span></h2>
+<pre><code>Project ▸ Project Settings…  ▸  <span class="hi">Plugins</span> 탭  ▸  ProtonScatter 의 Enabled 를 ✅</code></pre>
+    <p>
+      활성화되면 <code>ProtonScatter</code> · <code>ProtonScatterItem</code> ·
+      <code>ProtonScatterShape</code> 노드를 <b>Create New Node</b> 목록에서 검색할 수 있게 된다.
+      <b>안 보이면 활성화가 안 된 것이다.</b>
+    </p>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="step">
+    <h2><span class="num">STEP 3</span><span class="t">노드 3개를 만든다</span></h2>
+    <p class="why">Create New Node 에서 "scatter" 로 검색해 세 개를 만든다. 부모-자식 관계가 정해져 있다.</p>
+
+<div class="tree"><span class="n">ProtonScatter</span>                 <span class="cm">← 루트. 설정과 Modifier Stack 이 여기 있다</span>
+├── <span class="n">ProtonScatterItem</span>         <span class="cm">← 무엇을 뿌릴 것인가</span>
+└── <span class="n">ProtonScatterShape</span>        <span class="cm">← 어디에 뿌릴 것인가</span></div>
+
+    <table>
+      <tr><td><code>ProtonScatterItem</code> · <code>ProtonScatterShape</code> 는</td><td>반드시 <b><code>ProtonScatter</code> 의 자식</b>이어야 한다</td></tr>
+      <tr><td>여러 종류를 섞으려면</td><td><code>ProtonScatterItem</code> 을 <b>여러 개</b> 둔다 (각 <code>Proportion</code> 으로 비율 조절)</td></tr>
+      <tr><td>영역을 여러 개 쓰려면</td><td><code>ProtonScatterShape</code> 도 <b>여러 개</b> 둘 수 있다</td></tr>
+    </table>
+
+    <h3>✅ 인스펙터를 여는 순간 Modifier 4개가 자동으로 들어온다</h3>
+    <p>
+      <code>ProtonScatter</code> 를 선택해 인스펙터를 열면 <b>기본 프리셋이 자동 적용된다.</b>
+      (근거 — <code>stack_panel.gd:73-76</code> 이 <code>just_created</code> 인 스택에
+      <code>presets/scatter_default.tscn</code> 을 적용한다.)
+      <b>들어오는 값을 그대로 읽으면 이렇다:</b>
+    </p>
+<pre><code>modifier 4개
+  ▸ <span class="hi">Create Inside (Random)</span>   [Create]   amount = 75
+  ▸ <span class="hi">Randomize Transforms</span>     [Edit]     position (0.15, 0.15, 0.15)
+                                        rotation (20.0, 360.0, 20.0)
+                                        scale    (0.1, 0.1, 0.1)
+  ▸ <span class="hi">Relax Position</span>           [Edit]     iterations 3 · offset_step 0.2
+                                        consecutive_step_multiplier 0.75
+  ▸ <span class="hi">Project On Colliders</span>     [Edit]     ray_length 5.0 · ray_offset 5.0
+                                        remove_points_on_miss false
+                                        max_slope 90.0 · collision_mask 1</code></pre>
+    <p>
+      <b>이 넷이 Step 6~8 에서 만질 대상 전부다.</b> 순서에도 뜻이 있다 —
+      <b>뿌리고(Create) → 흩고(Randomize) → 겹침을 풀고(Relax) → 지면에 붙인다(Project).</b>
+    </p>
+    <blockquote class="stop">
+      <p>
+        🛑 <b>코드로 <code>ProtonScatter.new()</code> 를 하면 스택이 비어 있다.</b>
+        자동 적용은 <b>에디터 인스펙터 전용</b>이다.
+      </p>
+    </blockquote>
+  </section>
+
+  <!-- Step 4 -->
+  <section class="step">
+    <h2><span class="num">STEP 4</span><span class="t">뿌릴 영역을 정한다 — ScatterShape</span></h2>
+    <p class="why">
+      <code>ProtonScatterShape</code> 를 선택하면 인스펙터에 <code>Shape</code> 칸이
+      <code>&lt;empty&gt;</code> 로 있다. 클릭해 <b>New</b> 에서 모양을 고른다.
+    </p>
+
+    <table>
+      <tr><th>고를 수 있는 것</th><th>무엇</th><th>크기 프로퍼티</th></tr>
+      <tr><td><b>ProtonScatterBoxShape</b></td><td>상자 (가장 흔하다)</td><td><code>size</code> — <code>Vector3</code></td></tr>
+      <tr><td>ProtonScatterSphereShape</td><td>구</td><td><code>radius</code></td></tr>
+      <tr><td>ProtonScatterPathShape</td><td>곡선을 따라</td><td><code>Curve3D</code></td></tr>
+      <tr><td>ProtonScatterBaseShape</td><td>다른 모양의 부모 클래스</td><td>(직접 쓰지 않는다)</td></tr>
+    </table>
+
+    <p>
+      <b>뷰포트에 노란 상자가 나타난다.</b> 이 안쪽이 뿌려질 범위다.
+      <code>ProtonScatterShape</code> 노드를 옮기면 범위도 함께 움직인다.
+    </p>
+    <table>
+      <tr><td><b><code>Negative</code> 를 켜면</b></td><td>그 영역을 <b>빼낸다</b>(구멍을 낸다). 길·건물 자리를 비울 때</td></tr>
+      <tr><td><code>size.y</code></td><td>높이도 범위에 들어간다. <code>Project On Colliders</code> 가 지면에 붙여 주므로 <b>2 정도면 충분</b></td></tr>
+    </table>
+  </section>
+
+  <!-- Step 5 -->
+  <section class="step">
+    <h2><span class="num">STEP 5</span><span class="t">뿌릴 대상을 지정한다 — ScatterItem</span></h2>
+    <p class="why"><code>ProtonScatterItem</code> 을 선택하고 인스펙터에서 두 칸을 정한다.</p>
+
+    <div class="insp">
+      <div class="hd">ProtonScatterItem — ScatterItem</div>
+      <div class="row"><span class="k">Proportion</span><span class="v">100</span></div>
+      <div class="row on"><span class="k">① Source</span><span class="v">From current scene</span></div>
+      <div class="row"><span class="k">Custom Script</span><span class="v">&lt;empty&gt;</span></div>
+      <div class="grp">Source options</div>
+      <div class="row"><span class="k">Source Scale Multiplier</span><span class="v">1.0 &nbsp;🛑 콜리전이 따라오지 않는다</span></div>
+      <div class="grp">Override options</div>
+      <div class="row"><span class="k">Material</span><span class="v">&lt;empty&gt;</span></div>
+      <div class="row on"><span class="k">② Path</span><span class="v">Assign… ▸ 노드 선택</span></div>
+    </div>
+
+    <h4>① Source — 어디서 가져오나</h4>
+    <table>
+      <tr><th>값</th><th>뜻</th><th><code>Path</code> 에 넣는 것</th></tr>
+      <tr><td><b>From current scene</b></td><td><b>지금 이 씬 안의 노드</b></td><td>씬 트리의 노드 (<code>Assign…</code> 버튼으로 고른다)</td></tr>
+      <tr><td>From disk</td><td>다른 씬 파일</td><td><code>res://…/tree.tscn</code></td></tr>
+    </table>
+    <p><b>처음이라면 <code>From current scene</code> 이 쉽다.</b> 씬에 이미 놓아 둔 나무를 그대로 가리키면 된다.</p>
+
+    <h4>② Path — 무엇을 가져오나</h4>
+    <p>
+      <code>Path</code> 줄의 <b><code>Assign…</code></b> 을 누르면 <b>Select a Node</b> 창이 뜬다.
+      씬 트리에서 뿌릴 대상을 고른다.
+    </p>
+<div class="tree"><span class="n">Node3D</span>
+├── Ground
+│   └── StaticBody3D
+│       └── CollisionShape3D
+├── CommonTree_12
+│   └── <span class="mark">CommonTree_1</span>          <span class="cm">← 이것을 고른다 (Type: MeshInstance3D)</span>
+│       └── StaticBody3D
+│           └── CollisionShape3D
+└── ProtonScatter
+    ├── ProtonScatterItem     <span class="cm">← 지금 여기를 설정 중</span>
+    └── ProtonScatterShape</div>
+
+    <blockquote class="stop">
+      <p>
+        🛑 <b>콜리전(Step 9)까지 원한다면 고른 노드 아래에
+        <code>StaticBody3D ▸ CollisionShape3D</code> 가 있어야 한다.</b>
+        ProtonScatter 는 그 shape 을 복제한다. 없으면 메시만 뿌려진다.
+      </p>
+    </blockquote>
+    <p><b>고르는 순간 뷰포트에 인스턴스가 나타난다.</b></p>
+  </section>
+
+  <!-- Step 6 -->
+  <section class="step">
+    <h2><span class="num">STEP 6</span><span class="t">Set Amount — 개수</span></h2>
+    <p class="why">
+      <code>ProtonScatter</code> 루트를 선택하고 인스펙터 아래쪽 <b>Modifier Stack</b> 을 본다.
+    </p>
+<pre><code>Modifier Stack
+  + Add modifier
+  ▸ <span class="hi">Create Inside (Random)</span>    <span class="c">← 이것을 클릭해 펼친다</span>
+  ▸ Randomize Transforms
+  ▸ Relax Position
+  ▸ Project On Colliders</code></pre>
+    <div class="insp">
+      <div class="hd">Create Inside (Random)</div>
+      <div class="row on"><span class="k">Amount</span><span class="v">75 → 원하는 값</span></div>
+      <div class="row"><span class="k">(좌표계 토글)</span><span class="v">Local / Global</span></div>
+    </div>
+    <p>값을 바꾸면 <b>뷰포트가 즉시 다시 뿌려진다.</b></p>
+
+    <table>
+      <tr><th>개수를 정하는 다른 방법</th><th></th></tr>
+      <tr><td><b>Create Inside (Poisson)</b></td><td>개수 대신 <b><code>radius</code>(최소 간격)</b> 로 정한다. <b>겹치지 않는 배치</b>가 필요하면 이쪽</td></tr>
+      <tr><td>Create Inside (Grid)</td><td>격자로 규칙적으로</td></tr>
+      <tr><td>Create Along Edge (…)</td><td>영역의 <b>가장자리</b>를 따라 — 울타리·가로수</td></tr>
+    </table>
+  </section>
+
+  <!-- Step 7 -->
+  <section class="step">
+    <h2><span class="num">STEP 7</span><span class="t">Set Rotation — 방향과 크기 흩기</span></h2>
+    <p class="why">
+      <b><code>Randomize Transforms</code></b> 를 펼친다. 세 줄이 있고, 각각 <b>무작위 폭</b>이다
+      (값이 0이면 흩지 않는다).
+    </p>
+
+    <div class="insp">
+      <div class="hd">Randomize Transforms</div>
+      <div class="row"><span class="k">Position</span><span class="v">x 0.15 &nbsp; y 0.15 &nbsp; z 0.15</span></div>
+      <div class="row on"><span class="k">Rotation</span><span class="v">x 20.0 &nbsp; <b>y 360.0</b> &nbsp; z 20.0</span></div>
+      <div class="row"><span class="k">Scale</span><span class="v">x 0.1 &nbsp; y 0.1 &nbsp; z 0.1</span></div>
+    </div>
+
+    <p>
+      <b><code>Rotation</code> 의 Y 가 360 인 것이 핵심이다</b> — 위 축 기준으로 완전히 무작위로 돌려
+      <b>같은 나무를 복제한 티를 지운다.</b> X·Z 의 20° 는 살짝 기울여 자연스럽게 만드는 값이다.
+    </p>
+
+    <table>
+      <tr><th>하고 싶은 것</th><th>어떻게</th></tr>
+      <tr><td>나무가 <b>똑바로만</b> 서게</td><td><code>Rotation</code> 을 <b><code>(0, 360, 0)</code></b> 으로. X·Z 를 0 으로</td></tr>
+      <tr><td>바위처럼 <b>아무렇게나</b></td><td><code>(360, 360, 360)</code></td></tr>
+      <tr><td>크기를 더 다양하게</td><td><code>Scale</code> 을 <code>(0.3, 0.3, 0.3)</code> 처럼 올린다</td></tr>
+    </table>
+
+    <blockquote class="stop">
+      <p>
+        🛑 회전만 필요하면 <code>Randomize Rotation</code> 이라는 별도 modifier 도 있다.
+        다만 <b>그쪽 기본값은 <code>(360, 360, 360)</code></b> 이라 그대로 쓰면 <b>나무가 눕는다.</b>
+        반드시 <code>(0, 360, 0)</code> 으로 고쳐서 쓴다.
+      </p>
+    </blockquote>
+  </section>
+
+  <!-- Step 8 -->
+  <section class="step">
+    <h2><span class="num">STEP 8</span><span class="t">Set Object Boundaries — 겹침 풀기</span></h2>
+    <p class="why">
+      <b><code>Relax Position</code></b> 을 펼친다. 무작위로 뿌리면 나무끼리 겹치는데,
+      이 modifier 가 <b>서로 밀어내며 간격을 고르게</b> 만든다.
+    </p>
+
+    <div class="insp">
+      <div class="hd">Relax Position</div>
+      <div class="row on"><span class="k">Iterations</span><span class="v">3 &nbsp;<span style="opacity:.6">— 올릴수록 고르지만 느리다</span></span></div>
+      <div class="row on"><span class="k">Offset Step</span><span class="v">0.2 &nbsp;<span style="opacity:.6">— 한 번에 밀어내는 거리(m)</span></span></div>
+      <div class="row"><span class="k">Consecutive Step Multiplier</span><span class="v">0.75</span></div>
+      <div class="row"><span class="k">Use Computeshader</span><span class="v">✅ &nbsp;<span style="opacity:.6">— GPU 계산</span></span></div>
+    </div>
+
+    <p><b>나무가 서로 파고들면 <code>Iterations</code> 를 올리거나 <code>Offset Step</code> 을 키운다.</b></p>
+    <blockquote>
+      <p>
+        <b>겹침을 아예 만들지 않으려면</b> Step 6 에서 <code>Create Inside (Poisson)</code> 을 쓰는 편이
+        더 확실하다. <code>Relax Position</code> 은 이미 뿌려진 것을 나중에 미는 방식이다.
+      </p>
+    </blockquote>
+
+    <h3>함께 보는 것 — Project On Colliders</h3>
+    <p>인스턴스를 <b>아래로 레이캐스트해 지면에 붙인다.</b></p>
+    <div class="insp">
+      <div class="hd">Project On Colliders</div>
+      <div class="row"><span class="k">Ray Direction</span><span class="v">(0, −1, 0) — 아래로</span></div>
+      <div class="row"><span class="k">Ray Length</span><span class="v">5.0 — 5m 까지 찾는다</span></div>
+      <div class="row"><span class="k">Ray Offset</span><span class="v">5.0 — 5m 위에서 쏜다</span></div>
+      <div class="row"><span class="k">Remove Points On Miss</span><span class="v">false — 못 맞혀도 지우지 않는다</span></div>
+      <div class="row on"><span class="k">Collision Mask</span><span class="v">1 — <b>레이어 1</b> 만 찾는다</span></div>
+    </div>
+    <blockquote class="stop">
+      <p>
+        🛑 <b>바닥 콜리전이 레이어 1 에 없으면 지면에 붙지 않는다.</b> 나무가 공중에 뜨면 여기를 본다.
+        <code>Ray Length</code>·<code>Ray Offset</code> 이 5m 이므로
+        <b>높낮이 차가 5m 를 넘는 지형</b>에서도 놓친다.<br>
+        소스 기본값은 <code>Remove Points On Miss = true</code> 지만 프리셋이 <code>false</code> 로 덮는다.
+        <b>직접 modifier 를 추가했을 때는 <code>true</code></b> 라서, 바닥을 못 맞히면
+        <b>인스턴스가 전부 사라진다.</b>
+      </p>
+    </blockquote>
+  </section>
+
+  <!-- Step 9 -->
+  <section class="step key">
+    <h2><span class="num">STEP 9</span><span class="t">🛑 Set Collision — 이 문서의 핵심</span></h2>
+    <p class="why">
+      여기가 다른 방법과 갈리는 지점이다. <code>ProtonScatter</code> 루트를 선택하고
+      인스펙터의 <b><code>Performance</code></b> 그룹을 펼친다.
+    </p>
+
+    <div class="insp">
+      <div class="hd">ProtonScatter</div>
+      <div class="grp">Performance</div>
+      <div class="row on"><span class="k">① Render Mode</span><span class="v">Use Instancing</span></div>
+      <div class="row on"><span class="k">② Keep Static Colliders</span><span class="v">✅ On &nbsp;← 이 체크 하나가 전부다</span></div>
+      <div class="row"><span class="k">Force Rebuild On Load</span><span class="v">✅ On</span></div>
+      <div class="row"><span class="k">Enable Updates In Game</span><span class="v">☐ Off</span></div>
+      <div class="row"><span class="k">Use Chunks</span><span class="v">✅ On</span></div>
+      <div class="row"><span class="k">Chunk Dimensions</span><span class="v">(15, 15, 15)</span></div>
+    </div>
+
+    <h3>왜 이것만으로 되는가</h3>
+    <p>
+      <b>MultiMesh 인스턴스를 채우는 바로 그 루프가, 같은 <code>Transform3D</code> 로
+      물리 서버에 shape 을 등록한다.</b>
+    </p>
+<pre><code><span class="c"># scatter.gd:448-450</span>
+t = item.process_transform(transforms.list[offset + i])
+mmi.multimesh.set_instance_transform(i, t)   <span class="c"># 렌더</span>
+<span class="hi">_create_collision(static_body, t)</span>            <span class="c"># 물리 — 같은 t</span>
+
+<span class="c"># scatter.gd:609-611 — 끄는 것은 Create Copies(1) 뿐이다</span>
+func _create_collision(body: StaticBody3D, t: Transform3D) -> void:
+	if not keep_static_colliders or render_mode == 1:
+		return</code></pre>
+    <p>
+      지원 shape — Sphere · Box · <b>Capsule</b> · Cylinder · ConcavePolygon ·
+      ConvexPolygon · HeightMap · SeparationRay.
+    </p>
+
+    <h3>실측</h3>
+<pre><code>godot --headless --path . -s res://tests/protonscatter_collision_probe.gd</code></pre>
+<pre><code>[A. keep_static_colliders = false]     레이 12발 중  0발 명중  ✅ 콜리전 없음
+[B. keep_static_colliders = true]      레이 12발 중 <span class="good">12발 명중</span>  ✅ 콜리전 있음
+   콜리전 윗면 높이 ≈ 2.27 m
+[C. B + source_scale_multiplier = 4]   레이 12발 중  <span class="bad">0발 명중</span>  ✅ 실측된 한계
+실패 0 건</code></pre>
+
+    <h3>🛑 제약 넷 — 전부 실측·소스로 확인했다</h3>
+    <table>
+      <tr><th>#</th><th>제약</th><th>뜻</th></tr>
+      <tr><td>①</td><td><b>씬 트리에 콜리전 노드가 없다</b></td><td><code>PhysicsServer3D</code> 에 직접 등록 → <b><code>Debug ▸ Visible Collision Shapes</code> 에도 안 보인다</b>. 확인은 직접 부딪혀 보는 것뿐</td></tr>
+      <tr><td>②</td><td><b>부모의 <code>scale</code> 이 버려진다</b></td><td><code>MeshInstance3D</code>·<code>CollisionShape3D</code> <b>그 노드 자신의</b> transform 만 살린다 → 크기는 메시·shape 자체에 넣는다</td></tr>
+      <tr><td>③</td><td><b><code>Source Scale Multiplier</code></b></td><td>키우면 <b>콜리전이 따라오지 않는다</b>(위 실측 C)</td></tr>
+      <tr><td>④</td><td><b>collision layer 미설정</b></td><td>소스에 <code>body_set_collision_layer</code> 호출이 <b>0회</b> → 전부 <b>기본 레이어</b></td></tr>
+    </table>
+  </section>
+
+  <!-- Step 10 -->
+  <section class="step">
+    <h2><span class="num">STEP 10</span><span class="t">확인한다</span></h2>
+    <table>
+      <tr><th>무엇을</th><th>어떻게</th></tr>
+      <tr><td><b>뿌려졌나</b></td><td>뷰포트에 보이는가. <code>ProtonScatter</code> 아래 <code>ScatterOutput</code> 이 생겼는가</td></tr>
+      <tr><td><b>드로우콜이 1인가</b></td><td><b>F5 로 실행</b>해 모니터를 본다. 에디터 뷰포트 숫자에는 기즈모가 섞인다</td></tr>
+      <tr><td><b>충돌하나</b></td><td>🛑 <b>디버그 뷰로는 안 보인다</b>(제약 ①). <b>캐릭터로 직접 부딪혀 본다</b></td></tr>
+    </table>
+    <p>
+      사람이 걷지 않아도 판정할 수 있다 — 캐릭터와 <b>똑같은 캡슐</b>로 숲을 가로지르는 직선을 훑는다:
+    </p>
+<pre><code>[왼쪽 MultiMesh]       숲 중심까지 4.5 m 를 훑었으나 걸리는 것이 없었다   <span class="good">✅ 통과</span>
+[오른쪽 ProtonScatter]  출발 0.2 m 지점에서 막혔다                       <span class="good">✅ 막힘</span>
+실패 0 건</code></pre>
+  </section>
+
+  <!-- 막히는 곳 -->
+  <section>
+    <h2>🛑 막히는 곳 모음</h2>
+    <table>
+      <tr><th>증상</th><th>원인과 해결</th></tr>
+      <tr><td><b>Create New Node 에 ProtonScatter 가 없다</b></td><td>Step 2 의 플러그인 활성화를 안 했다</td></tr>
+      <tr><td><b>아무것도 안 뿌려진다</b></td><td>① <code>ScatterItem</code> 의 <code>Path</code> 가 비었다 ② <code>ScatterShape</code> 의 <code>Shape</code> 이 <code>&lt;empty&gt;</code> ③ Modifier Stack 이 비었다(코드로 만든 경우)</td></tr>
+      <tr><td><code>Cannot open file … brick.tscn</code></td><td>애드온을 <code>demos/</code> 없이 벤더링했다. <b>Step 5 에서 Path 를 바꾸면 사라진다</b></td></tr>
+      <tr><td><b>나무가 공중에 뜬다</b></td><td><code>Project On Colliders</code> 가 지면을 못 찾는다 → 바닥에 <b>콜리전</b>을 주고 <code>Collision Mask</code>·<code>Ray Length</code>(5m) 확인</td></tr>
+      <tr><td><b>나무가 눕거나 뒤집힌다</b></td><td><code>Randomize Transforms ▸ Rotation</code> 의 X·Z 를 <b>0</b> 으로</td></tr>
+      <tr><td><b>나무끼리 겹친다</b></td><td><code>Relax Position ▸ Iterations</code> 를 올리거나 <code>Create Inside (Poisson)</code> 으로</td></tr>
+      <tr><td><b>충돌이 안 생긴다</b></td><td>① <code>Keep Static Colliders</code> ✅ ② <code>Render Mode = Use Instancing</code> ③ <b>원본에 <code>StaticBody3D ▸ CollisionShape3D</code> 가 있는가</b></td></tr>
+      <tr><td><b>콜리전이 안 보인다</b></td><td>🛑 <b>정상이다.</b> 노드를 만들지 않으므로 디버그 뷰에 안 나온다</td></tr>
+      <tr><td><b>콜리전 크기가 메시와 다르다</b></td><td>부모의 <code>scale</code> 이 버려졌다(제약 ②)</td></tr>
+      <tr><td><b>실행 중 배치가 바뀐다</b></td><td><code>Enable Updates In Game</code> 을 끈다</td></tr>
+    </table>
+  </section>
+
+  <!-- 언제 쓰나 -->
+  <section>
+    <h2>언제 쓰고, 언제 쓰지 않나</h2>
+    <table>
+      <tr><th>상황</th><th>답</th></tr>
+      <tr><td><b>자유 배치 + 충돌</b>이 둘 다 필요</td><td>✅ <b>ProtonScatter</b> — 이것 말고 클릭으로 되는 방법이 없다</td></tr>
+      <tr><td>격자에 놓아도 되는 건물·울타리</td><td><code>GridMap</code> + <code>MeshLibrary</code> (<b>내장</b>, 콜리전 자동)</td></tr>
+      <tr><td>충돌이 필요 없는 풀·꽃·자갈</td><td><code>MultiMeshInstance3D</code> + <code>Populate Surface</code> (<b>내장</b>)</td></tr>
+      <tr><td>부딪힐 나무가 수십 그루뿐</td><td>그냥 <b>개별 노드</b>. 가장 단순하다</td></tr>
+    </table>
+  </section>
+
+  <div class="more">
+    <h3>이어서 읽기</h3>
+    <p>이 페이지는 클릭 순서다. 원리·다른 해법·코드는 문서 쪽이 더 자세하다.</p>
+    <div class="blist">
+      <a class="blink primary" href="doc.html?d=protonscatter">
+        ProtonScatter 상세<span class="sub">protonscatter.md</span></a>
+      <a class="blink" href="multimesh.html">
+        MultiMeshInstance3D — 왜 충돌이 없나<span class="sub">multimesh.html</span></a>
+      <a class="blink" href="doc.html?d=multimesh-3d">
+        콜리전을 붙이는 여섯 가지 방법<span class="sub">multimesh-3d.md</span></a>
+    </div>
+  </div>
+
+  <footer>
+    기준 <code>Godot 4.7.2.stable</code> · <code>ProtonScatter 4.2.0</code> (2026-07-26 커밋) ·
+    프리셋 값은 <code>tests/protonscatter_preset_probe.gd</code> 로 직접 읽음 ·
+    물리 판정은 <code>tests/protonscatter_collision_probe.gd</code> ·
+    <a href="https://github.com/HungryProton/scatter">ProtonScatter 저장소</a>
+  </footer>
+</div>
+</body>
+</html>
