@@ -18,12 +18,14 @@
 
 ## 1. `/godot init` — 프로젝트에 슬래시 명령과 `./install.sh` 를 설치한다
 
-사용자가 **`/godot init`** 이라고 지시하면 두 가지를 한다.
+사용자가 **`/godot init`** 이라고 지시하면 세 가지를 한다.
 
 1. 이 스킬이 들고 있는 **명령 파일들을 대상 프로젝트의 `.claude/commands/` 로 복사**한다 —
    그 뒤로는 `/godot-example` 처럼 짧게 부를 수 있다
 2. 대상 프로젝트 **루트에 `./install.sh` 심볼릭 링크**를 건다 —
    `.claude/skills/godot/scripts/install.sh` 를 가리키며, 긴 경로 없이 `./install.sh` 로 부른다
+3. 대상 프로젝트 **`scripts/triangles.sh` 심볼릭 링크**를 건다 —
+   `.claude/skills/godot/scripts/triangles.sh` 를 가리키며, 씬·에셋의 삼각형과 드로우콜을 센다
 
 ### 설치하는 것 ① 슬래시 명령 — **복사한다**
 
@@ -51,6 +53,31 @@
 ./install.sh 1 --console  # 1번 장치에 설치하고 로그를 터미널에 붙인다
 ```
 
+### 설치하는 것 ③ `scripts/triangles.sh` — **심볼릭 링크를 건다**
+
+| 원본 (이 스킬 안) | 설치 위치 | 형태 |
+|---|---|---|
+| `scripts/triangles.sh` | `<대상>/scripts/triangles.sh` | 🛑 **심볼릭 링크** — `../.claude/skills/godot/scripts/triangles.sh` 를 가리킨다 |
+
+🛑 **링크의 상대경로는 "링크 파일이 있는 폴더" 기준이다.** `scripts/` 안에 두므로
+`.claude/…` 가 아니라 **`../.claude/…`** 로 건다. `install.sh` 는 루트에 있어 `..` 이 없다.
+
+```bash
+scripts/triangles.sh                        # main_scene 의 삼각형 총량
+scripts/triangles.sh scenes/main/main.tscn  # 씬 하나 — 무거운 노드 순위까지
+scripts/triangles.sh --all --budget 150000  # 전 씬. 예산 초과가 있으면 종료 코드 1 (CI)
+scripts/triangles.sh --frame                # 실제로 띄워 "그린" 삼각형 (VISIBLE·SHADOW·CANVAS 분리)
+scripts/triangles.sh --glb assets           # Godot 없이 .glb 를 파이썬으로 직접 읽는다
+```
+
+**왜 `scripts/` 아래인가** — 루트를 어지럽히지 않기 위해서다. `install.sh` 는 가장 자주 쓰고
+프로젝트의 얼굴이라 루트에 두지만, 나머지 도구는 `scripts/` 로 모은다.
+
+**동작 원리** — 셸이 `project.godot` 을 위로 탐색해 루트를 잡고, 스킬의 GDScript 를
+**`res://.claude/skills/godot/scripts/…`** 로 실행한다. 🛑 `.claude/` 는 Godot 의 리소스
+스캔에서 빠지지만 **`-s res://…` 로 직접 실행하는 것은 된다**(4.7.2 실측). 그래서 프로젝트
+안으로 복사할 필요가 없다.
+
 ### 절차
 
 ```bash
@@ -73,6 +100,16 @@ else
 fi
 
 ./install.sh --list                          # 검증 — 장치 목록이 나오면 성공
+
+# ── ③ scripts/triangles.sh 심볼릭 링크 ───────────────────────
+mkdir -p scripts
+if [ -e scripts/triangles.sh ] || [ -L scripts/triangles.sh ]; then
+  ls -l scripts/triangles.sh                 # 이미 있으면 손대지 않고 사람에게 물어본다
+else
+  ln -s ../.claude/skills/godot/scripts/triangles.sh scripts/triangles.sh
+fi
+
+scripts/triangles.sh --glb                   # 검증 — 표가 나오면 성공 (Godot 없이도 도는 모드다)
 ```
 
 인자로 경로가 오면(`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 **현재 프로젝트**에 설치한다.

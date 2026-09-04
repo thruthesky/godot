@@ -47,6 +47,13 @@ Godot 에디터 (실행 중)
 - **정확한 행·열 위치**
 
 `godot --check-only --script`는 **문법 오류만** 잡는다.
+
+> 🛑 **`--check-only` 와 `--script` 는 오토로드 싱글턴을 모른다.** `Auth`·`Nakama` 같은 오토로드
+> 이름을 쓰는 스크립트는 헤드리스에서 *"Compile Error: Identifier not found: Auth"* 로 실패한다 —
+> 코드가 틀린 것이 아니다. `main/main.cpp`(4.7) 에서 `--script` 로드(4369행)와 `check_only` 종료(4372행)가
+> 오토로드 등록(4499행)보다 **앞**에 있기 때문이다(엔진 소스 확인 2026-09-03, `login.gd` 로 실측).
+> 오토로드를 쓰는 파일은 **에디터 LSP(`gdscript_lsp.py diagnose`)** 로 검사하거나, 검증 씬을 `run/main_scene`
+> 으로 두고 `godot --headless --path .` 로 **정상 실행**해 로드 에러 유무로 본다 — 그 경로는 오토로드가 등록된다.
 타입 검사와 경고는 에디터 프로세스 안에서만 생성되므로 LSP가 유일한 경로다.
 
 ### 게임을 실행하기 전에 LSP를 먼저 쓴다

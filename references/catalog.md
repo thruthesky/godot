@@ -304,6 +304,11 @@ GDScript 문법 전부를 다룬다. 정적 타입 선언과 타입 추론(`:=`)
 `Viewport.DEBUG_DRAW_*` 코드), **감김 방향(Godot 은 시계 방향이 앞면)** 과 메시가 안 보일 때의
 진단표, `ArrayMesh`·`SurfaceTool` 로 직접 만드는 법, "몇 개짜리야"에 답이 다섯 개인 이유를
 다룬다. 프리미티브 6종의 정점·인덱스·삼각형 수는 4.7.2 에서 직접 측정한 실측표다.
+**§15 는 "씬에 삼각형이 몇 개인가"에 답하는 다섯 가지 방법** — 에디터 `View > View Information`,
+`Performance` 모니터(3D+UI 합계), **`Viewport.get_render_info()`(VISIBLE·SHADOW·CANVAS 패스 분리)**,
+씬 총량을 구하는 노드 순회 코드(MultiMesh·GridMap·CSG·파티클·Sprite3D·Label3D 별 세는 법이 다르다.
+🛑 엔진에 "씬 총 삼각형" API 는 없다), Godot 없이 `.glb` 의 JSON 청크를 파이썬으로 읽는 법.
+존재하는 총량과 실제 그린 양은 다른 값이며 실측 대조를 함께 싣는다.
 그림으로 보는 요약은 사이트의 `mesh.html`.
 
 ### [physics-3d.md](physics-3d.md) — Jolt Physics와 3D 물리

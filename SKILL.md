@@ -118,10 +118,11 @@ description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 �
 
 ## `/godot init` 과 `./install.sh` — 절차는 [references/godot-init.md](references/godot-init.md)
 
-사용자가 **`/godot init`** 이라고 지시하면 두 가지를 한다 — ① 이 스킬의 `commands/godot-example.md` 를 대상
+사용자가 **`/godot init`** 이라고 지시하면 세 가지를 한다 — ① 이 스킬의 `commands/godot-example.md` 를 대상
 프로젝트의 `.claude/commands/` 로 **복사**한다(그 뒤로는 `/godot-example` 처럼 짧게 부른다). ② 프로젝트 루트에
 `install.sh` → `.claude/skills/godot/scripts/install.sh` 를 가리키는 **상대경로 심볼릭 링크**를 건다 — 복사가
-아니다. 복사하면 스킬을 고쳐도 사본은 옛날 그대로 남지만, 링크는 모든 프로젝트에 즉시 반영된다.
+아니다. ③ `scripts/triangles.sh` → `../.claude/skills/godot/scripts/triangles.sh` 링크를 건다(🛑 `scripts/` 안에
+있으므로 `..` 이 하나 더 붙는다). 복사하면 스킬을 고쳐도 사본은 옛날 그대로 남지만, 링크는 모든 프로젝트에 즉시 반영된다.
 🛑 같은 이름의 파일이 이미 있으면 덮어쓰지 않고 차이를 보여주며, `ln -sf` 를 쓰지 않고(진짜 `install.sh` 를
 말없이 지운다), 원본 존재를 먼저 확인하고, 만든 뒤 `./install.sh --list` 로 검증한다. 인자로 경로가 오면
 (`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 현재 프로젝트에 설치한다. 표에 없는 파일은 설치하지 않는다.
@@ -455,6 +456,25 @@ Godot 에디터가 실행 중이어야 한다. 상세 사용법은 [references/l
 `adb devices` 의 `device` 상태만), stdin 이 터미널이 아닐 때 묻지 않고 목록만 찍는 동작, macOS `.zip` 풀기와
 `com.apple.quarantine` 제거는 위 문서에 있다. 에디터 Remote Deploy 와 결과가 같으므로 에디터를 띄우지 않는
 작업에서는 이 스크립트를 쓴다 → [references/headless-workflow.md](references/headless-workflow.md) §3.
+
+### scripts/triangles.sh — 삼각형·드로우콜 세기
+
+**씬에 삼각형이 몇 개인지 센다.** 엔진에는 "씬 전체 삼각형" API 가 없어 노드를 순회해야 하는데,
+그 순회를 대신한다. `/godot init` 이 프로젝트의 `scripts/triangles.sh` 로 링크를 걸어 준다.
+
+```bash
+scripts/triangles.sh                        # main_scene 총량
+scripts/triangles.sh scenes/main/main.tscn  # 씬 하나 — 무거운 노드 순위·종류별 집계
+scripts/triangles.sh --all --budget 150000  # 전 씬. 초과가 있으면 종료 코드 1 (CI)
+scripts/triangles.sh --frame                # 실제로 띄워 "그린" 삼각형 (VISIBLE·SHADOW·CANVAS 분리)
+scripts/triangles.sh --glb assets           # Godot 없이 .glb 를 파이썬으로 직접 읽는다
+```
+
+🛑 **기본 모드와 `--frame` 은 다른 것을 센다** — 전자는 씬에 **존재하는** 총량(컬링 무관, 예산용),
+후자는 그 프레임에 **그린** 양(컬링·LOD·그림자 반영, 병목용). 런타임에 `add_child()` 로 만드는
+메시는 기본 모드가 못 세므로 그런 씬은 `--frame` 으로 잰다.
+`MultiMesh`·`GridMap`·`CSG`·파티클·`Sprite3D`·`Label3D` 는 세는 법이 각각 다르다 →
+[references/mesh-geometry.md §15](references/mesh-geometry.md)
 
 ## 프로젝트 내 학습 문서
 

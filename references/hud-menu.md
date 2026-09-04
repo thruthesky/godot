@@ -22,6 +22,23 @@ API·기본값은 **엔진에서 직접 추출해 확인한 것**이며, 확인 
 
 ---
 
+## 🧭 Godot 4.7.2 공식 기준 HUD 작업 방법 — 요약 10줄
+
+> 2026-09-03 cowork `godot-hud-best-practice` 로 공식 문서 4.7 본문 25편·릴리스 노트 4.5~4.7·클래스 레퍼런스와 이 문서를 대조해 검증한 결론이다. 근거 사본과 판정 기록은 `.cowork/godot-hud-best-practice/`(`refs/`·`final-report.md`).
+>
+> 1. **3D 씬 위 UI 는 두 가지가 다 공식이다** — 공식 3D 튜토리얼은 `Node3D` 아래 `Control` 을 직접 붙이고, 공식 2D 튜토리얼은 `CanvasLayer` 씬을 쓴다. 라리엔은 **HUD 1 · 창 5 · 모달 10 · 페이드 100 을 층 번호로 확정**하려고 `CanvasLayer` 를 고른다 → [§1](#1-네-개의-기둥--control--container--theme--canvaslayer).
+> 2. **화면에 붙이는 것은 앵커·프리셋, 그 안을 채우는 것은 컨테이너.** 컨테이너의 **자식**만 앵커·`position` 을 잃는다. 컨테이너 자신은 앵커로 모서리에 붙인다 → [§2](#2-절대-원칙--좌표로-놓지-않는다).
+> 3. **`CanvasLayer` 에는 `theme` 이 없고 테마 탐색은 `Control` 이 아닌 노드에서 멈춘다** — HUD 층 바로 아래에 `SafeArea(MarginContainer, Full Rect)` → `Overlay(Control, Full Rect)` 두 층을 두면 테마·세이프 에어리어를 한 곳에서 준다 → [§6](#6-hud-만들기--실전).
+> 4. **덮는 것은 `mouse_filter = Ignore`, 누르는 것만 `Stop`.** 순수 컨테이너(`MarginContainer`·`VBox`)의 기본값은 **`Pass`** 라 삼키지 않는다. 삼키는 것은 기본 `Stop` 인 `Control`·`PanelContainer`·`ColorRect` 다. 게임플레이 입력은 `_unhandled_input()` 에 둔다 → [§5](#5-노드-고르기--무엇으로-만들-것인가) · [§13.1](#13-3d-게임-특유의-함정).
+> 5. **게임패드·키보드는 `grab_focus.call_deferred()` 로 첫 포커스를 잡지 않으면 아무 버튼도 안 눌린다.** `ui_*` 액션은 포커스 전용이라 게임플레이에 쓰지 않는다 → [§7](#7-메뉴-만들기).
+> 6. **디자인은 Theme 한 곳.** 조회는 로컬 오버라이드 → 자기부터 부모 `Control` 의 `theme` → 프로젝트 테마 → 기본 테마. 버튼은 `normal·hover·pressed·hover_pressed·disabled·focus` **6상태**, `focus` 는 오버레이라 외곽선으로 → [§8](#8-theme--디자인을-한-곳에서-관리한다).
+> 7. **폰트 설정은 우리 폰트의 Import 옵션에서.** `gui/theme/default_font_*` 프로젝트 설정은 **엔진 내장 기본 폰트에만** 적용된다. **MSDF 는 켜지 않는다**(저사양 비용·외곽선 상충). 4.7.2 는 **오버샘플링이 기본 켜짐**이라 밉맵은 실측 후 결정 → [§9](#9-폰트--한글이-먼저다).
+> 8. **한글은 서브셋한 우리 폰트가 정본, `SystemFont` 는 폴백** — Android 시스템 폰트 로딩은 공식 문서가 "unreliable" 이라 경고한다. 3D 위 글자는 외곽선 → [§9](#9-폰트--한글이-먼저다).
+> 9. **`%고유이름` 은 같은 씬 안에서만** 잡힌다. 씬으로 뺀 컴포넌트 안의 `%` 는 부모에서 `null` 이다 → [§6](#6-hud-만들기--실전) · [§10](#10-재사용-컴포넌트--ui-를-씬으로-쪼갠다).
+> 10. **해상도는 `canvas_items` + `expand` + 앵커** — 데스크톱 1920×1080 · 모바일 1080×1920 세로 둘 다 공식 권장표 그대로다. 성능 주장은 근거 등급을 확인하고, UI 재그리기는 에디터 `Debug > Debug Canvas Item Redraws` 로 화면에서 잰다 → [§0](#0-먼저--이-프로젝트의-화면은-두-가지다) · [§14](#14-성능--ui-도-공짜가-아니다).
+
+---
+
 ## 목차
 
 **전제** — [0. 이 프로젝트의 화면](#0-먼저--이-프로젝트의-화면은-두-가지다) ·
@@ -128,7 +145,7 @@ Godot 공식 문서([Multiple resolutions](https://docs.godotengine.org/en/stabl
 |---|---|---|
 | `ignore` | 늘려서 채운다 — **찌그러진다** | 쓰지 않는다 |
 | `keep` | 검은 띠(레터박스)를 넣는다 | 화면을 꽉 채우고 싶지 않을 때 |
-| `keep_width` | 폭을 유지하고 위아래가 넓어진다 | 공식 문서가 **"GUI·HUD 에 대개 최선"** 이라고 적은 값 |
+| `keep_width` | 폭을 유지하고 위아래가 넓어진다 | 공식 문서가 **"GUI·HUD 에 대개 최선"** 이라고 적은 값. 단 같은 문서의 **플랫폼별 권장표(데스크톱·모바일 가로·세로)는 전부 `expand`** 다 — 충돌이 아니라 용도가 둘이다 |
 | `keep_height` | 높이를 유지하고 좌우가 넓어진다 | 가로 스크롤 2D |
 | **`expand`** | **띠 없이 보이는 영역을 넓힌다** | **모바일 권장 — 이 프로젝트** |
 
@@ -138,8 +155,13 @@ Godot 공식 문서([Multiple resolutions](https://docs.godotengine.org/en/stabl
 
 ### 세로·가로를 모두 지원하는 두 가지 길
 
-공식 문서는 **기준 해상도를 정사각형(1:1)으로 두라**고 권한다. 하지만 이 프로젝트는
-**`.mobile` 접미사 오버라이드**로 플랫폼마다 다른 기준을 준다.
+공식 문서는 **한 실행물이 세로·가로 회전을 둘 다 지원할 때**(`orientation = sensor` 와 한 쌍)
+"같은 자동 배율을 얻으려면 기준 해상도를 정사각형(1:1)으로 두라" 는 Tip 을 둔다. 라리엔은
+모바일이 세로 고정이고 데스크톱이 가로라 그 조건에 해당하지 않으며,
+**`.mobile` 접미사 오버라이드**로 플랫폼마다 다른 기준을 준다. 고해상도 기준(1080×1920)을
+쓸 때 공식은 `GUI > Theme > Default Theme Scale` 을 1.5~2.0 으로 올리라고도 하는데, 라리엔은
+자체 Theme 에서 폰트·버튼 크기를 직접 지정하므로 **Theme 를 만든 뒤 세로·가로 스크린샷으로
+비교해 결정한다**(§9 표 참조).
 
 | 방법 | 장점 | 단점 |
 |---|---|---|
@@ -168,8 +190,9 @@ get_tree().root.content_scale_factor = 1.25    # 기본 1.0 (엔진에서 확인
 > 함께 있는 `display/window/stretch/scale_mode` 는 `fractional`(기본) 과 `integer` 중
 > 고르는데, **`integer` 는 픽셀아트 전용**이다. 라리엔은 `fractional` 을 유지한다.
 
-> 🛑 **`project.godot` 은 Claude 가 고치지 않는다** ([CLAUDE.md](../../../../CLAUDE.md) 작업 규칙).
-> 값을 바꿔야 하면 경로와 값을 알려주고 사람이 에디터에서 적용한다.
+> **`project.godot` 은 AI 가 직접 고치고 헤드리스 부팅(`godot --headless --path . --quit-after 2`)으로
+> 검증한다** ([CLAUDE.md](../../../../CLAUDE.md) "작업 규칙 — 인공지능 자율 개발", 2026-09-03).
+> 다른 팀이 에디터를 열어 두고 있을 수 있으므로 고친 값과 이유를 보고에 적는다.
 
 ---
 
@@ -182,7 +205,7 @@ Godot UI 는 이 넷으로 이루어진다. **각각이 없으면 무엇이 깨�
 | **`Control`** | 모든 UI 노드의 조상. **화면 어디에 붙을지**(앵커)를 정한다 | 해상도가 바뀌면 위치가 어긋난다 |
 | **`Container`** | 자식들을 **자동 정렬**한다 | 항목을 하나 추가할 때마다 아래 것들을 손으로 다시 민다 |
 | **`Theme`** | 색·폰트·테두리·마우스오버를 **한 곳에서** 정의한다 | 버튼 색을 바꾸려고 버튼 40개를 하나씩 연다 |
-| **`CanvasLayer`** | UI 를 3D 화면 **위에 고정**한다 | 카메라가 움직이면 체력바가 같이 흘러간다 |
+| **`CanvasLayer`** | UI 를 **층 번호로 나눠** 3D 화면 위에 얹는다 | HUD·창·모달의 위아래가 씬 트리 순서에 묶인다 (`Camera2D` 가 있는 2D 게임이라면 카메라를 따라 흘러가기도 한다) |
 
 ### `Control` 은 왜 `Node2D` 가 아닌가
 
@@ -196,19 +219,29 @@ Godot UI 는 이 넷으로 이루어진다. **각각이 없으면 무엇이 깨�
 
 **UI 는 전부 `Control` 계열로 짠다.** `Sprite2D` 로 버튼을 만들지 않는다.
 
-### `CanvasLayer` — 3D 위에 UI 를 얹는 유일한 방법
+### `CanvasLayer` — 3D 위에 UI 층을 나누는 도구 (유일한 방법이 아니다)
 
-`CanvasLayer` 는 **독립된 2D 그리기 층**을 만든다. 3D 카메라의 영향을 받지 않는다.
+**3D 씬 위에 UI 를 얹는 공식 방법은 둘이다.** 둘 다 화면에 고정된다.
+
+| 공식 튜토리얼 | 방법 | 왜 그렇게 하나 |
+|---|---|---|
+| **첫 3D 게임** (*08. Score and replay*) | `Main(Node3D)` 아래 **`Control`(`UserInterface`) 을 직접** 붙이고 `theme` 를 그 노드에 둔다. 덮개는 부모·자식 **둘 다 `Full Rect`** | 점수 라벨 하나면 층이 필요 없다. 3D 노드는 `CanvasItem` 이 아니라 2D 캔버스 변환을 공유하지 않으므로 `Control` 만으로도 화면에 고정된다 |
+| **첫 2D 게임** (*06. Heads up display*) | **`CanvasLayer`** 루트의 HUD 씬을 만들어 `Main` 에 인스턴싱 | 2D 는 월드와 UI 가 같은 캔버스에 있어 `Camera2D` 의 `canvas_transform` 을 함께 받는다. `CanvasLayer` 는 자기 transform 을 가져 거기서 빠진다 |
+
+> 공식 *Canvas layers* — 뷰포트 자식은 **layer 0(기본 2D 캔버스)** 에 그려지고, `CanvasLayer` 는 임의 층 번호에 그려지며 **번호가 클수록 위**다. "CanvasLayers are independent of tree order… only depend on their layer number". 그리고 **"CanvasLayers aren't necessary to control the drawing order of nodes"** — 같은 층 안의 순서는 씬 트리 순서(아래 노드가 위에 그려진다)와 `z_index` 로 정한다.
+
+**라리엔이 `CanvasLayer` 를 쓰는 이유는 "유일해서" 가 아니라 층 번호다.** HUD 위에 창을, 창 위에 모달을, 그 위에 페이드를 **씬 트리 순서와 무관하게** 올려야 한다. 그것은 `CanvasLayer.layer` 만이 준다.
 
 ```
 layer 기본값 = 1   (엔진에서 확인)
+follow_viewport_enabled 기본 false — HUD 에서 켜지 않는다 (켜면 화면 고정이 깨진다)
 ```
 
 숫자가 클수록 위에 그려진다. 라리엔에서 쓸 층 배치는 이렇다.
 
 | `layer` | 무엇 |
 |---|---|
-| `0` | (3D 월드 자체 — CanvasLayer 밖) |
+| `0` | **뷰포트의 기본 2D 캔버스** — `CanvasLayer` 밖의 `Control`·`Node2D` 가 그려지는 곳 (3D 월드는 캔버스가 아니라 그 아래에 따로 렌더된다) |
 | **`1`** | **HUD** — 체력·미니맵·스킬 버튼 |
 | **`5`** | **창** — 인벤토리·장터·퀘스트 |
 | **`10`** | **모달** — 일시정지·확인 대화상자 |
@@ -216,6 +249,7 @@ layer 기본값 = 1   (엔진에서 확인)
 
 > 층을 나누는 이유는 **인벤토리를 열었을 때 HUD 위에 확실히 오게** 하기 위해서다.
 > 같은 층에 두면 씬 트리 순서에 의존하게 되어, 노드를 옮기다 순서가 뒤집힌다.
+> 🛑 **`CanvasLayer` 는 `Control` 이 아니라 `theme` 속성이 없다** — 테마와 세이프 에어리어는 그 아래 `Control` 층에 준다 ([§6](#6-hud-만들기--실전)).
 
 ---
 
@@ -248,9 +282,11 @@ layer 기본값 = 1   (엔진에서 확인)
 **이 순서를 지키면 해상도·언어·글자 길이가 바뀌어도 UI 가 무너지지 않는다.**
 반대로 1·2 를 건너뛰고 좌표로 배치하면 3·4 를 아무리 잘해도 소용이 없다.
 
-### 앵커와 컨테이너는 **같은 노드에 함께 쓸 수 없다**
+### 컨테이너의 **자식**은 앵커·`position` 을 쓸 수 없다
 
-**둘 다 "위치를 정하는 수단"이라 서로 배타적이다.** 이걸 모르면
+**컨테이너 자신은 앵커로 화면에 붙고, 그 자식의 자리는 컨테이너가 정한다.** 공식 *Using Containers*:
+"all children Control nodes give up their own positioning ability". 실제 `hud.tscn` 의 `Bottom` 이
+`MarginContainer` 이면서 `anchors_preset = 12`(Bottom Wide)인 것이 그 예다. 이걸 모르면
 "Layout 메뉴가 회색으로 잠겨 있다"에서 막힌다.
 
 | 부모가 | 그 자식의 위치를 정하는 것 | 에디터 `Layout` 메뉴 |
@@ -308,9 +344,13 @@ HUD (CanvasLayer)
 | `9` · `11` | `PRESET_LEFT_WIDE` · `RIGHT_WIDE` | 좌우 세로 바 |
 | `4`~`7`, `13`, `14` | 나머지 | 드물게 |
 
-> 🛑 **메뉴·HUD 의 루트 `Control` 은 거의 항상 `PRESET_FULL_RECT` 다.**
+> 🛑 **메뉴 루트·덮개·HUD 의 중간층 `Control` 은 `PRESET_FULL_RECT` 다.**
 > 루트가 화면 전체를 차지해야 그 안의 컨테이너가 화면 기준으로 정렬할 수 있다.
-> 이걸 빼먹으면 컨테이너가 크기 0 인 영역 안에서 정렬하려 해서 UI 가 왼쪽 위에 뭉친다.
+> 이걸 빼먹으면 컨테이너가 크기 0 인 영역 안에서 정렬하려 해서 UI 가 왼쪽 위에 뭉친다
+> (공식 3D 튜토리얼도 `UserInterface` 와 `Retry` 덮개 **둘 다** Full Rect 를 줘야 했다).
+> 부모 `Control` 이 없으면 앵커·오프셋의 기준은 **뷰포트**다 — `CanvasLayer` 직하의 위젯이 화면 전체를 기준으로 붙는 이유다.
+
+`size_flags_*` 는 **비트필드**다 — `SIZE_EXPAND_FILL = 3` 은 `SIZE_FILL(1) | SIZE_EXPAND(2)` 의 합성이다 (엔진에서 확인).
 
 ### `size_flags` — 컨테이너 안에서의 행동
 
@@ -346,19 +386,23 @@ HUD (CanvasLayer)
 | **`CenterContainer`** | 자식을 가운데 | 메인 메뉴, 로딩 문구 |
 | **`GridContainer`** | 격자 (`columns` 지정) | **인벤토리 칸**, 장비창 |
 | **`PanelContainer`** | 배경(`StyleBox`)을 깔고 자식을 감싼다 | 창의 테두리·배경 |
-| **`ScrollContainer`** | 넘치면 스크롤 | 아이템 목록, 채팅 로그 |
+| **`ScrollContainer`** | 넘치면 스크롤. 🛑 **직접 자식은 하나만** 받는다(공식) — 여러 항목은 `ScrollContainer → VBox/Grid → 항목들` | 아이템 목록, 채팅 로그 |
 | **`AspectRatioContainer`** | 비율 유지 (`ratio` 기본 `1.0`) | 정사각형 초상화·아이콘 |
 | **`TabContainer`** | 탭으로 전환 | 설정 화면 |
+| **`HFlowContainer`** / **`VFlowContainer`** | 가로/세로로 놓다가 **공간이 다하면 다음 줄로 넘긴다**(책의 줄바꿈처럼) | 버프 아이콘 줄, 개수가 변하는 슬롯 — 세로↔가로 반전에 잘 맞는다 |
+| **`FoldableContainer`** (4.5+) | 제목을 눌러 접고 펼친다. `FoldableGroup` 으로 하나만 열리게 | 스탯 세부·퀘스트 접기 목록 |
 
-`VBoxContainer`·`HBoxContainer` 는 실은 **`BoxContainer` 하나**이고,
-`vertical` 속성(기본 `false`)으로 갈린다 (엔진에서 확인).
+`VBoxContainer`·`HBoxContainer` 는 **`BoxContainer` 를 상속하는 자체 멤버 없는 빈 래퍼**라
+`vertical` 속성(기본 `false`)만 다르게 둔 것과 같다 (엔진에서 확인).
 
 ### 🛑 컨테이너 안에서는 `position` 이 무시된다
 
 **가장 많이 겪는 혼란이다.** 컨테이너의 자식을 마우스로 끌면 제자리로 돌아간다.
 
-**버그가 아니다.** 컨테이너가 자식의 위치와 크기를 **매 프레임 다시 계산해 덮어쓰기**
-때문이다. 그것이 컨테이너의 존재 이유다.
+**버그가 아니다.** 컨테이너가 **자기 크기가 바뀌거나 `queue_sort()` 가 걸릴 때**
+(`NOTIFICATION_SORT_CHILDREN`) 자식의 위치와 크기를 다시 계산해 덮어쓰기 때문이다 —
+공식: "any attempt to manually alter these nodes will be either ignored or invalidated the next
+time their parent is resized". 매 프레임이 아니다. 그것이 컨테이너의 존재 이유다.
 
 **컨테이너 안에서 위치를 조절하는 방법은 넷이다.**
 
@@ -396,17 +440,18 @@ Control            PRESET_FULL_RECT        ← 화면 전체를 잡는다
 
 ### 깊이 — 중첩은 정상이지만 무한정은 아니다
 
-컨테이너는 **크기가 바뀔 때마다 자식 배치를 다시 계산**한다. 이 계산은 부모에서
-자식으로 내려가므로 **깊이가 깊고 자식이 많을수록 비싸진다.**
+컨테이너는 **크기가 바뀔 때마다 자식 배치를 다시 계산**한다(공식). 이 계산은 부모에서
+자식으로 내려간다. 공식 문서는 "컨테이너의 진짜 힘은 중첩" 이라며 깊은 중첩을 정상으로
+보고, 에디터 UI 전체가 그렇게 만들어져 있다 — 아래 수치는 **프로젝트 경험칙**이지 공식 수치가 아니다.
 
-| 규칙 | |
-|---|---|
-| **깊이 4~5 층이면 충분하다** | `CanvasLayer > Margin > VBox > HBox > 위젯` |
-| 🛑 **한 컨테이너에 자식 수백 개를 두지 않는다** | 인벤토리 200칸을 `GridContainer` 에 한 번에 넣으면 여는 순간 멈칫한다 |
-| **긴 목록은 `ScrollContainer` + 가시 범위만 생성** | 화면에 보이는 20칸만 만들고 스크롤에 따라 재활용한다 |
-| **의미 단위로 끊는다** | 깊게 겹치기보다 **별도 씬으로 빼서** 인스턴싱한다 → [§10](#10-재사용-컴포넌트--ui-를-씬으로-쪼갠다) |
+| 규칙 | 근거 등급 | |
+|---|---|---|
+| **깊이 4~5 층이면 충분하다** | `[추측]` | `CanvasLayer > Margin > VBox > HBox > 위젯` |
+| 🛑 **한 컨테이너에 자식 수백 개를 두지 않는다** | `[프로젝트 실측 필요]` | 인벤토리 200칸을 `GridContainer` 에 한 번에 넣으면 여는 순간 멈칫한다 |
+| **긴 목록은 `ScrollContainer` + 가시 범위만 생성** | `[프로젝트 구현]` — 엔진 내장 기능이 아니다 | 화면에 보이는 20칸만 만들고 스크롤에 따라 재활용한다 |
+| **의미 단위로 끊는다** | — | 깊게 겹치기보다 **별도 씬으로 빼서** 인스턴싱한다 → [§10](#10-재사용-컴포넌트--ui-를-씬으로-쪼갠다) |
 
-> **모바일 GPU 는 데스크톱보다 이 비용에 훨씬 민감하다.** 에디터에서 부드럽다고
+> **모바일 GPU 는 데스크톱보다 이 비용에 훨씬 민감하다** `[추측]`. 에디터에서 부드럽다고
 > 실기기에서도 부드러운 것이 아니다 → [§14](#14-성능--ui-도-공짜가-아니다)
 
 `ScrollContainer` 실측 기본값 중 알아야 할 것:
@@ -418,10 +463,12 @@ Control            PRESET_FULL_RECT        ← 화면 전체를 잡는다
 | `horizontal_scroll_mode` · `vertical_scroll_mode` | `1` | 필요할 때만 스크롤바 표시 |
 | `scroll_deadzone` | `0` | 터치 드래그가 시작되는 여유. **0 이면 살짝만 움직여도 스크롤로 인식**해 버튼 탭이 씹힐 수 있다 |
 
-> **터치 드래그 스크롤은 `input_devices/pointing/emulate_mouse_from_touch` 가
-> 켜져 있어야 동작한다** — 엔진 기본값이 `true` 라 보통 그냥 된다. 이걸 끄면
-> UI 클릭 자체가 안 된다. 목록 안에 탭 가능한 항목이 있어 오작동하면
+> `[추측 — 공식 문서 미확인]` **터치 드래그 스크롤은 `input_devices/pointing/emulate_mouse_from_touch` 가
+> 켜져 있어야 동작한다** — 엔진 기본값이 `true` 라 보통 그냥 된다. 공식 문서는 "touch drag
+> (when touch is available)" 라고만 하므로 "끄면 UI 클릭 자체가 안 된다" 는 헤드리스 입력 주입으로
+> 확인하기 전까지 단정하지 않는다. 목록 안에 탭 가능한 항목이 있어 오작동하면
 > `scroll_deadzone` 을 올리거나 `gui/common/drag_threshold`(기본 `10`)를 조정한다.
+> PC 에서 터치 동작을 시험하려면 `Project Settings > Input Devices > Pointing > Emulate Touch From Mouse` 를 켠다(공식).
 
 
 ---
@@ -438,8 +485,9 @@ Control            PRESET_FULL_RECT        ← 화면 전체를 잡는다
 | **배경** | `Panel` | `NinePatchRect` | 테두리 이미지를 늘려야 하면 NinePatch |
 | **이미지** | `TextureRect` | — | |
 
-**`RichTextLabel` 은 `Label` 보다 훨씬 비싸다.** 채팅·아이템 설명처럼 서식이 정말
-필요한 곳에만 쓴다. [§14](#14-성능--ui-도-공짜가-아니다)
+**`RichTextLabel` 은 서식이 정말 필요한 곳에만 쓴다.** 공식은 "text formatting is rarely a
+heavy task" 라고 보며, 문제가 되는 것은 **수천 줄짜리 로그를 갱신할 때**다(`Label` 대비 상대
+비용은 미실측). 채팅·전투 로그는 `text +=` 대신 `append_text()` 를 쓴다. [§14](#14-성능--ui-도-공짜가-아니다)
 
 `TextureProgressBar` 는 `fill_mode` 로 채우는 방향을 바꾸고,
 **`radial_fill_degrees`(기본 `360.0`)·`radial_initial_angle`** 로 원형 게이지를 만든다.
@@ -455,20 +503,22 @@ UI 가 터치를 먹어버린 것이다. 노드별 실측 기본값은 이렇게
 | **`Control`** | **`0` (STOP)** | 🛑 **입력을 먹는다** |
 | **`PanelContainer`** | **`0` (STOP)** | 🛑 **먹는다** |
 | **`RichTextLabel`** | **`0` (STOP)** | 🛑 **먹는다** — 같은 글자 노드인 `Label` 과 다르다 (`Control` 기본값 상속, override 없음 — doctool 확인) |
-| `TextureRect` | `1` (PASS) | 자기도 받고 아래로도 넘긴다 |
+| **`ColorRect`** | **`0` (STOP)** | 🛑 먹는다 (`Control` 기본값 상속) — 덮개로 쓸 때 주의 |
+| **`Container` 계열** (`MarginContainer`·`VBox`·`HBox`·`Grid`·`Scroll`·`Center`…) | **`1` (PASS)** | 자기가 받되 소비하지 않으면 **조상으로** 넘긴다 — **삼키지 않는다** (`PanelContainer` 만 `0` 으로 되돌려져 있다) |
+| `TextureRect` | `1` (PASS) | 〃 |
 | `TextureProgressBar` | `1` (PASS) | |
 | **`Label`** | **`2` (IGNORE)** | 통과시킨다 |
 | **`NinePatchRect`** | **`2` (IGNORE)** | 통과시킨다 |
 
-| 값 | 상수 | 동작 |
+| 값 | 상수 | 동작 (공식 클래스 레퍼런스) |
 |---|---|---|
-| `0` | `MOUSE_FILTER_STOP` | **여기서 멈춘다.** 아래 3D 로 안 간다 |
-| `1` | `MOUSE_FILTER_PASS` | 자기가 처리하고 **아래로도 보낸다** |
-| `2` | `MOUSE_FILTER_IGNORE` | **아예 안 받는다** |
+| `0` | `MOUSE_FILTER_STOP` | 이벤트가 **자동으로 handled 표시**된다. 다른 Control 로도, 다음 단계로도 안 간다 |
+| `1` | `MOUSE_FILTER_PASS` | 이 Control 이 소비하지 않으면 **직접 조상 Control 로 버블링**한다. 끝까지 아무도 안 먹으면 `_shortcut_input` → `_unhandled_input` → 3D 오브젝트 피킹으로 **내려간다.** "화면 아래 형제" 로 가는 것이 아니다 |
+| `2` | `MOUSE_FILTER_IGNORE` | 히트 대상에서 빠진다. 다른 Control 의 수신을 막지 않는다 |
 
-> 🛑 **HUD 루트와 빈 배경 `Control` 은 반드시 `IGNORE` 로 바꾼다.**
-> 기본값이 `STOP` 이라, 화면 전체를 덮는 `PRESET_FULL_RECT` 컨테이너를 그냥 두면
-> **화면 전체가 터치를 삼킨다.** 버튼만 `STOP`(기본값)으로 두면 된다.
+> 🛑 **화면 전체를 덮는 `Control`·`PanelContainer`·`ColorRect`(기본 STOP)를 그냥 두면 화면 전체가 터치를 삼킨다.**
+> 순수 컨테이너(`MarginContainer` 등)는 기본 PASS 라 삼키지 않지만, **HUD 의 덮는 영역은 전부 `IGNORE` 로 통일한다** —
+> 불필요한 `_gui_input` 호출을 없애고 실수를 막는다. 버튼만 `STOP`(기본값)으로 두면 된다.
 
 `Button` 은 `BaseButton` 을 통해 `Control` 의 기본값 `0`(STOP)을 그대로 쓴다.
 **버튼이 입력을 먹는 것은 정상이고 의도된 동작**이다.
@@ -507,19 +557,43 @@ scenes/main.tscn          ← 그 씬을 인스턴스로 붙인다
 
 ```
 hud.tscn
-└─ HUD (CanvasLayer)              layer = 1
-   ├─ Top (MarginContainer)       PRESET_TOP_WIDE     mouse_filter = IGNORE
-   │  └─ VBoxContainer
-   │     ├─ SelfBar (HBoxContainer)      내 HP / MP
-   │     └─ TargetBar (PanelContainer)   대상 몹 이름 + HP  (평소 hidden)
-   ├─ MiniMap (TextureRect)       PRESET_TOP_RIGHT
-   ├─ Chat (ScrollContainer)      PRESET_LEFT_WIDE    반투명
-   └─ Bottom (MarginContainer)    PRESET_BOTTOM_WIDE  ← 엄지 영역
-      └─ HBoxContainer
-         ├─ MoveStick (VirtualJoystick)  ← 왼손
-         ├─ (Spacer)                     size_flags = EXPAND_FILL
-         └─ SkillGrid (GridContainer)    ← 오른손. columns = 3
+└─ HUD (CanvasLayer)                  layer = 1 (기본값). 🛑 CanvasLayer 에는 theme 이 없다
+   └─ SafeArea (MarginContainer)      PRESET_FULL_RECT · mouse_filter = IGNORE · theme = 라리엔 Theme
+      │                               ← 세이프 에어리어 마진(§12.1)과 테마를 **여기 한 곳**에서 준다
+      └─ Overlay (Control)            PRESET_FULL_RECT · mouse_filter = IGNORE   ← 앵커의 기준 사각형
+         ├─ Top (MarginContainer)       PRESET_TOP_WIDE     mouse_filter = IGNORE
+         │  └─ VBoxContainer
+         │     ├─ SelfBar (HBoxContainer)      내 HP / MP
+         │     └─ TargetBar (PanelContainer)   대상 몹 이름 + HP  (평소 hidden)
+         ├─ TopRight (MarginContainer)  PRESET_TOP_RIGHT    mouse_filter = IGNORE
+         │  └─ HBoxContainer
+         │     ├─ MiniMap (TextureRect)
+         │     └─ MenuOpenButton (Button)      ← 오른쪽 상단 메뉴 버튼 (🛑 `MenuButton` 은 내장 클래스 이름)
+         ├─ Chat (ScrollContainer)      PRESET_LEFT_WIDE    반투명 · 🛑 직접 자식은 VBoxContainer 하나만
+         └─ Bottom (MarginContainer)    PRESET_BOTTOM_WIDE  ← 엄지 영역
+            └─ HBoxContainer
+               ├─ MoveStick (VirtualJoystick)  ← 왼손 · 액션은 move_* ([input-ui.md](input-ui.md) §7)
+               ├─ (Spacer)                     size_flags = EXPAND_FILL
+               └─ SkillGrid (GridContainer)    ← 오른손. columns = 3
 ```
+
+**왜 `SafeArea`·`Overlay` 두 층을 끼우나** — 공식 *GUI skinning*: 테마 조회는 자기부터 부모로 올라가며
+**"until the root of the tree is reached, or a non-control node is reached"** 에서 멈춘다. `CanvasLayer` 는
+Control 이 아니라 거기에 테마를 둘 수 없고, `CanvasLayer` 직하에 영역을 흩어 놓으면 영역마다 테마와
+세이프 에어리어를 따로 줘야 한다. `MarginContainer` 의 유일한 자식은 마진 안쪽으로 채워지므로(공식)
+그 아래 `Overlay(Control)` 이 앵커의 기준 사각형이 된다 — 공식 3D 튜토리얼도 `UserInterface(Control)` 에
+테마를 두고 Full Rect 로 만든다.
+
+> **프로젝트 테마(`Project Settings > GUI > Theme > Custom`)만 쓰면 중간층 없이도 된다.** 다만 씬을
+> 단독 실행·미리보기하면 기본 테마로 보이므로(공식) 각 UI 씬 루트에도 같은 `.tres` 를 지정한다.
+>
+> **오른쪽 상단 메뉴 버튼** — `TopRight(MarginContainer)` 에 에디터 `Layout > Top Right` 를 주면 엔진이
+> grow 방향을 **가로 BEGIN(왼쪽으로)·세로 END(아래로)** 로 자동 설정해 버튼이 커져도 화면 밖으로 나가지
+> 않는다(엔진 소스 `control.cpp` `_set_anchors_layout_preset` 확인). 🛑 코드에서 `set_anchors_and_offsets_preset()`
+> 을 부르면 grow 는 바뀌지 않으므로 `set_grow_direction_preset()` 을 따로 부른다.
+
+**이것은 목표 설계다. 현재 `hud.tscn` 은 `HUD(CanvasLayer) → Bottom(MarginContainer, BOTTOM_WIDE) →
+Run·Attack·Death 버튼` + 개발용 `DebugPanel` 뿐인 임시 씬이다.**
 
 **세로 화면이라 위아래로 나눈다.** 가로 폭 1080px 안에서 좌우로 나누면
 양쪽 다 좁아진다. **정보는 위, 조작은 아래**가 원칙이다.
@@ -530,8 +604,10 @@ hud.tscn
 
 ### 에디터 조작 순서
 
-> 🛑 **씬 파일(`.tscn`)은 사람 개발자가 에디터에서 직접 만든다**
-> ([CLAUDE.md](../../../../CLAUDE.md) 작업 규칙). 아래는 그 조작 순서다.
+> **씬 파일(`.tscn`)은 AI 가 직접 쓰고 헤드리스 실행·스크린샷으로 검증한다**
+> ([CLAUDE.md](../../../../CLAUDE.md) "작업 규칙 — 인공지능 자율 개발", 2026-09-03). 다른 팀이 에디터를
+> 열어 두고 있을 수 있으므로 코드로 만들 수 있으면 코드로 만든다. 아래는 같은 구조를 에디터에서
+> 만들 때의 조작 순서다.
 
 | # | 조작 | 결과 |
 |---|---|---|
@@ -568,9 +644,14 @@ func _on_self_stats_changed(hp: int, hp_max: int) -> void:
 	hp_text.text = "%d / %d" % [hp, hp_max]
 ```
 
-**`%HpBar` 는 유니크 이름 접근**이다. 노드에 마우스 오른쪽 → **`Access as Unique Name`**
-을 켜면 `$Top/VBoxContainer/SelfBar/HpBar` 같은 긴 경로 대신 `%HpBar` 로 닿는다.
-**UI 는 구조가 자주 바뀌므로 경로를 박아두면 매번 깨진다.**
+**`%HpBar` 는 유니크 이름 접근**이다. 씬 독에서 노드의 컨텍스트 메뉴 → **`Access as Unique Name`**
+을 켜거나, 이름을 바꿀 때 앞에 `%` 를 붙이면(공식) `$Top/VBoxContainer/SelfBar/HpBar` 같은 긴 경로 대신
+`%HpBar` 로 닿는다. **UI 는 구조가 자주 바뀌므로 경로를 박아두면 매번 깨진다.**
+
+> 🛑 **`%` 고유 이름은 같은 씬 안에서만 잡힌다** (공식 *Scene Unique Nodes* "Same-scene limitation").
+> `hud.tscn` 이 `skill_button.tscn` 을 인스턴싱하면 그 안의 `%Icon` 은 `hud.gd` 에서 **`null`** 이다.
+> [§10](#10-재사용-컴포넌트--ui-를-씬으로-쪼갠다) 이 권하는 구조가 정확히 이 함정에 걸린다 — 컴포넌트는
+> 자기 내부만 `%` 로 다루고, 밖에서는 `@export`·setter 나 `get_node("%SkillButton/%Icon")` 체인으로 닿는다.
 
 > **부드럽게 줄어드는 체력바**를 원하면 `value` 를 직접 넣지 말고 트윈을 쓴다.
 > ```gdscript
@@ -632,6 +713,22 @@ func _on_quit_pressed() -> void:
 > **손가락을 떼야 발동한다** — 누르는 순간 발동시키려면 `0`(`ACTION_MODE_BUTTON_PRESS`)
 > 으로 바꾼다. 액션 게임의 공격 버튼은 `0` 쪽이 반응이 빠르게 느껴진다.
 
+### 🛑 게임패드·키보드 — 첫 포커스를 코드로 잡지 않으면 아무것도 안 눌린다
+
+공식 *Keyboard/Controller Navigation and Focus*: "any node must be focused by using code when the scene
+starts. **Without doing this, pressing buttons or keys won't do anything.**"
+
+```gdscript
+func _ready() -> void:
+	%StartButton.grab_focus.call_deferred()   # 씬이 뜬 다음 프레임에 첫 포커스
+```
+
+| 규칙 | |
+|---|---|
+| **메뉴가 열릴 때마다** 첫 버튼에 `grab_focus.call_deferred()` | Steam 판을 마우스로만 테스트하면 절대 발견되지 않는다 |
+| 🛑 **`ui_up`·`ui_accept` 같은 `ui_*` 액션을 게임플레이에 쓰지 않는다** | 공식: "Because these actions are used for focus they should not be used for any gameplay code". 가상 조이스틱 액션도 `move_*` 로 ([input-ui.md](input-ui.md) §7) |
+| `focus_neighbor_*` 로 이동 순서를 정한다 | 안 정하면 엔진이 추측한다. 4.6 부터 **마우스 클릭과 키보드/패드 포커스가 분리**되어 클릭해도 포커스 테두리가 뜨지 않는다 |
+
 ### 일시정지 메뉴 — `process_mode` 가 핵심이다
 
 ```gdscript
@@ -664,19 +761,26 @@ func toggle_pause() -> void:
 
 ## 8. Theme — 디자인을 한 곳에서 관리한다
 
-### 세 가지 층이 있다 — 좁은 것이 이긴다
+### 조회는 네 단계다 — 좁은 것이 이긴다
+
+공식 *Introduction to GUI skinning* 의 조회 순서 그대로다. 각 단계 안에서는 **타입 변형 → 클래스명 → 부모 클래스명** 순으로 찾는다.
 
 | 층 | 범위 | 어디에 |
 |---|---|---|
 | **1. 개별 오버라이드** | 노드 하나 | 인스펙터 `Theme Overrides` |
-| **2. Theme 리소스** | 그 노드와 자손 전부 | `Control.theme` 에 `.tres` 지정 |
-| **3. 프로젝트 기본 테마** | 게임 전체 | `Project Settings > GUI > Theme > Custom` |
+| **2. Theme 리소스** | 자기부터 부모 `Control` 로 올라가며 **가장 가까운 것**이 이긴다. 🛑 `CanvasLayer` 같은 **Control 이 아닌 노드에서 탐색이 멈춘다** | `Control.theme` 에 `.tres` 지정 |
+| **3. 프로젝트 테마** | 게임 전체 | `Project Settings > GUI > Theme > Custom` |
+| **4. 엔진 기본 테마** | 위에 없는 항목 전부 | 바꿀 수 없다 — "빠뜨린 상태가 조용히 기본 테마로 돌아가는" 실제 근거 |
+
+`Label` 계열은 `LabelSettings` 리소스가 **테마보다 우선**하는 층이 하나 더 있다(공식).
 
 **개별 오버라이드가 Theme 를 이긴다.** 그래서 오버라이드를 남발하면
 **나중에 Theme 를 바꿔도 그 노드만 안 바뀌는** 상황이 생긴다.
 
-> 🛑 **오버라이드는 예외를 만들 때만 쓴다.** "이 버튼만 빨갛게" 가 아니라면
+> 🛑 **색·폰트 같은 시각 요소의 오버라이드는 예외를 만들 때만 쓴다.** "이 버튼만 빨갛게" 가 아니라면
 > Theme 에서 정의한다. 예외가 셋을 넘으면 **타입 배리에이션**으로 승격시킨다.
+> 반면 **`separation`·`margin_*` 같은 레이아웃 상수는 오버라이드가 정상 경로**다 — 공식: "for layout
+> nodes these are essential". §4·§6 의 `theme_override_constants/*` 는 그래서 모순이 아니다.
 
 ### Theme 리소스 만들기
 
@@ -687,7 +791,7 @@ func toggle_pause() -> void:
 | 3 | 더블클릭하면 하단에 **Theme 에디터**가 열린다 |
 | 4 | 왼쪽 **`+`** → 타입 추가 (`Button`, `Label`, `PanelContainer` …) |
 | 5 | 각 타입에서 `Color` · `Constant` · `Font` · `Font Size` · `Icon` · `StyleBox` 를 정의 |
-| 6 | 루트 `Control` 의 `Theme` 속성에 이 `.tres` 를 지정 |
+| 6 | 루트 `Control` 의 `Theme` 속성에 이 `.tres` 를 지정 — 또는 `Project Settings > GUI > Theme > Custom`. 🛑 프로젝트 테마만 쓰면 **씬을 단독 실행·미리보기할 때 기본 테마로 보인다**(공식) → 각 UI 씬 루트에도 같은 `.tres` |
 
 `Theme` 리소스 자체의 실측 속성은 셋뿐이다 — `default_font`(`None`),
 `default_font_size`(`-1`), `default_base_scale`(`0.0`). 나머지는 전부 타입별 항목이다.
@@ -731,9 +835,11 @@ func toggle_pause() -> void:
 | `expand_margin_*` | `0.0` | 실제 크기보다 넓게 그린다 |
 | `anti_aliasing` | `true` | |
 
-**버튼 하나에 `StyleBox` 를 5개 정의한다** — `normal` · `hover` · `pressed` ·
-`disabled` · **`focus`**. 이 다섯이 곧 버튼의 "느낌"이고, **빠뜨린 상태는 조용히
-기본 테마로 되돌아간다** — 그래서 "테마를 적용했는데 누르면 회색으로 돌아온다"가 생긴다.
+**버튼 하나에 `StyleBox` 를 6개 정의한다** — `normal` · `hover` · `pressed` · **`hover_pressed`**(마우스를
+올린 채 누름 — Steam 판) · `disabled` · **`focus`** (엔진에서 확인. RTL 용 `*_mirrored` 5개는 한국어 게임에서
+생략). 이 여섯이 곧 버튼의 "느낌"이고, **빠뜨린 상태는 조용히 엔진 기본 테마로 되돌아간다**(위 조회 4단계)
+— 그래서 "테마를 적용했는데 누르면 회색으로 돌아온다"가 생긴다. **`focus` 는 다른 StyleBox 위에 오버레이로
+그려진다**(공식) — 그래서 외곽선·반투명으로 만든다.
 
 **가장 빠른 작업 순서** (커뮤니티에서 굳어진 방법):
 
@@ -761,7 +867,7 @@ func toggle_pause() -> void:
 | 1 | Theme 에디터에서 새 타입 이름을 **`DangerButton`** 으로 추가 |
 | 2 | 그 타입의 **`Base Type`** 을 `Button` 으로 지정 |
 | 3 | 원하는 항목만 덮어쓴다 (나머지는 `Button` 것을 상속) |
-| 4 | 노드의 **`theme_type_variation`** 에 `DangerButton` 입력 |
+| 4 | 노드의 **`theme_type_variation`** 에 `DangerButton` 입력 — 🛑 인스펙터 드롭다운에는 **프로젝트 전역 테마의 변형만** 뜬다. 개별 `.tres` 의 변형은 연필 아이콘을 눌러 이름을 직접 입력한다(공식). 변형은 다른 변형을 다시 상속할 수 있다 |
 
 **라리엔에서 쓸 만한 배리에이션** — `DangerButton`(파티 탈퇴·아이템 버리기),
 `SkillButton`(정사각형 큰 터치 영역), `ChatLabel`(작고 반투명).
@@ -785,8 +891,13 @@ func toggle_pause() -> void:
 
 ## 9. 폰트 — 한글이 먼저다
 
-**Godot 내장 기본 폰트에는 한글 글리프가 없다.** 아무 설정 없이 한국어를 넣으면
-네모(□)가 뜬다. **폰트를 넣는 것은 선택이 아니라 필수 작업**이다.
+> **다국어 화면의 폰트는 [i18n.md §6](i18n.md) 에 이어진다** — 어떤 글자가 왜 □ 로 뜨는지, 시스템 폰트 폴백이
+> 제조사 기기에서 어떻게 어긋나는지, 서브셋을 어느 범위로 만드는지를 실기기 실측과 함께 담았다.
+
+**Godot 내장 기본 폰트에는 한글 글리프가 없다.** 엔진이 시스템 폰트를 자동 폴백으로 써 CJK 를
+표시할 수는 있지만(공식) 기기마다 모양이 다르고 Android 에서는 그것마저 신뢰할 수 없어(아래),
+아무 설정 없이 두면 네모(□)가 뜨는 기기가 생긴다. **폰트를 넣는 것은 선택이 아니라 필수 작업**이다.
+폰트 크기는 **px** 단위다(pt 가 아니다 — 공식).
 
 ### 🛑 그런데 한글 폰트는 무겁다 — 번들 용량과 정면으로 부딪친다
 
@@ -800,13 +911,21 @@ func toggle_pause() -> void:
 
 | 방법 | 용량 | 대가 |
 |---|---|---|
-| **① 기기 내장 폰트 (`SystemFont`)** | **0 MB** | 기기마다 글자 모양이 다르다. 브랜딩 불가 |
-| **② 서브셋 폰트** | **1 ~ 3 MB** | 서브셋에 없는 글자가 □ 로 뜬다 |
+| **① 서브셋 폰트 (정본)** | **1 ~ 3 MB** | 서브셋에 없는 글자가 □ 로 뜬다 → ② 로 받는다 |
+| **② 기기 내장 폰트 (`SystemFont`) — 폴백** | **0 MB** | 기기마다 글자 모양이 다르다. 브랜딩 불가. 🛑 **Android 에서 신뢰할 수 없다**(아래) |
 | ③ 전체 폰트 통째 | 15~20 MB | 확실하지만 비싸다 |
 
-**권장은 ① + ② 를 섞는 것이다.** UI 라벨·버튼처럼 **문구가 우리 손 안에 있는 곳**은
-서브셋 폰트로 예쁘게, **유저 닉네임·채팅처럼 무엇이 올지 모르는 곳**은 시스템 폰트
+**권장은 ① 을 정본으로 두고 ② 를 폴백으로 붙이는 것이다.** UI 라벨·버튼처럼 **문구가 우리 손 안에 있는 곳**은
+서브셋 폰트로 예쁘게, **유저 닉네임·채팅처럼 무엇이 올지 모르는 곳**만 시스템 폰트
 폴백으로 받는다.
+
+> 🛑 **Android 에서 시스템 폰트 로딩은 신뢰할 수 없다** — 공식 *Using Fonts* Warning: "loading system fonts on
+> Android is unreliable as there is no official API for doing so. Godot has to rely on parsing system configuration
+> files, which can be modified by third-party Android vendors. This may result in non-functional system font loading."
+> 그래서 `SystemFont` 를 1순위로 두지 않고, 폴백이 실패하는 기기가 있음을 전제한다. 공식 대안은
+> **Advanced Import Settings > Pre-render Configurations** — 번역 CSV·아이템 이름을 입력으로 글리프를 미리 구워
+> 첫 표시 멈칫함을 없애고, "custom text" 방식은 모바일 파일 크기 절감에도 쓸 만하다고 공식이 적는다.
+> 볼드는 파일을 하나 더 넣지 말고 **`FontVariation` 의 Embolden(faux bold)** 으로 — 공식이 모바일 배포 용량 때문에 권한다.
 
 ```gdscript
 # 기기 내장 한글 폰트 — 번들 용량 0
@@ -838,36 +957,44 @@ sys.allow_system_fallback = true        # 기본값 true (엔진에서 확인)
 그리는 방식이다. 매력적으로 들리지만 **공식 문서가 명시한 단점이 라리엔의 조건과
 정확히 겹친다.**
 
-| MSDF 의 장점 | MSDF 의 단점 |
+| MSDF 의 장점 | MSDF 의 단점 (공식 5개) |
 |---|---|
 | 어떤 크기에서도 선명하다 | 🛑 **폰트 렌더링 기본 비용이 높다 — 저사양 모바일에서 체감된다** |
-| 크기를 바꿔도 다시 굽지 않는다 | **작은 글자는 오히려 덜 또렷하다** |
-| 큰 글자 첫 표시의 멈칫함이 없다 | LCD 서브픽셀 최적화를 못 쓴다 |
+| 크기를 바꿔도 다시 굽지 않는다 | **작은 글자는 오히려 덜 또렷하다** (힌팅 없음) |
+| 큰 글자 첫 표시의 멈칫함이 없다 | 작은 크기의 새 글리프 첫 렌더가 오히려 비싸다 · LCD 서브픽셀 최적화를 못 쓴다 · 자기교차 외곽선 폰트는 깨진다 |
+| | **외곽선을 쓰면 `MSDF Pixel Range` 를 외곽선 크기의 2배 이상**으로 잡아야 한다 — 라리엔은 3D 위 글자에 외곽선을 쓰므로 피할 이유가 하나 더 |
 
 **최소 지원 사양이 3GB RAM 안드로이드**이고([performance-mobile.md](performance-mobile.md) §0)
 **UI 폰트 크기는 몇 종으로 고정**되므로, MSDF 가 주는 이점이 거의 없다.
 
-**엔진 기본값이 이미 꺼져 있다** — `gui/theme/default_font_multichannel_signed_distance_field = false`
-(엔진에서 확인). **그대로 둔다.**
+### 🛑 폰트 설정은 우리 폰트의 Import 에서 — 프로젝트 설정은 엔진 내장 폰트 전용이다
 
-### 대신 켜야 하는 것 — 밉맵
+공식 *Using Fonts*: "These project settings only affect the default project font (the one that is hardcoded
+in the engine binary). **Custom fonts' properties are controlled by their respective import options instead.**"
 
-| 프로젝트 설정 | 엔진 기본값 | 라리엔 판단 |
+**라리엔은 한글 폰트를 커스텀으로 넣는다. 그 폰트의 MSDF·밉맵·힌팅·서브픽셀은 프로젝트 설정이 아니라
+Import 에서 정한다.** 프로젝트 설정만 켜 두면 "켰는데 아무 변화가 없다" 가 된다.
+
+| 대상 | 어디서 | 항목 (라리엔 판단) |
 |---|---|---|
-| `gui/theme/default_font_generate_mipmaps` | **`false`** | ✅ **켜는 것을 검토한다** |
-| `gui/theme/default_font_multichannel_signed_distance_field` | `false` | 🛑 그대로 끈다 |
-| `gui/theme/default_font_antialiasing` | `1` (Grayscale) | 그대로 |
-| `gui/theme/default_font_hinting` | `1` (Light) | 그대로 |
-| `gui/theme/default_font_subpixel_positioning` | `1` (Auto) | 그대로 |
-| `gui/theme/default_theme_scale` | `1.0` | 그대로 |
+| **우리 폰트(서브셋 `.ttf`/`.otf`)** | **FileSystem 독에서 폰트 선택 → Import 독** (기본값을 통일하려면 `Project Settings > Import Defaults`) | `Multichannel Signed Distance Field` **끔** · `Mipmaps` **기본 끔, 실측 후**(아래) · `Hinting` Light · `Antialiasing` Grayscale · `Subpixel Positioning` Auto |
+| 엔진 내장 기본 폰트 | `Project Settings > GUI > Theme > Default Font *` (`default_font_multichannel_signed_distance_field = false`·`default_font_generate_mipmaps = false` 가 엔진 기본값) | 우리 폰트를 Theme 에 지정한 뒤에는 거의 쓰이지 않는다. 그대로 둔다 |
+| `gui/theme/default_theme_scale` | 프로젝트 설정 | 기본 `1.0`. 공식은 고해상도 기준(1080×1920)이면 1.5~2.0 을 권하지만 자체 Theme 에서 크기를 직접 정하므로 **Theme 를 만든 뒤 세로·가로 스크린샷 비교로 결정** |
 
-**밉맵을 켜는 이유** — 기준 해상도 1080 폭인 UI 가 **720 폭 저사양 폰에서 0.67 배로
-축소**되어 그려진다([§0](#0-먼저--이-프로젝트의-화면은-두-가지다)). 밉맵이 없으면
-축소된 글자가 **자글거린다.** 밉맵은 텍스처 메모리를 약 33% 더 쓰지만
-폰트 아틀라스는 원래 작아서 감당된다.
+### 밉맵보다 먼저 — 오버샘플링이 기본 켜져 있다
 
-> 🛑 **설정 파일은 사람이 바꾼다.** 경로는
-> `Project > Project Settings > GUI > Theme > Default Font Generate Mipmaps`.
+공식 *Multiple resolutions*: "**Font oversampling is enabled by default**" (`Project Settings > GUI > Fonts >
+Dynamic Fonts > Use Oversampling`). 뷰포트 배율이 바뀌면 **벡터 원본에서 다시 래스터화**하므로, 기준
+해상도 1080 폭인 UI 가 **720 폭 저사양 폰에서 0.67 배로 축소**되어도([§0](#0-먼저--이-프로젝트의-화면은-두-가지다))
+폰트는 그 배율로 새로 렌더된다 — 자글거림의 전제가 사라진다.
+
+| 밉맵이 필요한 경우 (공식) | 밉맵을 켜지 말아야 할 이유 (공식) |
+|---|---|
+| `Control` 자체의 `scale` 이 `(1,1)` 보다 작을 때 · 오버샘플링을 껐을 때 | "enabling mipmaps will increase memory usage which can be an issue on **low-end mobile devices**" |
+
+**기본은 끈다. 3GB Android 실기기에서 축소 화질과 메모리(`Performance.RENDER_TEXTURE_MEM_USED`)를
+재 본 뒤 결정한다** `[프로젝트 실측 필요]`. 노드 단위 스케일 오버샘플링(`Oversampling with Scale`)은
+기본 꺼짐이고 스케일이 자주 바뀌면 CPU 를 먹는다(공식).
 
 ### 3D 위에 얹는 글자에는 외곽선을 준다
 
@@ -882,6 +1009,11 @@ sys.allow_system_fallback = true        # 기본값 true (엔진에서 확인)
 |---|---|
 | **머리 위 이름표·데미지 숫자** (3D 위) | **필수** — `outline_size` 4~6, 색은 검정 |
 | 창 안의 글자 (패널 배경 위) | 불필요. 배경색을 우리가 정했으므로 |
+
+공식도 정확히 이 사례를 든다 — "Font outlines and shadows can be used to improve readability when the
+background color isn't known in advance. For instance, this is the case for HUD elements that are drawn over
+a 2D/3D scene." `LabelSettings` 는 여러 `Label` 이 공유하는 리소스이고 **테마보다 우선**한다. 그림자는
+`Label`·`RichTextLabel` 에만 있고 항상 하드 엣지다.
 
 ---
 
@@ -937,6 +1069,20 @@ func _ready() -> void:
 > **`is_node_ready()` 검사가 필요한 이유** — setter 는 `_ready()` 보다 먼저 불릴 수
 > 있다. 그때 `%Icon` 은 아직 없어서 그냥 접근하면 에러가 난다.
 
+### 🛑 씬으로 뺀 순간 `%` 는 씬 경계를 넘지 못한다
+
+공식 *Scene Unique Nodes* "Same-scene limitation": "A scene unique node **can only be retrieved by a node
+inside the same scene**." 공식 예 — `Player` 씬이 `Sword` 씬을 인스턴싱하면 `Player` 스크립트의
+`get_node("%Hilt")` 는 **`null`**, `Sword` 스크립트의 `get_node("%Eyes")` 도 `null` 이다.
+
+| 그래서 | |
+|---|---|
+| **컴포넌트는 자기 내부만 `%` 로 다룬다** | 위 `SkillButton` 의 `%Icon`·`%Cooldown` 이 그것이다 |
+| **밖에서는 `@export`·setter·메서드로 닿는다** | `skill_button.skill_icon = tex` — 내부 구조를 몰라도 된다 |
+| 꼭 직접 닿아야 하면 씬 노드를 경유한다 | `get_node("%SkillButton/%Icon")` — 인스턴스 루트까지는 부모 씬의 `%`, 그 아래는 자식 씬의 `%` |
+
+**§6 의 `%HpBar` 패턴은 HUD 씬 안에서만 성립한다.** 체력바를 별도 씬으로 빼는 순간 `hud.gd` 의 `%HpBar` 는 깨진다.
+
 ### 인스턴싱한 뒤 안을 고치고 싶을 때
 
 `hud.tscn` 안에 넣은 `skill_button.tscn` 의 자식을 건드리려면
@@ -951,8 +1097,8 @@ func _ready() -> void:
 ## 11. UI 애니메이션 — 싸게, 살아있게 만든다
 
 **UI 가 툭툭 나타나고 사라지면 값싸 보인다.** 그런데 UI 애니메이션은 3D 와 달리
-**거의 공짜다** — 폴리곤도 조명도 없다. **저사양에서도 아낄 이유가 없는 몇 안 되는
-연출**이다.
+**거의 공짜다** `[프로젝트 판단 — 공식 문장 없음]` — 폴리곤도 조명도 없다. **저사양에서도 아낄 이유가 없는 몇 안 되는
+연출**이다. 픽셀 채우기(fill-rate)와 레이아웃 재계산 비용은 실측 대상이다.
 
 ### `Tween` — 코드 한 줄로 시작한다
 
@@ -989,11 +1135,15 @@ func show_panel(panel: Control) -> void:
 | 속성 | 기본값 | |
 |---|---|---|
 | `offset_transform_enabled` | `false` | 🛑 **켜야 나머지가 동작한다** |
-| `offset_transform_position` | `Vector2(0, 0)` | 시각적으로만 이동 |
+| `offset_transform_position` | `Vector2(0, 0)` | 시각적으로만 이동 (픽셀) |
+| `offset_transform_position_ratio` | `Vector2(0, 0)` | 자기 크기 대비 비율로 이동 |
 | `offset_transform_rotation` | `0.0` | |
 | `offset_transform_scale` | `Vector2(1, 1)` | |
-| **`offset_transform_visual_only`** | **`true`** | **터치 판정은 원위치에 그대로 남는다** |
+| **`offset_transform_visual_only`** | **`true`** | **터치 판정은 원위치에 그대로 남는다.** 🛑 이때 스케일 기반 폰트 오버샘플링은 이 변환을 **무시**한다(공식) |
+| `offset_transform_pivot` | `Vector2(0, 0)` | 픽셀 피벗 |
 | `offset_transform_pivot_ratio` | `Vector2(0.5, 0.5)` | 기본 중심 기준 |
+
+(4.7 신규 — 릴리스 노트 "Offset transform of Control nodes". 4.6 에 먼저 들어온 `pivot_offset_ratio` 와 짝이다.)
 
 ```gdscript
 # 피격 시 체력바 흔들기 — 레이아웃도 터치 판정도 건드리지 않는다
@@ -1054,28 +1204,41 @@ func change_scene(path: String) -> void:
 
 **노치 있는 폰에서 상단 UI 가 잘린다.** 화면 크기와 실제로 보이는 영역은 다르다.
 
+**언제 필요해지나 (공식 *Creating applications*)** — Android 내보내기 프리셋에서 `Screen > Immersive Mode` 를
+끄고 **`Edge to Edge`** 를 켜면 상태바·내비게이션 아이콘이 반투명으로 앱 위에 그려진다. 그때
+`DisplayServer.get_display_safe_area()`·`get_display_cutouts()` 로 안전 영역을 구해 UI 를 비켜 둔다.
+iOS 는 `display/window/ios/hide_home_indicator`·`hide_status_bar`·`suppress_ui_gesture` 세 설정이 짝이다.
+
+[§6](#6-hud-만들기--실전) 의 `SafeArea(MarginContainer)` **한 노드**에 붙인다 — 네 방향 전부(펀치홀·폴더블·가로 데스크톱).
+
 ```gdscript
-extends MarginContainer
+extends MarginContainer   # §6 의 SafeArea — 세이프 에어리어와 테마를 여기 한 곳에서
 
 func _ready() -> void:
 	_apply_safe_area()
-	get_viewport().size_changed.connect(_apply_safe_area)
+	get_tree().root.size_changed.connect(_apply_safe_area)
 
 func _apply_safe_area() -> void:
 	var safe: Rect2i = DisplayServer.get_display_safe_area()
-	var full := DisplayServer.screen_get_size()
-	var scale := float(get_viewport().get_visible_rect().size.y) / float(full.y)
-
-	add_theme_constant_override("margin_top", int(safe.position.y * scale))
-	add_theme_constant_override("margin_bottom",
-		int((full.y - safe.position.y - safe.size.y) * scale))
+	var screen := DisplayServer.window_get_size()
+	if screen.x == 0 or screen.y == 0:
+		return
+	var scale := Vector2(size) / Vector2(screen)     # 창 픽셀 → 이 컨테이너의 캔버스 단위
+	add_theme_constant_override("margin_left",   int(safe.position.x * scale.x))
+	add_theme_constant_override("margin_top",    int(safe.position.y * scale.y))
+	add_theme_constant_override("margin_right",  int((screen.x - safe.end.x) * scale.x))
+	add_theme_constant_override("margin_bottom", int((screen.y - safe.end.y) * scale.y))
 ```
 
 **`DisplayServer.get_display_safe_area()` 는 `Rect2i` 를 돌려준다** (엔진에서 확인).
 `get_display_cutouts()` 는 카메라 구멍의 정확한 위치를 `Rect2[]` 로 준다.
 
-> **에디터에서는 전체 화면이 안전 영역으로 나온다.** 이 코드가 맞는지는
-> **실기기에서만 확인된다.** → [headless-workflow.md](headless-workflow.md) 의 실기기 실행
+> `[프로젝트 실측 필요]` **안전 영역 좌표계가 화면(`screen_get_size`) 기준인지 창(`window_get_size`) 기준인지**는
+> 클래스 레퍼런스가 명시하지 않는다. 데스크톱에서는 둘이 같아 차이가 안 난다. 검증 절차 —
+> `godot --path . --resolution 1080x1920 -s res://tests/<safe_area_probe>.gd` 로 `safe`·`screen_get_size`·
+> `window_get_size`·계산된 margin 4개를 stdout 에 찍고, Android 실기기는 `./install.sh` 로 설치해
+> `adb logcat` 에서 같은 줄을 수집한다. 에디터·데스크톱은 전체 화면이 안전 영역으로 나온다
+> `[실측 2026-09-03 이전 관찰]` → [headless-workflow.md](headless-workflow.md).
 
 ### 12.2 터치 최소 크기 — 48dp
 
@@ -1083,7 +1246,7 @@ func _apply_safe_area() -> void:
 
 | 기준 | 값 |
 |---|---|
-| 최소 터치 크기 | **48dp** (약 9mm) |
+| 최소 터치 크기 | **48dp** (약 9mm) — `[외부 출처: Android Material 가이드]` Godot 공식 문서의 수치가 아니다. 프로젝트 터치 목표값으로 쓴다 |
 | **1080px 폭 화면에서** | **약 100 ~ 120 px** |
 | 스킬 버튼 권장 | **140 × 140 px** 이상 |
 | 버튼 사이 간격 | **최소 16px** — 오폭 방지 |
@@ -1116,17 +1279,30 @@ skill_button.custom_minimum_size = Vector2(140, 140)
 
 **증상** — 화면을 눌렀는데 캐릭터가 안 움직인다. 특정 영역에서만 그렇다.
 
-**원인** — `Control` 의 `mouse_filter` 기본값이 **`0`(STOP)** 이라, 화면을 덮는
-투명한 컨테이너가 터치를 전부 삼킨다 ([§5](#5-노드-고르기--무엇으로-만들-것인가)).
+**원인** — `Control`·`PanelContainer`·`ColorRect` 의 `mouse_filter` 기본값이 **`0`(STOP)** 이라, 화면을 덮는
+투명한 덮개가 터치를 전부 삼킨다 ([§5](#5-노드-고르기--무엇으로-만들-것인가)). 순수 컨테이너(`MarginContainer` 등)는
+기본 PASS 라 삼키지 않지만 그래도 `IGNORE` 로 통일한다.
 
-**해결** — **덮는 것은 전부 `IGNORE`, 누르는 것만 `STOP`.**
+**공식 입력 순서** (*Using InputEvent*) — `_input()` → **GUI**(`Control._gui_input()`, `mouse_filter` 가 여기서
+작동) → `_shortcut_input()` → `_unhandled_key_input()` → **`_unhandled_input()`** → **오브젝트 피킹**(`Camera3D`
+에서 레이캐스트 → `CollisionObject3D._input_event()`). GUI 마우스 이벤트는 대상 Control 의 **직접 조상**으로만
+올라간다. 전체 파이프라인은 [input-ui.md](input-ui.md) §1.
+
+**해결** — 둘을 같이 한다.
+
+| | |
+|---|---|
+| **게임플레이 클릭·터치는 `_unhandled_input()`(또는 피킹)에 둔다** | GUI 가 먹은 이벤트는 애초에 오지 않는다 — 공식: "ideal for full-screen gameplay events, so they are not received when a GUI is active". 🛑 `_input()` 에 두면 GUI 보다 먼저 불려 HUD 버튼이 막을 수 없다 |
+| **덮는 것은 전부 `IGNORE`, 누르는 것만 `STOP`** | 덮개 Control 이 이벤트를 가로채지 않게 하는 보완책 |
 
 ```
 HUD (CanvasLayer)
-├─ Top (MarginContainer)      mouse_filter = IGNORE   ← 덮기만 한다
-│  └─ HpBar                   mouse_filter = IGNORE   ← 누를 일 없다
-└─ Bottom (MarginContainer)   mouse_filter = IGNORE
-   └─ SkillButton             mouse_filter = STOP     ← 이것만 먹는다 (기본값)
+└─ SafeArea (MarginContainer)    mouse_filter = IGNORE   ← 덮기만 한다
+   └─ Overlay (Control)          mouse_filter = IGNORE   ← Control 은 기본 STOP — 반드시 바꾼다
+      ├─ Top (MarginContainer)   mouse_filter = IGNORE
+      │  └─ HpBar                mouse_filter = IGNORE   ← 누를 일 없다
+      └─ Bottom (MarginContainer) mouse_filter = IGNORE
+         └─ SkillButton          mouse_filter = STOP     ← 이것만 먹는다 (기본값)
 ```
 
 ### 13.2 월드 스페이스 UI — 머리 위 이름표·HP바
@@ -1158,32 +1334,31 @@ HUD (CanvasLayer)
 ---
 
 
-### 13.4 🛑 세로 화면에서 `Camera3D.keep_aspect` 를 확인한다
+### 13.4 🛑 세로 화면에서 카메라가 보여주는 범위 — `size` 와 `keep_aspect`
 
 **UI 문서에 3D 카메라 이야기가 들어오는 이유** — 세로 화면에서 **화면에 보이는 월드의
 범위**가 달라지고, 그것이 HUD 가 무엇을 가리는지와 직접 얽히기 때문이다.
 
-`Camera3D.keep_aspect` 의 실측 기본값은 **`1` (`KEEP_HEIGHT`)** 이다.
+> 🛑 **라리엔 3D 의 카메라는 직교(`projection = 1`)다.** 공식 Camera3D 클래스 레퍼런스 — `fov`: "Only applicable
+> in perspective mode", `size`: "The camera's size in meters measured as the diameter of the width or height,
+> depending on `keep_aspect`. Only applicable in orthogonal and frustum modes". **`fov` 를 만져도 아무 일도
+> 일어나지 않는다.** 원근 카메라 기준의 `fov` 이야기는 이 프로젝트에 해당하지 않는다.
 
-| 값 | 뜻 | 세로 9:16 화면에서 |
+`Camera3D.keep_aspect` 의 실측 기본값은 **`1` (`KEEP_HEIGHT`)** 이고, **[SSOT §1](../../game/references/SSOT.md)
+이 이 값을 확정**했다 — `size` 가 화면 **세로** 미터이고 가로는 화면비를 곱한다(모바일 세로 `size 15` →
+8.4m × 15m, 데스크톱 `size 22.5` → 40m × 22.5m).
+
+| 값 | 직교에서의 뜻 | 세로 9:16 화면에서 |
 |---|---|---|
-| `0` `KEEP_WIDTH` | **가로** 시야를 유지하고 세로가 늘어난다 | 좌우 시야가 보장된다 |
-| **`1` `KEEP_HEIGHT` (기본)** | **세로** 시야를 유지하고 가로가 줄어든다 | 🛑 **좌우가 극도로 좁아진다** |
-
-**`fov = 75.0`(실측 기본값)은 세로 방향 화각**이다. 가로 16:9 에서는 넓게 보이지만,
-세로 9:16 에서는 **같은 fov 로도 좌우가 절반 이하**가 된다.
+| `0` `KEEP_WIDTH` | `size` 가 **가로** 미터 | 좌우 시야가 보장된다 |
+| **`1` `KEEP_HEIGHT` (기본 · SSOT 확정)** | `size` 가 **세로** 미터 | 가로가 `size × 9/16` 으로 줄어든다 — SSOT 가 이미 계산해 둔 값이다 |
 
 공식 문서도 **세로 모드에서는 `Keep Width` 를 고려하라**고 적고 있다.
 
-> 🛑 **다만 이 값을 임의로 바꾸지 않는다.** 카메라가 보여주는 범위는
-> [SSOT §6](../../game/references/SSOT.md) 의 **줌 상한 ↔ 서버 AOI 계약**에 묶여 있다.
-> SSOT 의 계산은 **1920×1080·2560×1440 가로 기준**으로 적혀 있는데,
-> **모바일은 1080×1920 세로**다. 즉 **세로 화면에서의 화면 코너까지 거리를 다시 계산해
-> 봐야 하고, 그 결과에 따라 `keep_aspect` 판단이 갈린다.**
->
-> **이것은 사람이 판단할 사항이다** ([CLAUDE.md](../../../../CLAUDE.md) — SSOT 와
-> 어긋나 보이면 측정값과 함께 보고하고 승인을 받는다). 클라이언트에서 값만 바꾸면
-> **화면 가장자리 몹이 사라지는 버그**로 나타난다.
+> 🛑 **다만 이 값을 임의로 바꾸지 않는다.** `keep_aspect`·`size` 는
+> [SSOT §1·§6](../../game/references/SSOT.md) 의 **기준 `size` ↔ 줌 상한 ↔ 서버 AOI 계약**에 묶여 있다.
+> 바꾸려면 SSOT §8 의 변경 절차를 거친다 — 자율 개발이어도 SSOT 값은 AI 가 임의로 바꾸지 않는다
+> ([CLAUDE.md](../../../../CLAUDE.md)). 클라이언트에서 값만 바꾸면 **화면 가장자리 몹이 사라지는 버그**로 나타난다.
 
 ---
 
@@ -1192,17 +1367,21 @@ HUD (CanvasLayer)
 **최소 지원 사양은 3GB RAM Android 다**
 ([performance-mobile.md](performance-mobile.md) §0). UI 도 예산 안에서 짠다.
 
-| 규칙 | 이유 |
-|---|---|
-| 🛑 **`_process` 에서 `Label.text` 를 매 프레임 바꾸지 않는다** | 텍스트가 바뀌면 **폰트 레이아웃을 다시 계산**한다. 값이 바뀔 때만 갱신한다 |
-| **`RichTextLabel` 을 남용하지 않는다** | BBCode 파싱 + 서식 계산이 `Label` 보다 훨씬 비싸다 |
-| **안 보이는 UI 는 `hide()`** | 숨긴 `Control` 은 그리지도 계산하지도 않는다 |
-| **인벤토리 칸을 미리 다 만들지 않는다** | 200칸을 항상 들고 있지 말고 열 때 만든다 |
-| **UI 텍스처도 아틀라스로 묶는다** | [SSOT §3.1](../../game/references/SSOT.md) 의 번들 용량 규칙이 UI 에도 적용된다 |
-| **`CanvasLayer` 를 필요 이상 만들지 않는다** | 층마다 그리기 패스가 하나씩 는다 |
-| **컨테이너를 깊게 겹치지 않는다** | 크기가 바뀔 때마다 위에서 아래로 재계산한다 → [§4](#4-컨테이너-고르기) |
-| **`offset_transform` 으로 애니메이션한다** | `position` 을 흔들면 부모 컨테이너가 매 프레임 다시 계산한다 → [§11](#11-ui-애니메이션--싸게-살아있게-만든다) |
-| 🛑 **MSDF 폰트를 켜지 않는다** | 저사양 모바일에서 폰트 렌더링 기본 비용이 오른다 → [§9](#9-폰트--한글이-먼저다) |
+**근거 등급을 함께 적는다** — `[공식]` 은 Godot 4.7 문서에 문장이 있는 것, `[프로젝트 판단]` 은 SSOT·실측에서
+온 것, `[추측]` 은 타당해 보이지만 근거가 없는 것이다. 실측이 붙기 전까지 `[추측]` 을 사실처럼 인용하지 않는다.
+
+| 규칙 | 근거 등급 | 이유 |
+|---|---|---|
+| 🛑 **`_process` 에서 `Label.text` 를 매 프레임 바꾸지 않는다** | `[프로젝트 판단]` — 에디터 **`Debug > Debug Canvas Item Redraws`** 를 켜고 실행하면 다시 그려진 영역이 붉게 뜬다(공식). 감이 아니라 화면으로 잡는다 | 텍스트가 바뀌면 폰트 레이아웃을 다시 계산한다. 값이 바뀔 때만 갱신한다. 현재 `hud.gd` 의 진단 라벨이 이 패턴이다(개발용 임시 — 정식 HUD 전환 시 값 변화 감지로) |
+| **`RichTextLabel` 은 대형 로그에서만 비싸다** | **`[공식]`** — "text formatting is rarely a heavy task"; 문제는 "console logs spanning thousands of lines" | 채팅·전투 로그는 `text +=` 대신 **`append_text()`**, 서식은 `push_*()/pop()`, 그래도 끊기면 `threaded = true`. `Label` 대비 상대 비용은 미실측 |
+| **채팅에 들어오는 유저 문자열은 `[lb]` 로 이스케이프한다** | **`[공식]`** — BBCode 주입(`[url]` 피싱 링크) 방지 | `text.replace("[", "[lb]")` — 닉네임과 본문 둘 다 |
+| **안 보이는 UI 는 `hide()`** | `[추측]` | 타당하지만 공식 문장 없음 |
+| **인벤토리 칸을 미리 다 만들지 않는다** | `[추측]` / `[프로젝트 실측 필요]` | 공식은 컨테이너 중첩을 오히려 권장한다 |
+| **UI 텍스처도 아틀라스로 묶는다** | `[프로젝트 판단 — SSOT §3.1]` | 4.7 은 `TextureRect` 가 `AtlasTexture` 타일링을 지원한다(릴리스 노트: 저사양에서 텍스처 변경 감소) |
+| **`CanvasLayer` 를 필요 이상 만들지 않는다** | `[추측]` — "층마다 그리기 패스 +1" 은 공식 근거가 없다 | 공식 근거는 "그리기 순서만을 위해서라면 `CanvasLayer` 는 불필요"(같은 층은 트리 순서·`z_index`). 실측하려면 층 1개/4개 HUD 를 `Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME`·프레임 시간으로 비교(드로우콜은 패스 수와 다른 지표다) |
+| **컨테이너를 깊게 겹치지 않는다** | `[부분 공식]` — 리사이즈·`queue_sort()` 때 자식 재배치(공식). "깊이 4~5"·"모바일 GPU 민감" 은 `[추측]` | → [§4](#4-컨테이너-고르기) |
+| **`offset_transform` 으로 애니메이션한다** | **`[공식]`** — 4.7 신규. `visual_only = true` 면 입력 좌표·레이아웃에 영향 없음 | 단 `visual_only` 면 스케일 기반 오버샘플링이 이 변환을 무시한다(공식) → [§11](#11-ui-애니메이션--싸게-살아있게-만든다) |
+| 🛑 **MSDF 폰트를 켜지 않는다** | **`[공식]`** — "impact on low-end mobile devices" | → [§9](#9-폰트--한글이-먼저다) |
 
 **값이 바뀔 때만 갱신하는 패턴:**
 
@@ -1243,12 +1422,20 @@ func _on_snapshot(hp: int) -> void:
 **UI 가 성능을 먹고 있는지 빠르게 가리는 법** — HUD 의 `CanvasLayer` 를
 `visible = false` 로 껐다 켰다 하면서 프레임을 본다. 차이가 크면 UI 문제다.
 
+**어디가 다시 그려지는지 눈으로 잰다** — 에디터 **`Debug > Debug Canvas Item Redraws`** 를 켜고 실행하면
+다시 그려진 영역이 1초간 붉게 표시된다(공식 *Creating applications*; `debug/canvas_items/debug_redraw_time`·
+`debug_redraw_color` 로 조절). 매 프레임 `Label.text` 를 바꾸는 곳이 그대로 드러난다 — AI 자율 검증에서
+스크린샷 비교로 쓸 수 있다.
+
 ---
 
 ## 15. 접근성 — 4.5 부터 스크린 리더가 붙는다
 
 Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체제의 스크린 리더에
-직접 노출**된다. 별도 애드온 없이 엔진이 접근성 트리를 만들어 OS 에 밀어 넣는다.
+직접 노출**된다(4.5 릴리스 노트). 별도 애드온 없이 엔진이 접근성 트리를 만들어 OS 에 밀어 넣는다.
+스크린 리더가 감지되면 자동으로 켜지고, `Project Settings > Accessibility > General > Accessibility Support`
+(기본 `0` = 자동, 드라이버 `accesskit`)로 끄거나 강제로 켤 수 있다(공식 *Creating applications*).
+4.7 은 **landmark 내비게이션**(포커스가 어느 영역에 있는지 리더에게 알림)을 더했다(4.7 릴리스 노트).
 
 **`Control` 에 접근성 속성이 실제로 들어와 있다** (엔진에서 확인):
 
@@ -1261,6 +1448,9 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 | `accessibility_described_by_nodes` | `[]` | 〃 |
 | `accessibility_controls_nodes` | `[]` | 이 컨트롤이 조작하는 대상 |
 | `accessibility_flow_to_nodes` | `[]` | 논리적 다음 순서 |
+
+이 밖에 `accessibility_drag`·`accessibility_drop` 속성과 `_accessibility_get_contextual_info()` 메서드가 있고,
+`focus_mode` 에는 스크린 리더 전용 값 **`FOCUS_ACCESSIBILITY = 3`** 이 있다(엔진에서 확인).
 
 ### 라리엔에서 최소한 할 것
 
@@ -1280,8 +1470,11 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 > **글자가 있는 `Button` 은 대개 그대로도 읽힌다** — 버튼의 `text` 가 이름으로 쓰인다.
 > 문제는 **아이콘 버튼**이다. 라리엔의 하단 스킬 버튼이 정확히 그 경우다.
 
-> ⚠️ **스크린 리더 지원은 아직 새 기능이고 실험적 단계**라고 공지되어 있다.
-> 모바일에서의 동작은 **실기기에서 확인해야** 한다. 다만 위 속성을 채워 두는 것은
+> ⚠️ **4.5 릴리스 노트는 스크린 리더 통합을 "still in its experimental phase" 라고 공지했다.** 4.7.2 현재도
+> 실험적인지는 문서에 명시가 없고, 4.7 공식 문서는 "제대로 하려면 상당한 작업이 필요하다" 며
+> `accessibility_name`·`accessibility_description` 과 **논리적 읽기 순서**를 요구한다. 공식이 예로 드는 리더는
+> NVDA(Windows)·VoiceOver(macOS)·Orca(Linux) **전부 데스크톱**이라 **Android TalkBack 노출은 미검증**이다 —
+> 실기기에서 TalkBack 을 켜고 확인하는 것 외에는 자동화할 수 없다. 다만 위 속성을 채워 두는 것은
 > **비용이 거의 0** 이고, 나중에 지원이 성숙했을 때 그대로 효과를 본다.
 
 ### 접근성은 스크린 리더만이 아니다
@@ -1305,7 +1498,12 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 | **UI 가 왼쪽 위에 뭉친다** | 루트 `Control` 이 `PRESET_FULL_RECT` 가 아니다 | Layout → `Full Rect` |
 | **자식을 끌어도 제자리로 간다** | 컨테이너가 위치를 덮어쓴다 (정상) | `separation`·`MarginContainer`·`custom_minimum_size` 로 조절 |
 | **화면을 눌러도 캐릭터가 안 움직인다** | `mouse_filter` 기본값이 `STOP` | 덮는 것은 전부 `Ignore` |
-| **버튼을 눌러도 반응이 없어 보인다** | `hover`·`pressed` `StyleBox` 미정의 | Theme 에 4가지 상태를 다 채운다 |
+| **버튼을 눌러도 반응이 없어 보인다** | `hover`·`pressed` `StyleBox` 미정의 | Theme 에 6상태를 다 채운다 ([§8](#8-theme--디자인을-한-곳에서-관리한다)) |
+| **화면을 눌렀는데 3D 가 반응 안 하고, HUD 도 안 먹는다** | 게임플레이 입력을 `_input()` 에 두었다 — GUI 보다 먼저 불린다 | `_unhandled_input()` 또는 오브젝트 피킹으로 ([§13.1](#13-3d-게임-특유의-함정)) |
+| **게임패드로 아무 버튼도 안 눌린다** | 첫 포커스를 코드로 잡지 않았다 | `%FirstButton.grab_focus.call_deferred()` ([§7](#7-메뉴-만들기)) |
+| **씬으로 뺀 컴포넌트의 `%Node` 가 `null` 이다** | `%` 는 같은 씬 안에서만 잡힌다 | `@export`·setter 로 닿거나 `%Comp/%Node` 체인 ([§10](#10-재사용-컴포넌트--ui-를-씬으로-쪼갠다)) |
+| **`ScrollContainer` 안 항목들이 겹친다** | 직접 자식을 여러 개 넣었다 — 하나만 받는다 | `ScrollContainer → VBox/Grid → 항목들` ([§4](#4-컨테이너-고르기)) |
+| **폰트 밉맵·MSDF 를 껐다 켰는데 아무 변화가 없다** | `gui/theme/default_font_*` 는 엔진 내장 폰트 전용이다 | 우리 폰트의 **Import 독**에서 바꾼다 ([§9](#9-폰트--한글이-먼저다)) |
 | **Theme 를 바꿔도 안 바뀌는 노드가 있다** | 개별 오버라이드가 이긴다 | 인스펙터에서 `Theme Overrides` 를 지운다 |
 | **해상도를 바꾸면 UI 가 깨진다** | 좌표로 배치했다 | 앵커 + 컨테이너로 다시 짠다 |
 | **노치에 가려 안 보인다** | 세이프 에어리어 미적용 | [§12.1](#121-세이프-에어리어--노치홈-인디케이터) |
@@ -1318,9 +1516,9 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 | **버튼을 연타하면 크기가 이상해진다** | 트윈이 겹쳐 서로 다른 목표로 당긴다 | 새 트윈 전에 `kill()` ([§11](#11-ui-애니메이션--싸게-살아있게-만든다)) |
 | **게임패드로 메뉴를 쓸 수 없다** | `focus` `StyleBox` 가 없어 커서 위치가 안 보인다 | Theme 에 `focus` 를 채운다 ([§8](#8-theme--디자인을-한-곳에서-관리한다)) |
 | **에디터가 게임 코드를 실행한다** | `@tool` 스크립트는 에디터에서도 돈다 | `if Engine.is_editor_hint(): return` ([§10](#10-재사용-컴포넌트--ui-를-씬으로-쪼갠다)) |
-| **세로 화면에서 3D 좌우 시야가 좁다** | `Camera3D.keep_aspect` 기본이 `KEEP_HEIGHT` | 🛑 임의로 바꾸지 말고 보고한다 ([§13.4](#134--세로-화면에서-camera3dkeep_aspect-를-확인한다)) |
-| **저사양 폰에서 글자가 자글거린다** | UI 가 축소되는데 폰트 밉맵이 꺼져 있다 | `default_font_generate_mipmaps` 검토 ([§9](#9-폰트--한글이-먼저다)) |
-| **테마를 적용했는데 누르면 회색으로 돌아온다** | `pressed`·`hover` `StyleBox` 를 안 채웠다 | 5상태를 전부 채운다 ([§8](#8-theme--디자인을-한-곳에서-관리한다)) |
+| **세로 화면에서 3D 좌우 시야가 좁다** | 직교 카메라의 `keep_aspect = KEEP_HEIGHT`(SSOT 확정) 라 `size` 가 세로 기준 | 🛑 `fov` 는 직교에서 무시된다. `keep_aspect`·`size` 는 SSOT 변경 절차로만 ([§13.4](#13-3d-게임-특유의-함정)) |
+| **저사양 폰에서 글자가 자글거린다** | 오버샘플링이 꺼졌거나 `Control.scale < 1` 인데 밉맵이 없다 | 오버샘플링 기본 켜짐부터 확인. 밉맵은 우리 폰트 **Import 독**에서, 실측 후 ([§9](#9-폰트--한글이-먼저다)) |
+| **테마를 적용했는데 누르면 회색으로 돌아온다** | `pressed`·`hover`·`hover_pressed` `StyleBox` 를 안 채웠다 — 엔진 기본 테마로 내려간다 | 6상태를 전부 채운다 ([§8](#8-theme--디자인을-한-곳에서-관리한다)) |
 
 ---
 
@@ -1350,18 +1548,41 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 
 ### 공식 문서 (Godot Engine)
 
+이 문서는 **4.7.2 기준**이므로 `/en/4.7/` 링크를 쓴다(`/en/stable/` 은 최신 안정판을 따라 움직인다).
+텍스트 사본은 `.cowork/godot-hud-best-practice/refs/` 에 있다(2026-09-03).
+
 | 주제 | 링크 |
 |---|---|
-| UI 전체 | https://docs.godotengine.org/en/stable/tutorials/ui/index.html |
-| 크기와 앵커 | https://docs.godotengine.org/en/stable/tutorials/ui/size_and_anchors.html |
-| 컨테이너 | https://docs.godotengine.org/en/stable/tutorials/ui/gui_containers.html |
-| Theme 에디터 | https://docs.godotengine.org/en/stable/tutorials/ui/gui_using_theme_editor.html |
-| **타입 배리에이션** | https://docs.godotengine.org/en/stable/tutorials/ui/gui_theme_type_variations.html |
-| **폰트 사용법 (MSDF 포함)** | https://docs.godotengine.org/en/stable/tutorials/ui/gui_using_fonts.html |
-| CanvasLayer | https://docs.godotengine.org/en/stable/tutorials/2d/canvas_layers.html |
-| **여러 해상도 대응** | https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html |
-| **Godot 4.5 릴리스 (접근성)** | https://godotengine.org/releases/4.5/ |
-| Godot 4.7 릴리스 | https://godotengine.org/releases/4.7/ |
+| UI 전체 | https://docs.godotengine.org/en/4.7/tutorials/ui/index.html |
+| **첫 3D 게임 — Score and replay** (3D 씬 위 `Control` 직접 부착) | https://docs.godotengine.org/en/4.7/getting_started/first_3d_game/08.score_and_replay.html |
+| **첫 2D 게임 — Heads up display** (`CanvasLayer` HUD 씬) | https://docs.godotengine.org/en/4.7/getting_started/first_2d_game/06.heads_up_display.html |
+| 크기와 앵커 | https://docs.godotengine.org/en/4.7/tutorials/ui/size_and_anchors.html |
+| 컨테이너 | https://docs.godotengine.org/en/4.7/tutorials/ui/gui_containers.html |
+| **GUI skinning (Theme 조회 순서)** | https://docs.godotengine.org/en/4.7/tutorials/ui/gui_skinning.html |
+| Theme 에디터 | https://docs.godotengine.org/en/4.7/tutorials/ui/gui_using_theme_editor.html |
+| **타입 배리에이션** | https://docs.godotengine.org/en/4.7/tutorials/ui/gui_theme_type_variations.html |
+| **폰트 사용법 (MSDF·밉맵·시스템 폰트·프리렌더)** | https://docs.godotengine.org/en/4.7/tutorials/ui/gui_using_fonts.html |
+| **키보드/컨트롤러 포커스** | https://docs.godotengine.org/en/4.7/tutorials/ui/gui_navigation.html |
+| BBCode in RichTextLabel (성능·유저 입력 이스케이프) | https://docs.godotengine.org/en/4.7/tutorials/ui/bbcode_in_richtextlabel.html |
+| CanvasLayer | https://docs.godotengine.org/en/4.7/tutorials/2d/canvas_layers.html |
+| **여러 해상도 대응 (권장표·오버샘플링)** | https://docs.godotengine.org/en/4.7/tutorials/rendering/multiple_resolutions.html |
+| 입력 이벤트 전파 순서 | https://docs.godotengine.org/en/4.7/tutorials/inputs/inputevent.html |
+| Scene Unique Nodes (`%` 같은 씬 제한) | https://docs.godotengine.org/en/4.7/tutorials/scripting/scene_unique_nodes.html |
+| Creating applications (4.7 신규 — 세이프 에어리어·접근성·Redraw 디버그) | https://docs.godotengine.org/en/4.7/tutorials/ui/creating_applications.html |
+| **Godot 4.5 릴리스 (접근성·FoldableContainer)** | https://godotengine.org/releases/4.5/ |
+| Godot 4.6 릴리스 (포커스 분리·pivot_offset_ratio) | https://godotengine.org/releases/4.6/ |
+| Godot 4.7 릴리스 (offset_transform·landmark) | https://godotengine.org/releases/4.7/ |
+
+### 4.5 → 4.7 에서 바뀐 것 (HUD 관련)
+
+**공식 문서 changelog 는 "새 페이지만" 기록한다.** 4.6 이후 UI 새 페이지는 *Creating applications*(비게임 앱 —
+다중 창·트레이·네이티브 파일 대화상자, 세이프 에어리어·접근성 절 포함) 하나다. 엔진 기능 변화는 릴리스 노트에서:
+
+| 버전 | UI 변경 | 이 문서에서 |
+|---|---|---|
+| **4.5** | AccessKit 스크린 리더(실험적 공지) · `FoldableContainer` | §15 · §4 |
+| **4.6** | `pivot_offset_ratio`(비율 피벗) · **마우스 클릭과 키보드/패드 포커스 분리**(클릭해도 포커스 테두리가 안 뜬다) · 에디터에서 `MarginContainer` 마진 시각화 | §7 · §8 focus |
+| **4.7** | **`Control.offset_transform_*`**(컨테이너 재정렬에 안 지워지는 시각 변환) · `RichTextLabel` `[img height=1em]` 폰트 크기 연동 · 접근성 landmark 내비게이션 · 뷰포트 nearest 스케일 옵션 · **`TextureRect` 의 `AtlasTexture` 타일링**(저사양 텍스처 변경 감소) · `PopupMenu` 검색 | §11 · §14 · §15 |
 
 ### 공식 데모 프로젝트 — 받아서 돌려보는 것이 가장 빠르다
 
@@ -1383,7 +1604,7 @@ Godot 4.5 가 **AccessKit** 을 통합하면서 `Control` 노드가 **운영체�
 | [Chickensoft — Display Scaling in Godot 4](https://chickensoft.games/blog/display-scaling) | 스케일링 실전 정리 |
 | [Josh Anthony — Anchors and Margins and Containers](https://joshanthony.info/2023/04/22/anchors-and-margins-and-containers-godot-my/) | **앵커와 컨테이너를 섞는 실무 감각** |
 | [slicker.me — 모바일 최적화 현장 가이드](https://slicker.me/godot/mobile-optimization.html) | 실기기 프로파일링, 드로우콜 |
-| [Bugnet — StyleBox 가 상태별로 안 먹을 때](https://bugnet.io/blog/fix-godot-ui-theme-stylebox-not-applying-on-button-state) | **5상태를 다 채워야 하는 이유** |
+| [Bugnet — StyleBox 가 상태별로 안 먹을 때](https://bugnet.io/blog/fix-godot-ui-theme-stylebox-not-applying-on-button-state) | 상태별 StyleBox 를 다 채워야 하는 이유 (공식 근거는 §8 의 테마 조회 4단계) |
 | [Android 개발자 — Godot 폼팩터 대응](https://developer.android.com/games/engines/godot/godot-formfactor) | 안드로이드 화면 크기 대응 공식 안내 |
 | [Saltmire — Godot 4 화면 전환 5가지](https://saltmire.github.io/godot-4-scene-transitions.html) | 페이드·아이리스·디졸브 구현 |
 | [godot-font-baker](https://github.com/shiena/godot-font-baker) | **CJK 폰트를 구워 배포 용량·라이선스를 푸는 접근** |

@@ -8,7 +8,8 @@
 #   install.sh 00008140-001C24C9…    iOS UDID 를 직접 지정
 #   install.sh macos                 이 맥에서 빌드·실행
 #
-#   install.sh <선택> --release      릴리즈 빌드로
+#   install.sh <선택> --release      릴리즈 빌드로 (묻지 않는다)
+#   install.sh <선택> --debug        디버그 빌드로 (묻지 않는다)
 #   install.sh <선택> --skip-build   빌드 생략, 설치·실행만
 #   install.sh <선택> --console      실행 로그를 터미널에 붙여서 본다
 #   install.sh <선택> --no-launch    설치만 하고 실행하지 않는다
@@ -17,6 +18,12 @@
 #
 # 어느 플랫폼인지는 고른 장치가 정한다. preset 이름·패키지 ID·산출물 경로는
 # export_presets.cfg 에서 직접 읽으므로 프로젝트마다 고칠 필요가 없다.
+#
+# 빌드 모드는 --debug/--release 를 주지 않으면 장치를 고른 뒤 물어본다(대화형일 때. 기본 Debug).
+#   Debug   — print() 로그가 logcat 에 나오고 원격 디버그가 붙는다. 엔진이 비최적화라 느리다
+#   Release — 실제 배포와 같은 최적화 빌드. 성능(fps)·로딩 시간 측정은 이쪽이 정답이다
+#             🛑 Android release 는 release keystore 가 필요하다. 없으면 이 스크립트가
+#                **debug keystore 로 서명**하고 경고한다(기기 테스트 전용 — 스토어 업로드 불가).
 #
 set -euo pipefail
 
@@ -28,7 +35,7 @@ die()  { printf '\033[1;31m❌\033[0m %s\n' "$*" >&2; exit 1; }
 
 # ── 인자 파싱 ───────────────────────────────────────────────────────────
 SELECTION=""
-BUILD_MODE="debug"
+BUILD_MODE=""          # 빈 값 = 아직 안 정했다 → 장치 선택 후 물어본다(비대화형이면 debug)
 SKIP_BUILD=0
 CONSOLE=0
 LAUNCH=1
@@ -148,6 +155,33 @@ DEVICE_ID=$(printf '%s' "$ENTRY" | cut -f2)
 DEVICE_LABEL=$(printf '%s' "$ENTRY" | cut -f3)
 ok "선택: $PLATFORM — $DEVICE_LABEL"
 
+# ── 빌드 모드 선택 ──────────────────────────────────────────────────────
+# --debug/--release 를 줬으면 묻지 않는다. 비대화형(파이프·CI)에서는 debug 로 간다.
+if [ -z "$BUILD_MODE" ]; then
+  if [ "$SKIP_BUILD" -eq 1 ]; then
+    BUILD_MODE="debug"     # 빌드를 안 하므로 로그 파일 이름에만 쓰인다
+  elif [ ! -t 0 ]; then
+    BUILD_MODE="debug"
+    echo "   (비대화형 — Debug 로 빌드한다. Release 는 --release)"
+  else
+    echo
+    echo "빌드 모드:"
+    echo
+    printf '  \033[1;36m1)\033[0m  Debug     print() 로그·원격 디버그. \033[90m엔진 비최적화 — fps 측정에는 부적합\033[0m\n'
+    printf '  \033[1;36m2)\033[0m  Release   실제 배포와 같은 최적화 빌드. \033[90mfps·로딩 시간 측정은 이쪽\033[0m\n'
+    echo
+    printf '번호 선택 [1]: '
+    read -r MODE_SEL || MODE_SEL=""
+    echo
+    case "${MODE_SEL:-1}" in
+      1|d|debug|Debug)     BUILD_MODE="debug" ;;
+      2|r|release|Release) BUILD_MODE="release" ;;
+      *) die "빌드 모드가 '1'(Debug) 또는 '2'(Release) 여야 한다: '$MODE_SEL'" ;;
+    esac
+  fi
+fi
+ok "빌드 모드: $BUILD_MODE"
+
 # ── 프로젝트 루트 찾기 ──────────────────────────────────────────────────
 find_project_root() {
   local dir="${1:-$PWD}"
@@ -226,8 +260,54 @@ case "$PLATFORM" in
     ;;
 esac
 
+# 산출물 이름에 모드가 박혀 있으면(…-debug.apk) 실제 모드로 바꾼다 — debug 빌드와 release 빌드가
+# 같은 파일을 덮어써서 "무엇을 깔았는지" 를 알 수 없게 되는 것을 막는다.
+case "$EXPORT_PATH" in
+  *debug*)
+    if [ "$BUILD_MODE" = "release" ]; then
+      EXPORT_PATH=${EXPORT_PATH//debug/release}
+      ARTIFACT="$ROOT/$EXPORT_PATH"
+      warn "산출물 이름의 'debug' 를 'release' 로 바꿨다 → $EXPORT_PATH"
+    fi
+    ;;
+  *release*)
+    if [ "$BUILD_MODE" = "debug" ]; then
+      EXPORT_PATH=${EXPORT_PATH//release/debug}
+      ARTIFACT="$ROOT/$EXPORT_PATH"
+      warn "산출물 이름의 'release' 를 'debug' 로 바꿨다 → $EXPORT_PATH"
+    fi
+    ;;
+esac
+
+# ── Android release 서명 ────────────────────────────────────────────────
+# Godot 는 release 빌드에서 keystore/release 가 없으면 "Release keystore incorrectly configured" 로 멈춘다
+# (엔진 platform/android/export/export_plugin.cpp). preset·환경변수에 아무것도 없으면 에디터가 만들어 둔
+# debug keystore 로 서명해 **기기 테스트만** 가능하게 한다. 스토어에 올릴 빌드는 사람이 release keystore 를 만든다.
+android_release_signing() {
+  local rk; rk=$(preset_get "Android" "keystore/release")
+  if [ -n "$rk" ] || [ -n "${GODOT_ANDROID_KEYSTORE_RELEASE_PATH:-}" ]; then
+    ok "release keystore: ${GODOT_ANDROID_KEYSTORE_RELEASE_PATH:-$rk}"
+    return 0
+  fi
+  local dbg=""
+  for c in "$HOME/Library/Application Support/Godot/keystores/debug.keystore" \
+           "$HOME/.local/share/godot/keystores/debug.keystore" \
+           "$HOME/.android/debug.keystore"; do
+    [ -f "$c" ] && { dbg="$c"; break; }
+  done
+  [ -n "$dbg" ] || die "release keystore 가 없다.
+   스토어용은 keytool 로 만들어 GODOT_ANDROID_KEYSTORE_RELEASE_PATH/USER/PASSWORD 를 export 한다.
+   (export-build-android.md §5). 임시로는 --debug 로 빌드한다."
+  export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$dbg"
+  export GODOT_ANDROID_KEYSTORE_RELEASE_USER="androiddebugkey"
+  export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="android"
+  warn "release keystore 가 없어 debug keystore 로 서명한다 — 기기 테스트 전용이다(스토어 업로드 불가).
+    $dbg"
+}
+
 # ── 빌드 ────────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" -eq 0 ]; then
+  [ "$PLATFORM" = "android" ] && [ "$BUILD_MODE" = "release" ] && android_release_signing
   step "빌드 중 — $PLATFORM / $BUILD_MODE / preset \"$PRESET_NAME\""
   mkdir -p "$(dirname "$ROOT/$EXPORT_PATH")" artifacts/logs
   "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
@@ -252,7 +332,27 @@ ok "산출물: $ARTIFACT ($(du -sh "$ARTIFACT" | cut -f1))"
 case "$PLATFORM" in
   android)
     step "설치 중 — $PACKAGE_ID"
-    adb -s "$DEVICE_ID" install -r "$ARTIFACT" | tail -2
+    # 🛑 debug ↔ release 를 번갈아 깔면 서명이 달라 -r 이 거부된다(INSTALL_FAILED_UPDATE_INCOMPATIBLE).
+    #    지우고 다시 깔면 되지만 **앱 데이터(로그인·세이브)가 함께 지워진다** → 사람에게 묻는다.
+    INSTALL_LOG=$(adb -s "$DEVICE_ID" install -r "$ARTIFACT" 2>&1) || true
+    printf '%s\n' "$INSTALL_LOG" | tail -2
+    if printf '%s' "$INSTALL_LOG" | grep -q "INSTALL_FAILED_UPDATE_INCOMPATIBLE\|signatures do not match"; then
+      warn "이미 깔린 앱과 서명이 다르다 (debug ↔ release 전환). 지우고 새로 깔아야 한다 —
+    🛑 앱 데이터(로그인 세션·세이브)가 함께 지워진다."
+      REINSTALL="n"
+      if [ -t 0 ]; then printf '지우고 새로 설치할까? [y/N]: '; read -r REINSTALL || REINSTALL="n"; fi
+      case "$REINSTALL" in
+        y|Y|yes)
+          step "기존 앱 삭제 — $PACKAGE_ID"
+          adb -s "$DEVICE_ID" uninstall "$PACKAGE_ID" | tail -1
+          adb -s "$DEVICE_ID" install "$ARTIFACT" | tail -2
+          ;;
+        *)
+          die "설치를 중단했다. 같은 모드로 다시 빌드하거나, 직접 지운다:
+   adb -s $DEVICE_ID uninstall $PACKAGE_ID"
+          ;;
+      esac
+    fi
 
     if [ "$LAUNCH" -eq 1 ]; then
       step "실행 중"

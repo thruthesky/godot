@@ -560,9 +560,10 @@ VirtualJoystick.VISIBILITY_WHEN_TOUCHED  # 1 — 터치 중일 때만 보인다
 | `pressed_joystick` | 누르는 중 바깥 원 |
 | `pressed_tip` | 누르는 중 팁 |
 
-#### 씬 배치 — 사람이 에디터에서 한다
+#### 씬 배치
 
-`.tscn`은 Claude가 수정하지 않는다(→ CLAUDE.md 규칙). 아래를 사람이 적용한다.
+`.tscn` 은 AI 가 직접 쓰고 헤드리스 실행·입력 주입으로 검증한다(→ CLAUDE.md "작업 규칙 — 인공지능 자율 개발",
+2026-09-03). 아래 구조를 만든다.
 
 ```
 HUDLayer (CanvasLayer)
@@ -1268,10 +1269,10 @@ log_label.add_image(icon, 0, font_size)          # 1em 과 같은 결과
 
 ```
 Main (Node3D)
-├─ Level (Node3D)                    ← 3D 월드
+├─ Map (Node3D)                      ← 3D 월드 (청크)
 ├─ Player (CharacterBody3D)
-│  └─ CameraPivot/SpringArm3D/Camera3D
-├─ HUDLayer (CanvasLayer, layer = 0)
+├─ CameraRig (Node3D) → Camera3D     ← 3축 고정·직교 (SSOT §1). SpringArm3D 를 쓰지 않는다
+├─ HUDLayer (CanvasLayer, layer = 1) ← 엔진 기본값 1. 0 은 뷰포트의 기본 2D 캔버스
 │  └─ HUD (Control, FULL_RECT, MOUSE_FILTER_IGNORE)
 │     ├─ Crosshair (TextureRect, CENTER)
 │     ├─ HealthBar (ProgressBar)
@@ -1282,8 +1283,10 @@ Main (Node3D)
    └─ FadeRect (ColorRect)
 ```
 
-**`CanvasLayer`를 쓰는 이유**: 3D 카메라의 변환과 무관하게 화면 좌표에 UI를 고정한다.
-`layer` 값이 클수록 위에 그려진다.
+**`CanvasLayer`를 쓰는 이유**: HUD·메뉴·전환의 위아래를 **씬 트리 순서와 무관하게 `layer` 번호로 확정**한다
+(공식 *Canvas layers*: "independent of tree order… only depend on their layer number"). `layer` 값이 클수록
+위에 그려진다. 3D 위에 `Control` 을 직접 붙여도 화면에 고정되지만(공식 3D 튜토리얼) 층 번호는 `CanvasLayer` 만 준다
+→ 라리엔의 층 배치(1·5·10·100)와 HUD 트리는 [hud-menu.md](hud-menu.md) §1·§6.
 
 ### 일시정지 메뉴
 

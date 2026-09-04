@@ -26,7 +26,8 @@
 12. [🛑 감김 방향(winding) — 삼각형이 안 보이면 여기부터](#12--감김-방향winding--삼각형이-안-보이면-여기부터)
 13. [직접 만든다 — ArrayMesh 와 SurfaceTool](#13-직접-만든다--arraymesh-와-surfacetool)
 14. [세는 법 — 무엇을 물었는지에 따라 답이 다르다](#14-세는-법--무엇을-물었는지에-따라-답이-다르다)
-15. [라리엔 3D 에서 이것이 걸리는 곳](#15-라리엔-3d-에서-이것이-걸리는-곳)
+15. [씬의 삼각형을 센다 — 다섯 가지 방법](#15-씬의-삼각형을-센다--다섯-가지-방법)
+16. [라리엔 3D 에서 이것이 걸리는 곳](#16-라리엔-3d-에서-이것이-걸리는-곳)
 
 ---
 
@@ -566,10 +567,150 @@ func count(mesh: Mesh) -> Dictionary:
 
 ---
 
-## 15. 라리엔 3D 에서 이것이 걸리는 곳
+## 15. 씬의 삼각형을 센다 — 다섯 가지 방법
+
+**"이 씬에 삼각형이 몇 개인가"에는 답이 두 가지다.** 무엇을 물었는지부터 가른다.
+
+| 묻는 것 | 어떤 값 | 언제 필요한가 |
+|---|---|---|
+| **씬에 존재하는 총량** | 카메라·컬링과 무관하게 씬 안에 든 삼각형의 합 | **예산을 짤 때**, 에셋 검수, 맵 제작 상한 |
+| **지금 그려진 양** | 그 프레임에 GPU 가 실제로 그린 삼각형 | **병목을 볼 때**, 실기기 프레임 문제 |
+
+**둘째 값은 언제나 첫째보다 작거나 같다** — 컬링·LOD 가 빼기 때문이다.
+반대로 **그림자 패스가 있으면 커질 수도 있다**(같은 메시를 광원 수만큼 다시 그린다).
+
+### ① 에디터 — `View` 메뉴 → `View Information`
+
+3D 뷰포트 왼쪽 위 `View` 메뉴에서 켜면 뷰포트 구석에 **Objects · Vertices · Video RAM** 이
+표시된다(에디터 문자열에서 확인). 켜고 끄는 데 1초면 되지만, **편집 중 뷰포트가 비추는
+것만** 세므로 "씬 전체의 총량"이 아니다. 대략을 볼 때만 쓴다.
+
+### ② 실행 중 — `Performance` 모니터 (가장 간단)
+
+```gdscript
+var tris  := int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+var calls := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+var objs  := int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+```
+
+🛑 **이 값은 3D 와 2D·UI 를 합친 것이다.** HUD 가 무거우면 3D 를 줄여도 숫자가 안 내려간다.
+
+### ③ 실행 중 — `Viewport.get_render_info()` (패스를 나눠 본다)
+
+**그림자가 얼마를 먹는지 보려면 이쪽이다.** 패스별로 따로 준다.
+
+```gdscript
+var vp := get_viewport()
+var vis    := vp.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME)
+var shadow := vp.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW,  Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME)
+var canvas := vp.get_render_info(Viewport.RENDER_INFO_TYPE_CANVAS,  Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME)
+```
+
+| 열거값 | 값 | 무엇 |
+|---|---|---|
+| `RENDER_INFO_TYPE_VISIBLE` | 0 | 카메라에 보이는 것을 그린 패스 |
+| `RENDER_INFO_TYPE_SHADOW` | 1 | 그림자 맵 패스 |
+| `RENDER_INFO_TYPE_CANVAS` | 2 | 2D·UI 패스 |
+| `RENDER_INFO_OBJECTS_IN_FRAME` | 0 | 오브젝트 수 |
+| `RENDER_INFO_PRIMITIVES_IN_FRAME` | **1** | **삼각형 수** |
+| `RENDER_INFO_DRAW_CALLS_IN_FRAME` | 2 | 드로우콜 |
+
+> **실측 대조** — 한 씬에서 세 값을 동시에 재면 `Performance` 합계가 어떻게 나오는지 보인다.
+> `보이는 패스 2,880 + 2D·UI 1,218 = Performance 합계 4,098` 로 정확히 맞는다.
+
+### ④ 씬의 총량 — **직접 세는 수밖에 없다** (엔진 API 가 없다)
+
+**"씬 전체 삼각형 수"를 한 번에 주는 API 는 없다.** 노드를 순회해 메시마다 더한다.
+
+```gdscript
+static func mesh_tris(m: Mesh) -> int:
+    var total := 0
+    if m is ArrayMesh:                                   # 배열을 복사하지 않는 빠른 길
+        var am := m as ArrayMesh
+        for i in am.get_surface_count():
+            if am.surface_get_primitive_type(i) != Mesh.PRIMITIVE_TRIANGLES:
+                continue
+            var idx_len := am.surface_get_array_index_len(i)
+            total += (idx_len if idx_len > 0 else am.surface_get_array_len(i)) / 3
+        return total
+    for i in m.get_surface_count():                      # PrimitiveMesh 는 길이 API 가 없다
+        var a := m.surface_get_arrays(i)
+        var idx = a[Mesh.ARRAY_INDEX]
+        if idx != null and (idx as PackedInt32Array).size() > 0:
+            total += (idx as PackedInt32Array).size() / 3
+        else:
+            total += (a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+    return total
+```
+
+🛑 **`MeshInstance3D` 만 세면 틀린다.** 삼각형을 내놓는 노드가 여럿이고 세는 법도 다르다.
+
+| 노드 | 세는 법 |
+|---|---|
+| `MeshInstance3D` | `mesh_tris(mesh)` |
+| `MultiMeshInstance3D` | `mesh_tris(multimesh.mesh) × instance_count` — **드로우콜은 1** |
+| `GridMap` | 셀마다 `mesh_library.get_item_mesh(item)` |
+| `CSGShape3D` | **루트만**(`is_root_shape()`) `get_meshes()[1]` — 자식이 이미 합쳐져 있다 |
+| `GPUParticles3D` | `get_draw_pass_mesh(i)` 합 × `amount` |
+| `Sprite3D`·`AnimatedSprite3D` | 2 (판 한 장) |
+| `Label3D` | 글자 수 × 2 (근사) |
+
+> 🛑 **런타임에 `add_child()` 로 만드는 메시는 이 방법으로 못 센다.** 씬 파일에 없기 때문이다.
+> 그런 씬은 ②·③ 으로 실행 중에 재야 한다.
+
+**이 스킬이 도구를 들고 있다** — `/godot init` 을 하면 `scripts/triangles.sh` 로 부를 수 있다.
+
+```bash
+scripts/triangles.sh scenes/main/main.tscn   # 씬 하나 — 무거운 노드 순위까지
+scripts/triangles.sh --all --budget 150000   # 전 씬. 초과가 있으면 종료 코드 1
+scripts/triangles.sh --frame                 # 실제로 띄워 그린 양 (③ 방식)
+scripts/triangles.sh --glb assets            # ⑤ 방식 — Godot 없이
+
+# 링크를 안 걸었으면 직접
+godot --headless --path . -s res://.claude/skills/godot/scripts/count_triangles.gd -- res://scenes/main/main.tscn
+```
+
+🛑 **`.claude/` 는 Godot 리소스 스캔에서 빠지지만 `-s res://.claude/…` 로 실행하는 것은 된다**(4.7.2 실측).
+그래서 스크립트를 프로젝트 안으로 복사할 필요가 없다.
+
+### ⑤ Godot 없이 — `.glb` 를 직접 읽는다 (파이썬)
+
+**에셋이 프로젝트에 들어오기 전(CI·검수)에는 임포트 결과가 없다.** GLB 는
+`헤더 12바이트 + JSON 청크 + BIN 청크` 구조라, **JSON 만 읽어도** 삼각형 수가 나온다.
+
+```python
+import json, struct
+def gltf_json(path):
+    raw = open(path, "rb").read()
+    if raw[:4] != b"glTF":                       # .gltf 는 그냥 JSON
+        return json.loads(raw.decode())
+    off = 12                                     # magic·version·length
+    while off < len(raw):
+        clen, ctype = struct.unpack("<II", raw[off:off+8])
+        if ctype == 0x4E4F534A:                  # 'JSON'
+            return json.loads(raw[off+8:off+8+clen].decode())
+        off += 8 + clen + (-clen % 4)            # 4바이트 정렬
+
+g = gltf_json("character.glb")
+acc = g["accessors"]
+tris = sum(
+    acc[p["indices"]]["count"] // 3 if "indices" in p
+    else acc[p["attributes"]["POSITION"]]["count"] // 3
+    for m in g["meshes"] for p in m["primitives"]
+    if p.get("mode", 4) == 4                     # 4 = TRIANGLES
+)
+```
+
+**두 경로가 같은 값을 내는지 대조하면 도구를 믿을 수 있다** — 실제로 같은 `.glb` 를
+Godot 순회로 셌을 때와 파이썬 파싱으로 셌을 때 **1,600 으로 일치**했다.
+
+---
+
+## 16. 라리엔 3D 에서 이것이 걸리는 곳
 
 | 상황 | 이 문서의 어느 절이 답인가 |
 |---|---|
+| **씬에 삼각형이 몇 개인지 알고 싶다** | **15절** — 존재하는 총량(노드 순회)과 실제 그린 양(`Viewport.get_render_info`)은 다른 값이다 |
 | 캐릭터 삼각형 예산을 정한다 | 5절(무엇을 세나) + [dictionary.md](dictionary.md#삼각형-수--폴리곤-수--정점-수--모델의-무게를-세는-세-가지-단위) |
 | 스킨드 캐릭터가 무겁다 | 2절 — 비용이 삼각형이 아니라 **정점 수**에 비례한다 |
 | 드로우콜이 예산을 넘는다 | 9절 — 서피스(머티리얼) 수를 줄인다 |
