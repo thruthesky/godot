@@ -353,7 +353,7 @@ Godot 에디터가 실행 중이어야 동작한다. 자세한 사용법·경고
 | 씬 구조, 프로젝트 설정 | `.tscn` / `project.godot` 직접 읽기 |
 | 런타임 오류, 실제 노드 값, 화면 | MCP 도구 ([references/ai-tooling.md](references/ai-tooling.md)) |
 | 특정 시점의 지역 변수 | DAP 브레이크포인트 |
-| 성능 병목 | [references/performance-mobile.md](references/performance-mobile.md)의 CPU/GPU 구분 절차 |
+| 성능 병목 · fps 하락 | 🛑 **[references/perf-tuning-playbook.md](references/perf-tuning-playbook.md)** — 진단 5단계를 순서대로 |
 
 **LSP로 잡을 수 있는 문제를 게임 실행으로 찾지 않는다.**
 **코드만 읽고 런타임 동작을 단정하지 않는다** — 값을 확인해야 하면 MCP로 관찰한다.
@@ -387,6 +387,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 
 | 문서 | 무엇 | 언제 |
 |---|---|---|
+| [perf-tuning-playbook.md](references/perf-tuning-playbook.md) | 🛑 **프레임이 떨어졌을 때 무엇을 어떤 순서로** — 진단 5단계·측정 장비·원인별 처방·함정 14 ★ **성능 문제가 생기면 여기부터** | 실측 20fps → 60fps · 로딩 49.5→15초 |
 | [lowend-3gb-60fps.md](references/lowend-3gb-60fps.md) | 🛑 3GB RAM 폰에서 60fps ★ 저사양 작업 전 필독 | [상세](references/catalog.md#lowend-3gb-60fpsmd---3gb-ram-폰에서-60fps--저사양-작업-전-필독) |
 | [lowend-culling-lod.md](references/lowend-culling-lod.md) | 저사양에서 "그리는 양"을 줄이는 6가지 엔진 기능 | [상세](references/catalog.md#lowend-culling-lodmd--저사양에서-그리는-양을-줄이는-6가지-엔진-기능) |
 | [basics.md](references/basics.md) | Godot 기본 **색인** ★ 처음 배울 때 먼저 · 본문은 [`basics/`](references/basics/) 11파트 · 기본은 거기 모은다 | [상세](references/catalog.md#basicsmd--godot-기본--처음-배울-때-먼저--기본은-여기-모은다) |
@@ -476,6 +477,35 @@ scripts/triangles.sh --glb assets           # Godot 없이 .glb 를 파이썬으
 메시는 기본 모드가 못 세므로 그런 씬은 `--frame` 으로 잰다.
 `MultiMesh`·`GridMap`·`CSG`·파티클·`Sprite3D`·`Label3D` 는 세는 법이 각각 다르다 →
 [references/mesh-geometry.md §15](references/mesh-geometry.md)
+
+### scripts/build_autotest_release.sh — 실기기 성능 측정용 릴리즈 빌드
+
+**릴리즈 APK 는 `-s res://tests/….gd` 같은 CLI 스크립트를 무시한다.** 그래서 성능·로딩을 실기기에서
+자동으로 재려면 **검증 훅을 제품 코드에 넣고 기능 태그로 켜야** 한다. 이 스크립트가 그 빌드를 만든다.
+
+```bash
+bash .claude/skills/godot/scripts/build_autotest_release.sh              # 자동 로그인 + 성능 로그
+bash .claude/skills/godot/scripts/build_autotest_release.sh --sweep      # + 조건을 순회하며 A/B 측정
+bash .claude/skills/godot/scripts/build_autotest_release.sh --groundfix  # 첫 프레임 전에 바닥만 수정(로딩 A/B)
+bash .claude/skills/godot/scripts/build_autotest_release.sh --fullfix    # 첫 프레임 전에 전부 수정(로딩 A/B)
+```
+
+`export_presets.cfg` 의 `custom_features` 를 잠깐 바꿔 내보내고 **반드시 원복하며 원복을 검증한다**
+(🛑 원복에 실패하면 스토어 빌드에 자동 로그인이 들어간다). 쓰는 법은
+[perf-tuning-playbook.md §3](references/perf-tuning-playbook.md).
+
+### scripts/png_pixel.py — 스크린샷의 픽셀 색 재기
+
+머티리얼을 `UNSHADED` 로 바꾸면 조명이 곱해지지 않아 **색이 변한다.** 수정 전 화면의 실제 픽셀 색을
+재서 그 값을 `albedo_color` 에 넣어야 외관이 그대로다(눈대중은 반드시 어긋난다).
+
+```bash
+python3 .claude/skills/godot/scripts/png_pixel.py before.png 360 1000
+#   (360,1000)  RGB (80, 92, 110)  #505C6E  → Godot Color(0.313725, 0.360784, 0.431373)
+python3 .claude/skills/godot/scripts/png_pixel.py after.png     # 좌표 생략 시 9곳 자동 샘플링
+```
+
+표준 라이브러리만 쓴다(Pillow 불필요). 근거는 [perf-tuning-playbook.md §4.4](references/perf-tuning-playbook.md).
 
 ## 프로젝트 내 학습 문서
 

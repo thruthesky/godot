@@ -27,6 +27,9 @@
 
 > ### 🛑 이 절은 요약이다 — 실제 작업은 [lowend-3gb-60fps.md](lowend-3gb-60fps.md) 를 본다
 >
+> **지금 프레임이 떨어져 있다면** → **[perf-tuning-playbook.md](perf-tuning-playbook.md)**
+> (진단 5단계 · 릴리즈 실기기 측정 장비 · 원인별 처방 · 함정 14가지. 실측 20fps → 60fps)
+>
 > **LOD·컬링·해상도 스케일링·VRS 를 3GB 폰에서 쓸지 말지**는
 > **[lowend-culling-lod.md](lowend-culling-lod.md)** 에 판정표로 정리되어 있다.
 >
@@ -180,10 +183,26 @@ func _process(_delta: float) -> void:
 
 | 지표 | CPU 병목 신호 | GPU 병목 신호 |
 |------|--------------|--------------|
-| `TIME_PROCESS` + `TIME_PHYSICS_PROCESS` | 프레임 시간의 대부분 | 작음 |
+| **해상도 축소 효과** ← 🛑 **이것 하나만 믿는다** | 없음 | 큼 |
+| 화면 밖(빈 곳)을 보면 | 그대로 느림 | 빨라짐 |
 | 드로우콜 수 | 매우 많음 (>2000) | 상관 없음 |
-| 해상도 축소 효과 | 없음 | 큼 |
-| 화면 밖을 보면 | 그대로 느림 | 빨라짐 |
+| ⚠️ `TIME_PROCESS` + `TIME_PHYSICS_PROCESS` | **판정에 쓰지 않는다** (아래) | — |
+
+> ## 🛑 `TIME_PROCESS` 가 크다고 CPU 병목이 아니다 (2026-09-04 엔진 소스 확인)
+>
+> **이 표의 `TIME_PROCESS` 항목은 오래도록 오해를 만들었다.** 4.7 의 `TIME_PROCESS` 는
+> `_process()` 만 재는 값이 **아니다.** `main/main.cpp:5059~5138` 에서
+> `main_loop->process()` → `RenderingServer::sync()` → `RenderingServer::draw()` → `process_ticks`
+> **전 구간**을 재고 **1초마다 그 최댓값**을 게시한다. 그리고 `draw()` 안에서
+> `vkAcquireNextImageKHR(..., UINT64_MAX)` · `vkWaitForFences(..., UINT64_MAX)` 로 **GPU 를 기다린다**
+> (`rendering_device.cpp:5399·8048·8219`).
+>
+> **즉 GPU 가 밀리면 그 대기 시간이 `TIME_PROCESS` 에 그대로 찍힌다.** 실측 사례 —
+> HUD 에 `process 47.04ms` 가 떠서 CPU 병목처럼 보였지만, 실제 원인은 바닥 머티리얼의
+> 픽셀 셰이딩이었고 메인 스레드 CPU 사용률은 **한 코어의 44%** 였다.
+>
+> **CPU/GPU 판정은 해상도 절반 테스트로 한다.** 절차 전체는
+> [perf-tuning-playbook.md §1.1·§2](perf-tuning-playbook.md) 를 본다.
 
 ### 주요 Performance 모니터
 
