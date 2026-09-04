@@ -18,6 +18,7 @@
 9. [ReflectionProbe](#9-reflectionprobe)
 10. [WorldEnvironment](#10-worldenvironment)
 11. [Decal](#11-decal)
+11-2. [CompositorEffect](#11-2-compositoreffect--렌더-파이프라인에-내-gpu-코드를-끼운다)
 12. [파티클](#12-파티클)
 13. [렌더 레이어와 뷰포트](#13-렌더-레이어와-뷰포트)
 14. [자주 하는 실수](#14-자주-하는-실수)
@@ -50,7 +51,7 @@
 | SSAA (Supersampling) | ✓ | ✓ | ✓ |
 | PCSS 소프트 섀도우 | 전 광원 | DirectionalLight 제외 | ✗ |
 | **SubsurfaceScattering** | ✓ | ✗ | ✗ |
-| Decal | ✓ | ✓ | 제한적 |
+| Decal | ✓ | ✓ | **✗** (실측 — §11) |
 | 컴퓨트 셰이더 | ✓ | ✓ (성능 페널티) | ✗ |
 | CompositorEffects | ✓ | ✓ | ✗ |
 | 오클루전 컬링 | ✓ | ✓ | ✓ |
@@ -791,8 +792,69 @@ $WorldEnvironment.camera_attributes = attrs
 
 ## 11. Decal
 
-표면에 텍스처를 투영한다. 탄흔, 핏자국, 물웅덩이, 도로 표시에 쓴다.
-Mobile 렌더러에서 지원된다.
+표면에 텍스처를 **투영**한다. 탄흔·핏자국·물웅덩이·도로 표시·그을음처럼
+**원래 모델에는 없었고 나중에 생긴 무늬**를 메시를 건드리지 않고 얹는 수단이다.
+말의 유래와 다른 방법(텍스처에 그려 넣기 / 평면 메시 띄우기)과의 비교는
+[dictionary.md](dictionary.md#데칼-decal--표면에-나중에-붙이는-스티커) 에 있다.
+
+상속은 **`Decal < VisualInstance3D < Node3D`** 다 — `GeometryInstance3D` 가 **아니다.**
+자기 메시를 그리지 않고 **남의 표면에 발라지므로** `Light3D`·`ReflectionProbe` 와 같은 계열이다.
+
+### 엔진 기본값 (Godot 4.7.2 `--doctool` 추출)
+
+| 속성 | 기본값 | 비고 |
+|---|---|---|
+| `size` | `Vector3(2, 2, 2)` | 투영 상자. **Y 가 투영 깊이** |
+| `albedo_mix` | `1.0` | 1 이면 원래 색을 완전히 덮는다 |
+| `cull_mask` | **`1048575`** (2²⁰−1) | 🛑 **20 레이어 전부.** `1` 이 아니다 |
+| `upper_fade` / `lower_fade` | `0.3` / `0.3` | 상자 위·아래 끝 페이드 |
+| `normal_fade` | `0.0` | 표면 각도에 따른 페이드 (0 = 안 함) |
+| `distance_fade_enabled` | **`false`** | 기본은 꺼져 있다 |
+| `distance_fade_begin` / `_length` | `40.0` / `10.0` | |
+| `emission_energy` | `1.0` | |
+| `modulate` | `Color(1, 1, 1, 1)` | |
+
+> 🛑 **`cull_mask = 1` 은 기본값이 아니라 "레이어 1 에만 붙인다" 는 제한이다.**
+> 아래 예제처럼 명시하는 코드를 그대로 베끼면 다른 레이어의 벽에는 데칼이 안 붙는다.
+> 특별한 이유가 없으면 **건드리지 않는다.**
+
+텍스처 슬롯은 4개이고 **색만이 아니라 표면 성질까지** 덮어쓴다 —
+`texture_albedo`(색) · `texture_normal`(요철) · `texture_orm`(가림·거칠기·금속성) ·
+`texture_emission`(발광).
+
+### 🛑 렌더러 지원 — Compatibility 에서는 **아무것도 나오지 않는다** (실측)
+
+흰 바닥에 빨간 데칼을 놓고 중앙 픽셀의 초록 성분을 쟀다. 먹으면 `1.0` → `0.1` 로 떨어진다.
+
+| 렌더러 | 중앙 픽셀 g | 판정 |
+|---|---|---|
+| Forward+ | `1.000` → **`0.106`** | ✅ |
+| **Mobile** | `1.000` → **`0.098`** | ✅ |
+| Compatibility | `1.000` → `1.000` | 🛑 **미지원** |
+
+Compatibility 는 **오류도 경고도 없이 조용히 무시한다.** §1 표의 "제한적" 을
+실측으로 정정한 항목이다. 웹·구형 기기용 Compatibility 프로필을 함께 낼 계획이라면
+데칼로 표현한 것은 전부 대안이 필요하다.
+
+**안드로이드 실기기 2대에서 Mobile 동작을 확인했다** — Galaxy A12(PowerVR Rogue GE8320,
+Vulkan 1.1.131) · Galaxy A15(ARM Mali-G57 MC2, Vulkan 1.3.303), 둘 다 중앙 픽셀
+`r=1.000 g=0.098 b=0.098`.
+
+### ✅ 광원 0개 · `UNSHADED` 에서도 그대로 나온다 (실측)
+
+데칼은 조명 단계에서 표면 속성을 덮어쓰는 기법이라 "조명을 끄면 데칼도 안 먹지 않나" 를
+의심할 만하다. **아니다.**
+
+| 머티리얼 | 광원 | 데칼 중앙 g | 결과 |
+|---|---|---|---|
+| SHADED | 있음 | `0.098` | 보인다 |
+| SHADED | 없음 | `0.000` | 보인다 |
+| UNSHADED | 있음 | `0.000` | 보인다 |
+| ✅ **UNSHADED** | **없음** | **`0.000`** | **보인다 — 가장 선명하다** |
+
+`UNSHADED` 에서 더 진한 이유는 조명 감쇠가 곱해지지 않아 데칼의 `albedo` 가 그대로
+나오기 때문이다. **조명을 굽고 `SHADING_MODE_UNSHADED` 를 쓰는 프로젝트에서도
+데칼은 정상 동작하며, 오히려 결과를 예측하기 쉽다.**
 
 ```gdscript
 var decal := Decal.new()
@@ -808,7 +870,7 @@ decal.lower_fade = 0.3
 decal.distance_fade_enabled = true
 decal.distance_fade_begin = 20.0
 decal.distance_fade_length = 10.0
-decal.cull_mask = 1                          # 어느 레이어에 투영할지
+decal.cull_mask = 1                          # 🛑 레이어 1 에만 투영한다 (기본값은 1048575 = 전부)
 add_child(decal)
 ```
 
@@ -841,6 +903,123 @@ func _pick_up_vector(normal: Vector3) -> Vector3:
 
 **데칼 개수를 제한하는 이유**: 데칼은 겹칠 때마다 프래그먼트 비용이 누적된다.
 모바일에서는 32개 정도가 상한이다.
+
+---
+
+## 11-2. CompositorEffect — 렌더 파이프라인에 내 GPU 코드를 끼운다
+
+`Environment` 의 Glow·Adjustments 가 **엔진이 준 효과를 켜는 것**이라면,
+`CompositorEffect` 는 **엔진에 없는 효과를 직접 만드는 것**이다 (Godot 4.3+).
+용어의 뜻과 라리엔에서의 판단은 [dictionary.md](dictionary.md#compositoreffect--렌더링-도중에-내-코드를-끼워-넣는-자리) 에 있고,
+여기서는 **API 와 실측 수치**를 둔다.
+
+### 구조 — `Resource` 두 개를 씬에 붙인다
+
+```
+WorldEnvironment.compositor   (월드 전체)  ─┐
+Camera3D.compositor           (그 카메라만) ─┴─→ Compositor
+                                                  └─ compositor_effects: CompositorEffect[]
+```
+
+`Compositor`·`CompositorEffect` 둘 다 **`Resource`** 다 (엔진에서 확인). 노드가 아니므로
+`.tres` 로 저장해 재사용한다. 붙이는 곳은 `WorldEnvironment.compositor` 와
+`Camera3D.compositor` **둘 뿐**이다 — `Environment` 에는 이 속성이 없다.
+
+```gdscript
+# my_effect.gd
+extends CompositorEffect
+
+func _init() -> void:
+    effect_callback_type = CompositorEffect.EFFECT_CALLBACK_TYPE_POST_TRANSPARENT
+    access_resolved_color = true       # 컬러 버퍼를 쓰겠다고 미리 요청한다
+    enabled = true
+
+func _render_callback(effect_callback_type: int, render_data: RenderData) -> void:
+    var buffers := render_data.get_render_scene_buffers()
+    if buffers is RenderSceneBuffersRD:
+        var brd := buffers as RenderSceneBuffersRD
+        var size: Vector2i = brd.get_internal_size()
+        var color: RID = brd.get_color_layer(0)
+        # 여기서 RenderingDevice 컴퓨트 셰이더를 디스패치한다
+```
+
+```gdscript
+# 씬에 붙이는 쪽
+var comp := Compositor.new()
+comp.compositor_effects = [MyEffect.new()]
+$WorldEnvironment.compositor = comp
+```
+
+### 콜백 시점 5종 (엔진에서 확인)
+
+| 상수 | 값 | 시점 | 쓰임 |
+|---|---|---|---|
+| `EFFECT_CALLBACK_TYPE_PRE_OPAQUE` | 0 | 불투명 그리기 전 | 배경 대체 |
+| `EFFECT_CALLBACK_TYPE_POST_OPAQUE` | 1 | 불투명 뒤 (깊이 확정) | **외곽선·깊이 기반 효과** |
+| `EFFECT_CALLBACK_TYPE_POST_SKY` | 2 | 하늘 뒤 | 대기 산란 |
+| `EFFECT_CALLBACK_TYPE_PRE_TRANSPARENT` | 3 | 반투명 전 | 굴절 소스 준비 |
+| `EFFECT_CALLBACK_TYPE_POST_TRANSPARENT` | 4 | 반투명 뒤 = **최종 화면** | 색보정·왜곡 |
+| `EFFECT_CALLBACK_TYPE_MAX` | 5 | (개수) | |
+
+### 요청 플래그 — 안 켜면 자료가 없다
+
+| 속성 | 요청하는 것 |
+|---|---|
+| `access_resolved_color` | MSAA 해상된 컬러 버퍼 |
+| `access_resolved_depth` | 해상된 깊이 버퍼 |
+| `needs_normal_roughness` | 노멀·거칠기 버퍼 |
+| `needs_motion_vectors` | 모션 벡터 |
+| `needs_separate_specular` | 분리된 스페큘러 |
+| `enabled` | 이 효과 사용 여부 |
+
+### `RenderData` 에서 꺼내는 것 (엔진에서 확인)
+
+| 메서드 | 반환 |
+|---|---|
+| `get_render_scene_buffers()` | `RenderSceneBuffers` — RD 백엔드에서는 **`RenderSceneBuffersRD`** |
+| `get_render_scene_data()` | `RenderSceneData` (카메라 행렬 등) |
+| `get_environment()` | `RID` |
+| `get_camera_attributes()` | `RID` |
+
+> 🛑 **셰이더는 Godot 셰이더 언어가 아니라 GLSL 이다.** `shader_type spatial` 이 아니라
+> `.glsl` 을 `RDShaderFile` 로 임포트하고 `RenderingDevice.compute_list_begin()` →
+> `compute_list_bind_compute_pipeline()` → `compute_list_dispatch()` 로 직접 돌린다.
+
+### 🛑 렌더러 지원 — Mobile 에서도 **동작한다** (실측)
+
+콜백이 실제로 불리는지와 컬러 텍스처를 얻을 수 있는지를 10프레임 동안 셌다.
+
+| 렌더러 | 콜백 호출 | `get_render_scene_buffers()` | `get_color_layer(0)` |
+|---|---|---|---|
+| Forward+ | **10회** | `RenderSceneBuffersRD` | 유효 |
+| **Mobile** | **10회** | `RenderSceneBuffersRD` | 유효 |
+| Compatibility | **0회** | (없음) | — |
+
+**안드로이드 실기기 2대에서도 같다** — GPU 벤더가 달라도 결과가 같았다.
+
+| 실기기 | GPU | Vulkan | 콜백 | 버퍼 |
+|---|---|---|---|---|
+| Galaxy A12 (SM-A125N) | PowerVR Rogue GE8320 | 1.1.131 | 10회 | `RenderSceneBuffersRD` · RID 유효 |
+| Galaxy A15 (SM-A155F) | ARM Mali-G57 MC2 | 1.3.303 | 10회 | `RenderSceneBuffersRD` · RID 유효 |
+
+Compatibility 가 0회인 이유는 **`RenderingDevice` 자체가 없기** 때문이다. OpenGL 백엔드에는
+컴퓨트 셰이더를 돌릴 자리가 없어 이 기능이 성립하지 않는다.
+
+### 🛑 그러나 이 프로젝트에서는 기본적으로 쓰지 않는다
+
+**동작하는 것과 예산에 맞는 것은 다르다.** 3GB 저사양 안드로이드 60fps 가 기준이라면
+전체 화면 컴퓨트 패스는 감당하기 어렵다.
+
+| 비용 | |
+|---|---|
+| 전체 화면 패스가 하나 는다 | 720p 라도 매 프레임 92만 픽셀을 다시 훑는다 |
+| **타일드 GPU 에 특히 비싸다** | PowerVR·Adreno·Mali 는 타일 메모리에서 그린다. 중간 버퍼를 읽으려면 메인 메모리로 내려야(resolve) 하고, 대역폭은 저사양에서 가장 귀한 자원이다 |
+| 컴퓨트 셰이더 페널티 | Mobile 렌더러에서 컴퓨트는 "되지만 느리다" 쪽이다 (§1 표) |
+| 발열 | 상시 효과는 장시간 플레이에서 클럭 저하로 이어진다 |
+
+**더 싼 대안을 먼저 검토한다** — 색조·명암은 `Environment` Adjustments(§10),
+외곽선은 `next_pass` 뒤집힌 껍데기(§5), 가림은 반투명 페이드. 셋 다 화면 전체를 다시 훑지 않는다.
+쓴다면 **컷신·연출처럼 짧고 프레임을 양보해도 되는 구간**으로 한정한다.
 
 ---
 

@@ -282,8 +282,16 @@ GitHub 이슈·PR, Asset Store. **다만 웹에서 본 것도 그대로 옮기�
 - 후처리는 `Glow`, `Adjustments`, 기본 `Fog`까지만 가능하다.
 - `SubsurfaceScattering`은 Forward+ 전용이므로 머티리얼에서 쓰지 않는다.
 - AO는 화면공간 대신 **정점 컬러에 구운 AO** 또는 베이킹된 AO 텍스처를 쓴다.
+- ✅ **`Decal` 은 Mobile 에서 동작하고, 광원 0개·`UNSHADED` 에서도 그대로 나온다**(실측).
+  지면 얼룩·핏자국·경계 표시에 쓸 수 있다. 단 **Compatibility 에서는 조용히 무시되고**,
+  겹칠수록 프래그먼트 비용이 쌓이므로 `distance_fade` 와 개수 상한을 둔다
+  (→ [rendering-3d.md §11](references/rendering-3d.md#11-decal)).
+- 🛑 **`CompositorEffect` 는 Mobile 에서도 동작하지만 기본적으로 쓰지 않는다.** 전체 화면
+  컴퓨트 패스가 타일드 GPU 의 대역폭을 크게 먹는다. 색보정은 `Environment` Adjustments,
+  외곽선은 `next_pass` 로 푼다 (→ [rendering-3d.md §11-2](references/rendering-3d.md#11-2-compositoreffect--렌더-파이프라인에-내-gpu-코드를-끼운다)).
 
 렌더러별 지원/미지원 전체 표는 [references/rendering-3d.md](references/rendering-3d.md)에 있다.
+두 용어의 뜻·유래·판단 기준은 [references/dictionary.md](references/dictionary.md#데칼-decal--표면에-나중에-붙이는-스티커) 에 있다.
 
 ## 작업 흐름 — 이 순서를 지킨다
 
@@ -419,6 +427,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [project-config.md](references/project-config.md) | 설정 파일 포맷과 CLI | [상세](references/catalog.md#project-configmd--설정-파일-포맷과-cli) |
 | [ai-tooling.md](references/ai-tooling.md) | LSP·MCP·Codex 연동 | [상세](references/catalog.md#ai-toolingmd--lspmcpcodex-연동) |
 | [editor-plugin.md](references/editor-plugin.md) | @tool과 EditorPlugin 개발 | [상세](references/catalog.md#editor-pluginmd--tool과-editorplugin-개발) |
+| [editor-compass.md](references/editor-compass.md) | **동서남북 보조선** — 복사해 바로 쓰는 애드온([addons/editor_compass/](addons/editor_compass/)) · 숫자 `0` 토글 · 🛑 에디터 단축키가 **`_input` 이어야 하는 이유**(`_shortcut_input`·`_forward_3d_gui_input` 은 3D 뷰포트 클릭 후 안 온다) · 씬에 저장 안 되게 하는 `owner` 규칙 · **끄는 방법 셋**(`0` · `Project > Tools` 메뉴 · 플러그인 체크 해제)과 끌 때 **그룹 전체**를 떼어야 하는 이유 | 3D 씬에서 방향·원점을 모르겠을 때 · 에디터 단축키가 안 먹을 때 |
 | [whats-new.md](references/whats-new.md) | 최신 버전 신기능과 마이그레이션 | [상세](references/catalog.md#whats-newmd--최신-버전-신기능과-마이그레이션) |
 | [asset-store.md](references/asset-store.md) | Asset Store와 애드온 | [상세](references/catalog.md#asset-storemd--asset-store와-애드온) |
 | [level-design.md](references/level-design.md) | 맵 만들기 | [상세](references/catalog.md#level-designmd--맵-만들기) |

@@ -344,7 +344,7 @@ Proximity/Distance Fade, Stencil, Render Priority)과 각 옵션의 성능 비�
 플래그·비교·참조값 전체, **벽 너머 캐릭터 보이기** 구현, Mobile 렌더러에서도 동작하며
 투명 패스로 넘어가는 비용과 그리는 순서 함정), **4.7에서 전면 재작성된 SSR**(`ssr_enabled`·`ssr_max_steps`·`ssr_depth_tolerance`와
 `screen_space_reflection/half_size` 해상도 설정 — 단 **Forward+ 전용이라 이 프로젝트에서는
-동작하지 않는다**), `WorldEnvironment`의 톤매퍼·Glow·Fog·색보정, `Decal` 탄흔 배치,
+동작하지 않는다**), `WorldEnvironment`의 톤매퍼·Glow·Fog·색보정, **`Decal`**(엔진 기본값 표 — `cull_mask` 기본이 `1048575`이지 `1`이 아니라는 함정, 탄흔 배치 실전 코드, **Compatibility에서는 오류 없이 무시된다는 실측**, **광원 0개·`SHADING_MODE_UNSHADED`에서도 정상 동작한다는 실측**), **`CompositorEffect`**(4.3+ — `Compositor` 리소스 구조와 붙이는 두 곳, 콜백 시점 5종, 요청 플래그 6종, `RenderData`에서 `RenderSceneBuffersRD`를 꺼내는 법, 셰이더가 Godot 셰이더 언어가 아니라 **GLSL 컴퓨트**라는 점, **Mobile 렌더러와 안드로이드 실기기 2종(PowerVR·Mali)에서 동작하지만 저사양 예산에서는 쓰지 않는 이유**),
 파티클(**4.7 축별 스케일·3D 회전** — `use_scale_3d`/`use_rotation_3d`/
 `use_rotation_velocity_3d` 세 플래그가 모두 기본 꺼져 있는 함정, 기존 float 방식과의
 차이, 빌보드에서는 효과가 안 보이는 이유), 렌더 레이어와 `SubViewport` 활용을 설명한다.
