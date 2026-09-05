@@ -196,7 +196,8 @@ config/features=PackedStringArray("4.7", "Mobile")
 
 | 키 | 설명 |
 |----|------|
-| `window/size/viewport_width/height` | 기준 해상도 |
+| `window/size/viewport_width/height` | 기준 해상도 (게임 내부 좌표계) |
+| `window/size/window_width/height_override` | **실제 창 픽셀.** 기본 `0`(= viewport 값을 그대로 씀). 내부 해상도는 두고 창만 키울 때 쓴다 → [basics/06 §실행 창 크기](basics/06-editor-screen.md#-실행하면-창이-이-크기로-뜬다--정하는-곳은-셋이다) |
 | `window/stretch/mode` | `disabled` / `canvas_items` / `viewport` |
 | `window/stretch/aspect` | `ignore` / `keep` / `keep_width` / `keep_height` / `expand` |
 | `window/handheld/orientation` | 0=landscape, 1=portrait, ... |
@@ -802,6 +803,11 @@ godot --path . --maximized
 godot --path . --single-window
 godot --path . --xr-mode off
 ```
+
+🛑 **`--resolution` 을 주면 `window_width/height_override` 는 무시된다.** 엔진이 이 인자를 받으면
+`force_res` 를 켜고 프로젝트 설정으로 창 크기를 잡는 블록을 통째로 건너뛴다(`main/main.cpp`).
+에디터의 **Game 임베드(4.5+)가 이 인자를 스스로 주입**하기 때문에, 프로젝트 설정을 고쳤는데도
+창 크기가 그대로인 현상이 생긴다 → [basics/06 §실행 창 크기](basics/06-editor-screen.md#-실행하면-창이-이-크기로-뜬다--정하는-곳은-셋이다)
 
 ### 유틸리티
 

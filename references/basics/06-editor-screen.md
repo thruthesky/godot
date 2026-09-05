@@ -47,6 +47,7 @@
 |---|---|
 | [·](#어떤-파일을-어디서-고치나) | **어떤 파일을 어디서 고치나** — 종류마다 여는 창이 다르다 |
 | [·](#3d-뷰포트-위의-툴바--파란-압정을-조심한다) | 3D 뷰포트 위의 툴바 — 파란 압정을 조심한다 |
+| [·](#-실행하면-창이-이-크기로-뜬다--정하는-곳은-셋이다) | **▶ 실행하면 창이 이 크기로 뜬다** — 창 크기를 정하는 세 곳 · 🛑 Game 임베드가 앞의 둘을 덮는다 |
 | [·](#새-프로젝트를-만들면-이미-들어-있는-파일들) | 새 프로젝트를 만들면 이미 들어 있는 파일들 |
 | [·](#filesystem-독에서-파일폴더를-숨긴다) | FileSystem 독에서 파일·폴더를 숨긴다 |
 
@@ -158,6 +159,119 @@ FileSystem 독에서 **우클릭 → `Create New`** 에 넷이 있다 — `Scene
 global transform of its children." 단축키 경로는 `spatial_editor/preserve_children_transform`
 이며 [공식 문서](https://docs.godotengine.org/en/stable/tutorials/3d/introduction_to_3d.html)
 에도 <kbd>P</kbd> 로 명시되어 있다.)*
+
+## ▶ 실행하면 창이 이 크기로 뜬다 — 정하는 곳은 셋이다
+
+**F5 로 실행했는데 창이 원하는 크기가 아니라면 아래 셋을 순서대로 본다.**
+🛑 **③ 이 ①②를 통째로 덮는다** — 셋 중 마지막이 이긴다.
+
+### ① 프로젝트 설정 — 정본 (모든 팀원·모든 실행에 적용)
+
+`Project > Project Settings > Display > Window > Size`
+
+🛑 **오른쪽 위 `Advanced Settings` 토글을 켜야** 아래 두 항목이 보인다.
+
+| 항목 | 뜻 |
+|---|---|
+| **Window Width Override** · **Window Height Override** | ✅ **실제 창 픽셀.** 창을 키우려면 여기다 |
+| Viewport Width / Height | 🛑 **게임 내부 기준 해상도.** 건드리면 UI 좌표계가 통째로 흔들린다 |
+
+`project.godot` 의 키로는 `display/window/size/window_width_override` ·
+`display/window/size/window_height_override` 이고 **기본값은 둘 다 `0`** 이다
+(`godot --headless --doctool` 로 확인, 4.7.2). `0` 이면 `viewport_width/height` 가 그대로 창 크기가 된다.
+
+**왜 Viewport 가 아니라 Override 인가** — 엔진이 창 크기를 먼저 `viewport_width/height` 로 잡은 뒤
+**Override 가 0보다 클 때만 그 값으로 덮어쓰기** 때문이다.
+
+```cpp
+// main/main.cpp (4.7) — 창 크기가 정해지는 유일한 자리
+if (use_custom_res) {
+    if (!force_res) {                                  // 🛑 ③ 에서 다시 나온다
+        window_size.width  = GLOBAL_GET("display/window/size/viewport_width");
+        window_size.height = GLOBAL_GET("display/window/size/viewport_height");
+
+        int desired_width = GLOBAL_GET("display/window/size/window_width_override");
+        if (desired_width > 0) { window_size.width = desired_width; }     // ← 덮어쓴다
+        int desired_height = GLOBAL_GET("display/window/size/window_height_override");
+        if (desired_height > 0) { window_size.height = desired_height; }
+    }
+```
+
+즉 Override 는 **"내부 해상도는 그대로 두고 창만 다르게"** 하라고 있는 값이다.
+에디터도 같은 규칙으로 읽는다 — `editor/run/editor_run.cpp` 의 `get_window_placement()` 가
+`placement.size` 를 viewport 로 채운 뒤 Override 가 양수면 그것으로 바꾼다.
+
+### ② 에디터 설정 — 내 컴퓨터에서만 (프로젝트 파일을 건드리지 않는다)
+
+`Editor > Editor Settings > Run > Window Placement > Rect`
+
+| 값 | 결과 |
+|---|---|
+| **Centered** (기본, `1`) | 화면 가운데. **크기는 ① 이 정한다** |
+| **Force Maximized** | 실행 창이 최대화되어 뜬다 |
+| **Force Fullscreen** | 전체화면 |
+| **Custom Position** | 아래 `Rect Custom Position` 으로 위치를 지정 |
+
+`editor_settings-4.x.tres` 의 `run/window_placement/rect` 다.
+**프로젝트 설정을 바꾸지 않고 나만 크게 보고 싶을 때** 이쪽을 쓴다.
+
+### ③ 🛑 Game 임베드(4.5+) — **①②를 무시하고 자기 크기로 띄운다**
+
+> **①을 900×1600 으로 고쳤는데 실행 창이 1508×1599 로 떴다** — 2026-09-05 실측한 실제 증상이다.
+> 설정이 안 먹은 것이 아니라 **다른 곳이 덮어쓴 것**이다.
+
+Godot **4.5 부터 실행 결과가 에디터의 `Game` 워크스페이스 안에 임베드**되고,
+그때 에디터가 **원래 인자를 지우고 `--resolution` 을 직접 만들어 넘긴다.**
+
+```cpp
+// editor/run/game_view_plugin.cpp (4.7) — _update_arguments_for_instance()
+HashSet<String> remove_args({ "--position", "--resolution", "--screen" });   // ① 있던 것을 지우고
+...
+N = r_arguments.insert_after(N, "--resolution");
+r_arguments.insert_after(N, itos(rect.size.x) + "x" + itos(rect.size.y));    // ② 임베드 영역 크기로 다시 넣는다
+```
+
+그리고 `--resolution` 이 들어오면 `main.cpp` 가 **`force_res = true`** 로 두므로,
+위 ①의 `if (!force_res)` 블록이 **통째로 건너뛰어진다.** Override 가 아무 일도 하지 못하는 이유다.
+
+**임베드 창 크기 모드가 한 번 더 관여한다** — `Game` 화면 툴바 오른쪽 `⋮` 메뉴에서 고른다.
+
+| 모드 | 창 크기 (`editor/run/embedded_process.cpp`) |
+|---|---|
+| **Fixed** | ①의 크기를 쓴다. **단 임베드 영역이 그보다 작으면 비율을 유지한 채 축소** |
+| **Keep Aspect** | 비율만 유지하며 영역에 맞춘다 |
+| **Stretch** | 🛑 **영역 전체로 늘린다 — ①이 완전히 사라진다** |
+
+```cpp
+// editor/run/embedded_process.cpp (4.7)
+if (window_size != Size2i()) {                       // Stretch 는 여기가 Size2i() 라 통째로 건너뛴다
+    if (!keep_aspect && control_rect.size.x >= window_size.x && control_rect.size.y >= window_size.y) {
+        desired_rect.size = window_size;             // Fixed — 영역이 충분히 크면 그대로
+    } else {
+        float ratio = MIN((float)control_rect.size.x / window_size.x,
+                          (float)control_rect.size.y / window_size.y);
+        desired_rect.size = Size2i(window_size.x * ratio, window_size.y * ratio).maxi(1);
+    }
+}
+```
+
+**해결 — 목적에 따라 고른다**
+
+| 하고 싶은 것 | 방법 |
+|---|---|
+| ①의 크기를 **정확히** 보고 싶다 | `Editor Settings > Run > Window Placement > **Game Embed Mode**` 를 **`Disabled`** 로. 독립 창으로 떠서 프로젝트 설정이 그대로 적용된다 |
+| 임베드는 유지하되 크기를 맞추고 싶다 | `Game` 툴바 오른쪽 **`⋮` → `Fixed`**. 임베드 영역이 ①보다 작으면 여전히 축소되므로 창을 키우거나 ①을 줄인다 |
+| 에디터를 아예 거치지 않는다 | `godot --path . --resolution 900x1600` — CLI 는 에디터가 개입하지 않는다. 🛑 단 이때도 `--resolution` 을 주면 같은 이유로 ①은 무시된다 |
+
+> **왜 하필 1508×1599 였나** — 임베드 영역이 1508×1599 이고 모드가 `Stretch` 였다.
+> `Fixed` 였다면 `ratio = MIN(1508/900, 1599/1600) = 0.999` 가 곱해져 **899×1599** 가 됐을 것이다
+> (요청한 세로 1600 보다 영역이 1픽셀 작아 축소 분기로 간다).
+
+> 📱 **모바일 게임이라면 창을 가로가 아니라 세로로 키운다.** UI 를 화면 폭으로 분기시키는
+> 프로젝트에서는 창을 넓히는 순간 데스크톱 레이아웃으로 넘어가 버린다. HiDPI(Retina) 화면은
+> `DisplayServer.screen_get_scale()` 이 `2.0` 이라 **창 픽셀의 절반이 논리 dp** 라는 점도 함께 계산한다.
+
+---
 
 ## 새 프로젝트를 만들면 이미 들어 있는 파일들
 
