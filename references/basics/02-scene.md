@@ -3,7 +3,7 @@
 > **[Godot 기본](../basics.md)** 의 파트 **3 / 11**
 > [← 1. Godot 의 세계관 — 노드 → 씬 → 씬 속의 씬](01-world.md) · [3. 인스턴싱(Instancing) — 설계도로 실체를 찍어낸다 →](03-instancing.md)
 
-> **이 문서로 오는 상황** — "씬" 이 **파일인지 객체인지** 헷갈릴 때 · 루트 노드와 `get_tree().root` 가 다른 이유
+> **이 문서로 오는 상황** — "씬" 이 **파일인지 객체인지** 헷갈릴 때 · 루트 노드와 `get_tree().root` 가 다른 이유 · **`.tscn` 을 고치면 Inspector 가 바뀌는지, Inspector 를 고치면 `.tscn` 이 바뀌는지**
 
 같은 "씬"이라는 말이 **세 가지**를 가리킨다. 이 셋을 구분하지 못하면 계속 막힌다.
 
@@ -40,6 +40,11 @@ script = ExtResource("1_b")
 | 　[·](#새-씬을-만들-때-무엇을-고르나--create-root-node-패널) | 　새 씬을 만들 때 무엇을 고르나 — **`Create Root Node:`** 패널 |
 | 　　[·](#-3d-scene-을-누르면-node3d-로-고정된다) | 　　🛑 `3D Scene` 을 누르면 `Node3D` 로 고정된다 |
 | 　　[·](#루트-타입은-나중에-바꿀-수-있다--다만-뒷정리가-생긴다) | 　　루트 타입은 나중에 바꿀 수 **있다** — 다만 뒷정리가 생긴다 |
+| [·](#inspector-에-보이는-것과-tscn-에-적힌-것--같은-노드의-두-얼굴) | **Inspector 에 보이는 것과 `.tscn` 에 적힌 것** — 같은 노드의 두 얼굴 |
+| 　[·](#tscn-에는-기본값과-다른-것만-적힌다--inspector-는-전부-보여-준다) | 　`.tscn` 에는 기본값과 다른 것만 적힌다 — Inspector 는 전부 보여 준다 |
+| 　[·](#이름이-11-이-아니다--positionrotationscale-은-transform-한-줄) | 　이름이 1:1 이 아니다 — `position`·`rotation`·`scale` 은 `transform` 한 줄 |
+| 　[·](#tscn--inspector--에디터가-디스크에서-다시-읽을지-묻는다) | 　`.tscn` → Inspector — 에디터가 디스크에서 다시 읽을지 묻는다 |
+| 　[·](#inspector--tscn--저장-전까지-메모리에만-있고-저장은-파일을-통째로-다시-쓴다) | 　Inspector → `.tscn` — 저장 전까지 메모리에만 있고, 저장은 파일을 통째로 다시 쓴다 |
 
 ---
 
@@ -221,6 +226,118 @@ Scene 독에서 노드를 **우클릭 → `Change Type...`** 이 있다
 
 ---
 
+## Inspector 에 보이는 것과 `.tscn` 에 적힌 것 — 같은 노드의 두 얼굴
+
+> **이 절로 오는 상황** — "`.tscn` 을 고치면 Inspector 가 바뀌나? Inspector 를 고치면 `.tscn` 이 바뀌나?"
+
+**둘 다 그렇다. 다만 어느 쪽도 "즉시·자동" 은 아니다.** Inspector 가 보여 주는 것은 파일이 아니라
+**메모리에 올라온 노드 객체의 프로퍼티**이고, `.tscn` 은 그 객체를 **만들 때 읽고 · 저장할 때 쓰는** 텍스트다.
+둘 사이에 노드 객체(= 위에서 말한 **씬 인스턴스**)가 끼어 있어서, 방향마다 **넘어가는 순간**이 따로 있다.
+
+```
+              열 때 · Reload from disk                      값 입력
+  demo.tscn  ────────────────────────▶  노드 객체 (메모리)  ◀──────────  Inspector 독
+   (디스크)  ◀────────────────────────   = 씬 인스턴스
+              Cmd/Ctrl+S — 파일 전체를 다시 쓴다
+```
+
+| 방향 | 언제 넘어가나 | 자동인가 |
+|---|---|---|
+| **`.tscn` → Inspector** | 씬을 **열 때.** 이미 열려 있으면 에디터 창에 **포커스가 돌아올 때** "디스크에서 다시 읽을까" 를 묻고, **`Reload from disk`** 를 눌러야 반영된다 | 🛑 아니다 — 묻는다 |
+| **Inspector → `.tscn`** | **저장(<kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd>)할 때.** 그 전까지는 메모리에만 있고 씬 탭 이름에 `(*)` 가 붙는다 | 🛑 아니다 — 저장해야 한다 |
+
+*(4.7.2 — 엔진 소스 `editor/editor_node.cpp`·`editor/inspector/editor_inspector.cpp` 와 헤드리스 실측으로 확인. 아래 절마다 근거를 적는다.)*
+
+### `.tscn` 에는 기본값과 다른 것만 적힌다 — Inspector 는 전부 보여 준다
+
+`.tscn` 을 열어 보면 Inspector 에 보이는 칸의 **일부만** 적혀 있다. **저장할 때 기본값과 같은 값은 빼기 때문이다.**
+Inspector 는 기본값이든 아니든 **노드가 가진 프로퍼티 전부**를 보여 준다.
+
+헤드리스에서 `MeshInstance3D` 의 `visible` 을 `false` 로 적어 두고, 읽어서 `true`(기본값)로 되돌린 뒤
+`PackedScene.pack()` → `ResourceSaver.save()` 로 저장했다 *(4.7.2 실측 — 에디터의 <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 도 같은 두 함수를 부른다)* —
+
+```ini
+; 저장 전 — 손으로 적은 파일
+[node name="Body" type="MeshInstance3D" parent="."]
+position = Vector3(1, 2, 3)
+visible = false
+
+; 저장 후 — visible 줄이 사라졌다 (기본값 true 로 되돌렸으므로)
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 4, 5, 6)
+```
+
+**그래서 `.tscn` 에 어떤 키가 없다고 "그 프로퍼티가 없다" 는 뜻이 아니다** — 기본값이라는 뜻이다.
+반대로 Inspector 에서 칸 옆의 ↺ 로 값을 기본값으로 되돌리면 저장할 때 **그 줄이 파일에서 사라진다.**
+
+### 이름이 1:1 이 아니다 — `position`·`rotation`·`scale` 은 `transform` 한 줄
+
+위 실측에서 `position` 을 적어 두었는데 저장 후에는 **`transform = Transform3D(...)`** 로 바뀌었고,
+`scale = (2, 2, 2)` 로 바꾼 것도 따로 적히지 않고 같은 줄에 들어갔다.
+`Node3D` 의 `position`·`rotation`·`scale` 은 Inspector 에서 세 칸으로 보이지만 **저장되는 것은 `transform` 하나**다 —
+세 칸은 `transform` 을 사람이 읽기 쉽게 갈라 보여 주는 것이다.
+
+```
+transform = Transform3D(2, 0, 0,   0, 2, 0,   0, 0, 2,   4, 5, 6)
+                        └──── basis (회전 × 크기, 3×3) ────┘  └ origin ┘
+                             scale (2,2,2) 가 대각선에          = position (4,5,6)
+```
+
+읽을 때는 **둘 다 받아들인다** — 손으로 `position = Vector3(1, 2, 3)` 이라고 적어도 노드의 `position` 은
+`(1, 2, 3)` 이 된다(실측). 다만 에디터가 한 번 저장하면 `transform` 으로 바뀐다. 라리엔 3D 의 청크 씬을 열어 보면
+기물마다 `transform = Transform3D(...)` 한 줄뿐이고 `position` 줄이 없는 것이 그 결과다.
+
+> **인스턴싱한 씬의 노드**(`instance=ExtResource(...)`)에는 원칙적으로 **원본과 다른 값만** 적힌다.
+> 다만 `transform` 은 원본과 같은 값으로 되돌려도 그대로 적혔다(4.7.2 실측) — 기물을 배치한 씬에
+> `transform` 줄이 빠짐없이 남아 있는 이유다.
+
+### `.tscn` → Inspector — 에디터가 디스크에서 다시 읽을지 묻는다
+
+에디터는 파일을 **계속 감시하지 않는다.** 에디터 창에 **포커스가 돌아오는 순간**
+(`NOTIFICATION_APPLICATION_FOCUS_IN`)에 열려 있는 씬마다 **디스크의 수정 시각**과 **에디터가 마지막으로
+읽거나 저장한 시각**을 비교한다 *(`editor_node.cpp` `_scan_external_changes()`)*. 디스크 쪽이 새로우면 이 대화상자가 뜬다 —
+
+```
+Files have been modified outside Godot
+The following files are newer on disk:
+    demo.tscn
+What action should be taken?
+            [ Ignore external changes ]   [ Reload from disk ]
+```
+
+| 버튼 | 하는 일 | 소스 |
+|---|---|---|
+| **`Reload from disk`** (기본 OK) | 그 씬을 **닫았다 다시 연다** → Inspector 가 파일의 값을 보여 준다. 에디터에서 저장하지 않은 변경은 버려진다 | `_reload_modified_scenes()` |
+| **`Ignore external changes`** | 🛑 **에디터에 있는 것으로 파일을 즉시 다시 저장한다** → 밖에서 한 수정이 사라진다 | `_resave_externally_modified_scenes()` |
+
+`project.godot` 도 같은 대화상자에 오른다. **열려 있지 않은 씬**은 검사 대상이 아니고, 다음에 열 때 디스크 값을 그대로 읽는다.
+
+🛑 **대화상자를 보지 못하는 경우가 있다** — 에디터 창이 계속 앞에 있는 동안 다른 프로그램이 파일을 바꾸면
+포커스 이벤트가 없어 검사가 일어나지 않는다. 그 상태로 <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 를 누르면 저장 함수(`_save_scene()`)는
+**디스크를 확인하지 않고** 그냥 쓰므로 밖의 수정이 덮인다. 이 함정과 대처는
+[6. 에디터 화면 — 에디터 밖에서 같은 파일을 고칠 때](06-editor-screen.md#-에디터-밖에서-같은-파일을-고칠-때) 에 있다.
+
+### Inspector → `.tscn` — 저장 전까지 메모리에만 있고, 저장은 파일을 통째로 다시 쓴다
+
+Inspector 에서 값을 넣으면 에디터는 **노드 객체의 프로퍼티를 바꿀 뿐**이다 *(`editor_inspector.cpp` `_edit_set()` →
+`undo_redo->add_do_property(object, name, value)`)*. 그래서 —
+
+| | |
+|---|---|
+| 파일은 | **아직 그대로다.** 씬 탭 이름에 `(*)` 가 붙는다 |
+| <kbd>Cmd/Ctrl</kbd>+<kbd>Z</kbd> | 메모리의 값만 되돌린다 — 파일과 무관하다 |
+| <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> | 노드 트리 전체를 `PackedScene` 으로 묶어(`pack`) **파일을 처음부터 다시 쓴다** |
+
+**"다시 쓴다" 는 것은 고친 줄만 바꾸는 것이 아니다.** 파일 전체가 노드 트리에서 새로 만들어지므로 —
+
+- 손으로 넣은 **`;` 주석은 사라진다** *(실측 — 주석 두 줄을 넣고 제자리 저장하니 둘 다 없어졌다)*
+- 줄 순서·빈 줄은 에디터 규칙대로 다시 정해진다
+- 기본값과 같아진 줄은 빠지고, `position`·`scale` 은 `transform` 이 된다 (위 두 절)
+
+**그래서 `.tscn` 에 남겨 두고 싶은 설명은 주석이 아니라 노드의 `Editor Description`** (Inspector 맨 아래 `Node > Editor Description`) **에 넣는다.**
+그것은 프로퍼티라서 저장하면 `editor_description = "..."` 로 파일에 남는다 *(실측)*. 라리엔 3D 가 청크 씬의 뜻을
+파일 이름이 아니라 루트 노드의 Editor Description 에 두는 것이 이 방식이다.
+
 ---
 
 ## 공식 문서
@@ -228,3 +345,5 @@ Scene 독에서 노드를 **우클릭 → `Change Type...`** 이 있다
 - [Nodes and Scenes](https://docs.godotengine.org/en/stable/getting_started/step_by_step/nodes_and_scenes.html) — 씬 파일과 씬 인스턴스
 - [Using SceneTree](https://docs.godotengine.org/en/stable/tutorials/scripting/scene_tree.html) — `root` 와 `current_scene` 이 무엇을 가리키는지
 - [클래스 레퍼런스 `PackedScene`](https://docs.godotengine.org/en/stable/classes/class_packedscene.html) — `.tscn` 을 메모리에 올린 것의 정체
+- [Inspector dock](https://docs.godotengine.org/en/stable/tutorials/editor/inspector_dock.html) — Inspector 독의 구성
+- [Resources](https://docs.godotengine.org/en/stable/tutorials/scripting/resources.html) — 노드가 아닌 것(`.tres`)이 파일로 저장되는 방식

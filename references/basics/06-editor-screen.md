@@ -85,6 +85,9 @@
 | 다른 씬을 자식으로 넣기(인스턴싱) | <kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>, 또는 FileSystem 에서 **드래그** |
 | **값 수정** (위치·크기·색·스크립트 붙이기) | 노드를 클릭 → **Inspector 독**에서 입력 |
 
+Inspector 에 보이는 값이 `.tscn` 에 어떻게 적히는지, 파일을 밖에서 고치면 Inspector 가 언제 바뀌는지는
+[2. 씬 — Inspector 에 보이는 것과 `.tscn` 에 적힌 것](02-scene.md#inspector-에-보이는-것과-tscn-에-적힌-것--같은-노드의-두-얼굴).
+
 ### 새 파일 만들기
 
 FileSystem 독에서 **우클릭 → `Create New`** 에 넷이 있다 — `Scene…` · `Script…` ·
@@ -112,16 +115,29 @@ FileSystem 독에서 **우클릭 → `Create New`** 에 넷이 있다 — `Scene
 ### 🛑 에디터 밖에서 같은 파일을 고칠 때
 
 명령줄이나 외부 에디터로 파일을 고치는 작업(AI 자율 개발 포함)과 에디터 편집이 겹치면
-**나중에 저장한 쪽이 이긴다.**
+**나중에 저장한 쪽이 이긴다.** 에디터가 이것을 완전히 막아 주지는 않는다 — **에디터 창에
+포커스가 돌아오는 순간에 한 번** 검사할 뿐이다.
 
 | 상황 | 결과 |
 |---|---|
 | 밖에서 `.gd` 를 고쳤고 에디터에 그 파일이 열려 있다 | 에디터로 포커스를 옮기면 **자동으로 다시 읽는다.** 안전하다 |
-| 밖에서 `.tscn` 을 고쳤는데 **에디터에도 같은 씬이 열려 있다** | 🛑 에디터에서 <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 를 누르면 **밖에서 한 수정이 통째로 사라진다** |
-| 에디터에서 고쳤지만 저장하지 않았다 | 밖에서 읽는 파일에는 그 변경이 **없다** |
+| 밖에서 `.tscn`(또는 `project.godot`)을 고쳤는데 **에디터에도 같은 씬이 열려 있다** | 포커스가 돌아오면 **`Files have been modified outside Godot`** 대화상자가 뜬다 — **`Reload from disk`** 를 누르면 밖의 수정이 들어오고, 🛑 **`Ignore external changes`** 를 누르면 **에디터 것으로 즉시 다시 저장**해 밖의 수정이 사라진다 |
+| 🛑 그 대화상자를 **못 본 채** <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> 를 눌렀다 — 에디터 창이 계속 앞에 있어 포커스 이벤트가 없었다 | 저장은 디스크를 확인하지 않는다 — **밖에서 한 수정이 통째로 사라진다** |
+| 에디터에서 고쳤지만 저장하지 않았다 | 밖에서 읽는 파일에는 그 변경이 **없다.** `Reload from disk` 를 누르면 그 변경도 버려진다 |
+
+*(4.7.2 엔진 소스 `editor/editor_node.cpp` 에서 확인 — `NOTIFICATION_APPLICATION_FOCUS_IN` 에서
+`EditorFileSystem::scan_changes()` 와 `_scan_external_changes()` 를 부르고, 후자가 열린 씬마다 디스크 수정
+시각과 마지막 저장 시각을 비교해 대화상자를 띄운다. `Reload from disk` → `_reload_modified_scenes()`,
+`Ignore external changes` → `_resave_externally_modified_scenes()`. `_save_scene()` 에는 디스크 시각 검사가 없다.
+`.gd` 는 `scan_changes()` 가 낸 `resources_reload` 시그널을 `Script` 가 받아 다시 읽는다.)*
 
 **그래서 씬을 밖에서 고쳐야 할 때는 그 씬을 에디터에서 먼저 닫는다.** 또는 노드를
 `.tscn` 이 아니라 `_ready()` 에서 코드로 만든다 — 충돌이 나지 않는다.
+**대화상자가 떴으면 `Reload from disk` 가 기본이다.** `Ignore external changes` 는 "밖의 수정을 버리겠다" 는 뜻이다.
+
+Inspector 의 칸과 `.tscn` 의 줄이 어떻게 대응하는지 — 기본값은 적히지 않는 것, `position`·`scale` 이
+`transform` 한 줄이 되는 것, 저장이 파일을 통째로 다시 써서 주석이 사라지는 것 — 는
+[2. 씬 — Inspector 에 보이는 것과 `.tscn` 에 적힌 것](02-scene.md#inspector-에-보이는-것과-tscn-에-적힌-것--같은-노드의-두-얼굴) 에 있다.
 
 ### 🛑 라리엔 3D 에서 `.import` 는 주의 대상이다
 
