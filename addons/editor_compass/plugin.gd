@@ -14,7 +14,10 @@
 ##    `Cmd+S` 를 눌러도 `.tscn` 에는 한 글자도 들어가지 않는다(실측).
 extends EditorPlugin
 
-const COMPASS_SCRIPT := preload("res://addons/editor_compass/compass.gd")
+## 🔑 상대 경로다 — 스킬 저장소 안(`.claude/skills/godot/addons/…`)에 있든 프로젝트 `addons/` 에
+##    복사됐든 같은 폴더의 `compass.gd` 를 찾는다. 절대 경로 `res://addons/…` 로 두면 스킬
+##    폴더에 있는 사본을 GDScript LSP 가 파싱할 때 "Preload file does not exist" 로 실패한다.
+const COMPASS_SCRIPT := preload("compass.gd")
 
 ## 자동으로 붙인 노드의 이름. 씬 독에 보이므로 "손으로 넣은 것이 아니다" 를 이름으로 알린다.
 const AUTO_NAME := "Compass (auto - not saved)"

@@ -269,8 +269,13 @@ Remote Deploy 와 `install.sh` 는 결과가 같다. 에디터를 띄우지 않�
 |---|---|
 | `exclude_filter="builds/*"` | 게임 패키지에 **포함하지 않는다** |
 | `builds/.gdignore` (빈 파일) | Godot 이 그 폴더를 **임포트조차 하지 않는다** |
+| `.cowork/.gdignore` · `build/.gdignore` 같은 **사본·프로브 폴더** | **GDScript LSP** 가 그 안의 `.gd` 를 파싱하지 않는다 — 4.7 `gdscript_workspace.cpp` `list_script_files` 는 `.gdignore` 폴더를 건너뛰지만 **점(`.`) 폴더는 건너뛰지 않는다**(에디터 FileSystem 과 다르다). 사본의 `class_name` 이 정본과 충돌해 `LSP: Failed to parse script … hides a global script class` 가 쏟아지면 이것이다(실측 2026-09-09: 37건 → 0건). `-s res://…` 실행과 `FileAccess` 는 그대로 된다 |
 
 빌드 산출물이 `res://` 안에 있으면 **둘 다** 해 둔다.
+
+🛑 에디터 FileSystem 스캔은 `project.godot` 검사가 `.gdignore` 검사보다 **먼저**라, `.gdignore` 를 둔 하위 프로젝트 폴더도
+`Detected another project.godot at …` 경고가 **첫 후보 하나만**(`WARN_PRINT_ONCE`) 남는다. 무해하다. 없애려면 그 폴더를
+`.gdignore` 가 있는 **상위 폴더 안**으로 옮긴다.
 
 🛑 **`.gdignore` 는 폴더 전용이고, 이름이 `.godotignore` 가 아니며, 내용을 적는 파일도 아니다.** 숨길 폴더 **안에 빈 파일**로 넣는다. 개별 파일을 독에서 치우는 법(확장자 화이트리스트)까지 포함한 전체 설명은 → [basics/06-editor-screen.md](basics/06-editor-screen.md) 의 "FileSystem 독에서 파일·폴더를 숨긴다"
 
