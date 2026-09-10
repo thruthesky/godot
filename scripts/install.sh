@@ -10,6 +10,8 @@
 #
 #   install.sh <선택> --release      릴리즈 빌드로 (묻지 않는다)
 #   install.sh <선택> --debug        디버그 빌드로 (묻지 않는다)
+#   install.sh <선택> --release --no-lazy-download
+#                                    릴리즈인데 자산을 전부 번들에 넣는다 (기본은 lazy-download)
 #   install.sh <선택> --skip-build   빌드 생략, 설치·실행만
 #   install.sh <선택> --console      실행 로그를 터미널에 붙여서 본다
 #   install.sh <선택> --no-launch    설치만 하고 실행하지 않는다
@@ -33,6 +35,7 @@
 #   bash install.sh [number|device-id|macos]  Select a target device
 #   bash install.sh --win                    Build and run on this Windows PC
 #   --debug / --release                     Choose the build mode without prompting
+#   --no-lazy-download                      Bundle every asset (release defaults to lazy-download)
 #   --skip-build                            Use an existing build
 #   --console                               Attach runtime logs (Ctrl+C to stop)
 #   --no-launch                             Build/install without launching
@@ -57,11 +60,21 @@ LIST_ONLY=0
 PROJECT_ARG=""
 WIN=0
 
+# lazy-download — release 빌드에서 **기본으로 켠다**(2026-09-10 사람 결정).
+#
+#   켜짐: 기물 시각 리소스를 번들에서 빼고 `.pck` 로 R2 에 올린다. 게임은 맵에 들어간 뒤
+#         내려받아 화면에 채운다. 콜리전은 언제나 번들에 있으므로 팩이 늦어도 걸어다닐 수 있다.
+#   꺼짐(`--no-lazy-download`): 전부 번들에 넣는다. 네트워크 없이 도는 빌드가 필요할 때.
+#
+# 🛑 debug 빌드에서는 **무조건 꺼진다** — 개발 중에는 늘 모든 자산이 번들에 있어야 한다.
+LAZY_DOWNLOAD=1
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --win)        WIN=1 ;;
     --release)    BUILD_MODE="release" ;;
     --debug)      BUILD_MODE="debug" ;;
+    --no-lazy-download) LAZY_DOWNLOAD=0 ;;
     --skip-build) SKIP_BUILD=1 ;;
     --console)    CONSOLE=1 ;;
     --no-launch)  LAUNCH=0 ;;
@@ -406,11 +419,29 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   # 🛑 `trap` 으로 되돌린다 — 빌드가 실패하든 Ctrl-C 로 끊기든 저작 씬이 잘린 채
   #    남으면 안 된다. 다음 사람이 맵을 열었을 때 청크가 사라져 있게 된다.
   MAP_SPLIT=0
+  LAZY_APPLIED=0
   if [ "$BUILD_MODE" = "release" ] && [ -f "$ROOT/tools/split_map_for_release.py" ]; then
     python3 "$ROOT/tools/split_map_for_release.py" --split \
       || die "배포용 맵 분할에 실패했다 / Map split for release failed."
     MAP_SPLIT=1
-    trap 'python3 "$ROOT/tools/split_map_for_release.py" --restore >/dev/null 2>&1' EXIT INT TERM
+    trap 'python3 "$ROOT/tools/split_map_for_release.py" --restore >/dev/null 2>&1;
+          python3 "$ROOT/tools/apply_lazy_download.py" --restore >/dev/null 2>&1' EXIT INT TERM
+  fi
+
+  # ── lazy-download ────────────────────────────────────────────────────
+  # release 기본값이다. 기물의 **시각 리소스만** 번들에서 빼고, 게임이 맵에 들어간 뒤
+  # R2 에서 받아 채운다. 콜리전은 언제나 번들에 남으므로 팩이 늦어도 걸어다닐 수 있다
+  # (`scripts/prop_visual.gd` — 시각 슬롯 구조가 그것을 보장한다).
+  #
+  # 🛑 debug 는 무조건 끈다. 🛑 `--no-lazy-download` 로도 끈다.
+  if [ "$BUILD_MODE" = "release" ] && [ "$LAZY_DOWNLOAD" -eq 1 ] \
+       && [ -f "$ROOT/tools/apply_lazy_download.py" ]; then
+    step "lazy-download 적용 중 — / Applying lazy-download —"
+    python3 "$ROOT/tools/apply_lazy_download.py" --apply \
+      || die "lazy-download 설정에 실패했다 / Failed to apply lazy-download."
+    LAZY_APPLIED=1
+  elif [ "$BUILD_MODE" = "release" ]; then
+    echo "   lazy-download 없음 — 모든 자산을 번들에 넣는다 / no lazy-download: bundling every asset"
   fi
   "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
   "$GODOT_BIN" --headless --path "$ROOT" \
@@ -418,6 +449,9 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
     --log-file "artifacts/logs/install-$PLATFORM-$BUILD_MODE.log" \
     || die "빌드 실패. artifacts/logs/install-$PLATFORM-$BUILD_MODE.log 를 확인한다. / Build failed. See artifacts/logs/install-$PLATFORM-$BUILD_MODE.log. Check matching export templates in Editor > Manage Export Templates.
    iOS 에서 오류 본문이 비어 있으면 아이콘 → Team ID → bundle id → ios.zip 템플릿 순으로 점검한다. / For empty iOS errors, check the icon, Team ID, bundle ID, and ios.zip template."
+  if [ "$LAZY_APPLIED" -eq 1 ]; then
+    python3 "$ROOT/tools/apply_lazy_download.py" --restore
+  fi
   if [ "$MAP_SPLIT" -eq 1 ]; then
     python3 "$ROOT/tools/split_map_for_release.py" --restore
     trap - EXIT INT TERM
