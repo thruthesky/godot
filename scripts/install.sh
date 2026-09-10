@@ -398,12 +398,30 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   else
     mkdir -p "$(dirname "$ROOT/$EXPORT_PATH")" artifacts/logs
   fi
+  # ── 배포용 맵 분할 ────────────────────────────────────────────────────
+  # 저작 씬(`main.tscn`)에는 청크가 **전부** 들어 있다 — 맵 디자이너가 늘 하던 대로
+  # 작업하기 위해서다(2026-09-10 사람 결정). 그대로 내보내면 A12 에서 씬 파싱에만
+  # 3.4초가 들므로, **배포본에서만** 잘라 내고 나머지는 입장 뒤 스트리밍한다.
+  #
+  # 🛑 `trap` 으로 되돌린다 — 빌드가 실패하든 Ctrl-C 로 끊기든 저작 씬이 잘린 채
+  #    남으면 안 된다. 다음 사람이 맵을 열었을 때 청크가 사라져 있게 된다.
+  MAP_SPLIT=0
+  if [ "$BUILD_MODE" = "release" ] && [ -f "$ROOT/tools/split_map_for_release.py" ]; then
+    python3 "$ROOT/tools/split_map_for_release.py" --split \
+      || die "배포용 맵 분할에 실패했다 / Map split for release failed."
+    MAP_SPLIT=1
+    trap 'python3 "$ROOT/tools/split_map_for_release.py" --restore >/dev/null 2>&1' EXIT INT TERM
+  fi
   "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
   "$GODOT_BIN" --headless --path "$ROOT" \
     "--export-$BUILD_MODE" "$PRESET_NAME" "$EXPORT_PATH" \
     --log-file "artifacts/logs/install-$PLATFORM-$BUILD_MODE.log" \
     || die "빌드 실패. artifacts/logs/install-$PLATFORM-$BUILD_MODE.log 를 확인한다. / Build failed. See artifacts/logs/install-$PLATFORM-$BUILD_MODE.log. Check matching export templates in Editor > Manage Export Templates.
    iOS 에서 오류 본문이 비어 있으면 아이콘 → Team ID → bundle id → ios.zip 템플릿 순으로 점검한다. / For empty iOS errors, check the icon, Team ID, bundle ID, and ios.zip template."
+  if [ "$MAP_SPLIT" -eq 1 ]; then
+    python3 "$ROOT/tools/split_map_for_release.py" --restore
+    trap - EXIT INT TERM
+  fi
 fi
 
 # iOS 는 export_path 옆에 .ipa 가 떨어진다
