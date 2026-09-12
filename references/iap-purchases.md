@@ -16,7 +16,7 @@ Godot 4 에서 인앱 결제를 붙이는 전 과정. 빌드·서명은 [export-
 6. [Android — 소비와 확인, 그리고 자동 환불](#6-android--소비와-확인-그리고-자동-환불)
 7. [놓친 결제를 되찾는다 — 두 겹의 그물](#7-놓친-결제를-되찾는다--두-겹의-그물)
 8. [서버 검증](#8-서버-검증)
-9. [iOS — StoreKit](#9-ios--storekit)
+9. [iOS — StoreKit 2](#9-ios--storekit-2)
 10. [실기기에서만 드러난다 — 검증 방법](#10-실기기에서만-드러난다--검증-방법)
 11. [자주 막히는 지점](#11-자주-막히는-지점)
 
@@ -252,21 +252,104 @@ Nakama 를 쓴다면 런타임에 검증기가 내장돼 있다 — `purchaseVal
 
 ---
 
-## 9. iOS — StoreKit
+## 9. iOS — StoreKit 2
 
-Godot 4 는 iOS 인앱결제를 **엔진에 내장하고 있지 않다.** 선택지는 셋이다.
+Godot 4 는 iOS 인앱결제를 **엔진에 내장하고 있지 않다.** 플러그인을 넣는다.
 
-| 방법 | 상태 |
+| 방법 | 상태(2026-09) |
 |---|---|
-| `godot-ios-plugins` 의 InAppStore | 오래된 StoreKit 1 기반. 유지보수가 느리다 |
-| StoreKit 2 커뮤니티 플러그인 | 최신 API. 저장소마다 성숙도 차이가 크다 |
-| 직접 작성 | Swift 로 GDExtension/플러그인. 통제력은 최대, 비용도 최대 |
+| **OpenIAP `godot-iap`** ([hyodotdev/openiap](https://github.com/hyodotdev/openiap)) | ✅ StoreKit 2 · GDExtension · Godot 4.3+ · 사전 빌드 프레임워크 포함 · 활발히 유지 |
+| `godot-ios-plugins` 의 InAppStore | StoreKit 1 기반. 유지보수가 느리다 |
+| `godot-store-kit` 등 | StoreKit 2 이지만 GDScript API 문서가 없는 미완성 |
 
-공통 규칙은 Android 와 같다 — **영수증은 서버가 검증하고, 지급도 서버가 한다.**
-Apple 은 영수증 검증에 `verifyReceipt`(구형) 대신 **App Store Server API** 를 쓰도록 권한다.
+### OpenIAP godot-iap 설치 — 🛑 함정 둘
+
+1. **Android 결제를 다른 플러그인으로 이미 하고 있다면 `android/` 를 넣지 말고, 내보내기 플러그인도 손봐야 한다.**
+   원본 `godot_iap_plugin.gd` 는 `_supports_platform()` 이 Android 에도 `true` 를 돌려주고
+   `_get_android_libraries()` 가 `android/GodotIap.*.aar` 을 **무조건** 요구한다. 폴더만 빼면 Android
+   내보내기가 깨지고, 둘 다 넣으면 Play Billing 의존성이 겹친다. → Android 판정을 `false` 로 바꾸고,
+   iOS 가 아닌 프리셋의 `exclude_filter` 에 `addons/godot-iap/*` 를 넣는다(Android AAB 에 파일 0개인지 확인).
+2. **자동 로드를 쓰지 않는 편이 낫다.** 원본은 `GodotIap` 이라는 싱글톤을 모든 플랫폼에 띄운다(네이티브
+   클래스 이름과도 같다). 결제 코드에서 iOS 일 때만 `godot_iap.gd` 를 만들어 트리에 붙여 쓴다.
+
+`.gdextension` 에 macOS 라이브러리가 없어서 **에디터·헤드리스 실행마다**
+`ERROR: No GDExtension library found for current OS … godot_iap.gdextension` 이 찍힌다. 무해하지만,
+로그 게이트가 `ERROR: .*\.gd` 같은 패턴을 쓰면 `.gdextension` 의 `.gd` 에 **거짓 일치**한다
+(`\.gd([^a-zA-Z]|$)` 로 좁힐 것).
+
+### 흐름
+
+```gdscript
+var iap = load("res://addons/godot-iap/godot_iap.gd").new()
+get_tree().root.add_child(iap)                        # _ready 에서 네이티브 클래스(ClassDB "GodotIap")를 붙인다
+var ok: bool = await iap.init_connection()            # 🛑 코루틴 — await 필수
+
+var types = load("res://addons/godot-iap/types.gd")
+var req = types.ProductRequest.new()
+req.skus = ["potion_hp"] as Array[String]
+for p in await iap.fetch_products(req):               # ProductIOS 객체
+    prices[p.id] = p.display_price                    # 스토어 문자열 그대로
+
+# 🛑 결과·오류 시그널을 요청 **전에** 건다(Android 와 같은 이유)
+var ok_watch := _watch(iap, "purchase_updated")
+var err_watch := _watch(iap, "purchase_error")
+await iap.request_purchase({"requestPurchase": {"apple": {
+    "sku": "potion_hp",
+    "appAccountToken": server_user_uuid,             # 서버가 "누구의 구매인가" 를 대조한다
+}}, "type": "in-app"})
+# 결과 dict: productId · transactionId · purchaseToken(= StoreKit 2 JWS) · purchaseState
+# 서버 지급이 성공한 뒤에만:
+await iap.finish_transaction_dict(purchase, true)     # 소모품. 실패하면 마무리하지 않는다 → 다음 회수에서 재제출
+# 놓친 결제 회수: await iap.get_available_purchases()
+```
+
+### 서버 검증 — StoreKit 2 는 영수증이 **JWS** 다
+
+| 방법 | 조건 |
+|---|---|
+| Nakama `purchaseValidateApple` | 🛑 **3.37.0 이상**에서만 JWS 를 받는다. 그 아래는 구형 base64 앱 영수증뿐 |
+| App Store Server API 조회 | ES256 JWT(App Store Connect `.p8` 키)가 필요. 🛑 Nakama JS 런타임 `jwtGenerate` 는 **HS256·RS256 만** 지원해 만들 수 없다 |
+| **JWS 오프라인 검증** | 키 없이 가능. 서버 언어에 x509·ECDSA 가 있으면 된다(Go 표준 라이브러리로 충분) |
+
+오프라인 검증 절차:
+
+1. 헤더 `alg` 는 `ES256`, `x5c` 에 [leaf, intermediate, root] 인증서(표준 base64 DER)
+2. leaf → **Apple Root CA - G3** 체인 검증. 루트는 앱에 내장하고 **SHA-256 지문을 고정**한다
+   (`63:34:3A:BF:…:91:79`). 체인 시각은 payload 의 `signedDate` — 오래된 거래 회수가 인증서 만료로 막히지 않게
+3. Apple 전용 OID 확장 확인 — leaf `1.2.840.113635.100.6.11.1`, intermediate `1.2.840.113635.100.6.2.1`
+   (아무 Apple 인증서로 서명한 JWS 를 받지 않기 위해)
+4. leaf 공개키로 서명 검증 — JWS 서명은 **R‖S 64바이트 원시값**이다(DER 아님)
+5. payload 해석 — `transactionId` · `productId` · `bundleId` · `environment` · `appAccountToken` ·
+   **`revocationDate`(0 이 아니면 환불)**
+
+그 뒤 **bundleId 는 우리 앱인지, appAccountToken 은 제출한 계정인지** 대조한다. 서명이 진짜여도
+남의 앱이나 남의 계정 거래를 재제출할 수 있다.
+
+### 실기기 검증
+
+iOS 는 `adb input` 같은 화면 조작 수단이 없고, iOS 17+ 에서는 `idevicescreenshot` 도 막혀 상점 UI 까지
+자동으로 가기 어렵다. 대신 **디버그 빌드 + 앱 데이터 컨테이너의 표시 파일**로 부팅 시 상품 조회만 돌려 본다.
+
+```bash
+xcrun devicectl device install app --device <ID> Game.ipa
+xcrun devicectl device copy to --device <ID> --source ./flag --destination Documents/iap_probe \
+  --domain-type appDataContainer --domain-identifier <bundle id>
+idevicesyslog -u <UDID> > syslog.txt &            # Godot print 는 devicectl --console 에 안 나온다
+xcrun devicectl device process launch --device <ID> --terminate-existing <bundle id>
+```
+
+- 🛑 **기기가 네트워크로만 붙어 있으면 `idevice_id -l` 이 비고 syslog 가 텅 빈다.** `idevice_id -n` 으로 UDID 를
+  얻고 `idevicesyslog -n -u <UDID>` 로 받는다. 그대로 받으면 80초에 50MB 가 넘으니 `-m IAP` 처럼 걸러 받는다.
+- iOS 의 `user://` 는 **앱 Documents** 다(`devicectl … copy to --destination Documents/…` 가 그대로 닿는다).
+- 모바일은 Godot 파일 로그가 기본 꺼져 있어 `Documents/logs/godot.log` 가 없다 — 시스템 로그가 정본이다.
+- 실측(2026-09): 디버그 서명 빌드에서 OpenIAP `init_connection()` → `true`, `fetch_products` 가 등록된 소모품을
+  `display_price` 와 함께 돌려줬다. **상품 조회에는 샌드박스 계정 로그인이 필요 없다.**
+- 🛑 스토어에 상품이 있는지 **다른 기록(결제 중개 대시보드 등)으로 추정하지 말고** 기기에서 조회해 볼 것 —
+  중개 서비스에 등록 안 된 상품도 스토어에는 있을 수 있다.
 
 - 소모품은 `finishTransaction` 을 **지급 뒤에** 부른다(Android 의 consume 과 같은 자리).
 - 샌드박스 계정으로만 테스트한다. 실계정으로 하면 실제로 청구된다.
+- App Store Connect 에 상품이 등록·승인 대기 상태여야 `fetch_products` 가 돌려준다.
 - 가족 공유·환불 알림(App Store Server Notifications)을 서버가 받도록 해 두면 사후 정산이 쉽다.
 
 ---
@@ -326,6 +409,8 @@ This is a test order, you will not be charged.
 | 주문은 생겼는데 물건이 안 옴 | 결과 신호를 놓쳐 소비하지 못했다 → 자동 환불 | 주문 기록에 `Refunded` |
 | 같은 신호가 여러 번 | BillingClient 를 여러 개 만들었다 | 인스턴스가 몇 개인지 |
 | 재구매가 막힘(code 7) | 지난 구매를 소비하지 않았다 | 미소비 회수 경로가 실제로 불리는지 |
+| 주문은 생겼는데 항목을 못 고름 | 구매의 `product_ids` 가 **`PackedStringArray`** 인데 `is Array` 로 검사했다 — 둘은 다른 타입 | 원소를 문자열로 비교하는지 |
+| 서버 저장이 `value too long` | **Google 구매 토큰은 ~150자.** 스토리지 key 한계(Nakama 는 128)를 넘는다. 자르면 다른 거래가 같은 키가 된다 | 원장·대기열 삭제·영수증이 **같은 접힌 키**(해시)를 쓰는지 |
 
 ### 🛑 응답 키가 의심스러우면 플러그인에서 직접 확인한다
 
