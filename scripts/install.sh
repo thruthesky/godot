@@ -12,6 +12,9 @@
 #   install.sh <선택> --debug        디버그 빌드로 (묻지 않는다)
 #   install.sh <선택> --release --no-lazy-download
 #                                    릴리즈인데 자산을 전부 번들에 넣는다 (기본은 lazy-download)
+#   install.sh <선택> --preset "A15 Test"
+#                                    export_presets.cfg 의 preset 을 직접 고른다
+#                                    (기기별 debug preset 처럼 같은 플랫폼에 여러 개일 때)
 #   install.sh <선택> --skip-build   빌드 생략, 설치·실행만
 #   install.sh <선택> --console      실행 로그를 터미널에 붙여서 본다
 #   install.sh <선택> --no-launch    설치만 하고 실행하지 않는다
@@ -54,6 +57,7 @@ die()  { printf '\033[1;31m❌\033[0m %s\n' "$*" >&2; exit 1; }
 SELECTION=""
 BUILD_MODE=""          # 빈 값 = 아직 안 정했다 → 장치 선택 후 물어본다(비대화형이면 debug)
 SKIP_BUILD=0
+PRESET_ARG=""        # --preset 으로 직접 고른 preset 이름
 CONSOLE=0
 LAUNCH=1
 LIST_ONLY=0
@@ -76,6 +80,9 @@ while [ $# -gt 0 ]; do
     --debug)      BUILD_MODE="debug" ;;
     --no-lazy-download) LAZY_DOWNLOAD=0 ;;
     --skip-build) SKIP_BUILD=1 ;;
+    --preset)
+      [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || die "--preset 에 preset 이름이 필요하다 / --preset requires a preset name."
+      shift; PRESET_ARG="$1" ;;
     --console)    CONSOLE=1 ;;
     --no-launch)  LAUNCH=0 ;;
     --list)       LIST_ONLY=1 ;;
@@ -277,6 +284,42 @@ preset_get() {
   ' "$PRESETS"
 }
 
+# preset 이름으로 값을 읽는다 — 같은 플랫폼에 preset 이 여러 개일 때 쓴다(예: "macOS Release")
+preset_get_named() {
+  awk -v want="$1" -v key="$2" '
+    { sub(/\r$/, "") }
+    /^\[preset\.[0-9]+\]$/ { cur = $0; gsub(/[^0-9]/, "", cur); next }
+    /^\[preset\.[0-9]+\.options\]$/ { cur = $0; gsub(/[^0-9]/, "", cur); next }
+    /^[A-Za-z]/ {
+      eq = index($0, "=")
+      if (eq == 0 || cur == "") next
+      k = substr($0, 1, eq - 1)
+      v = substr($0, eq + 1)
+      gsub(/^[ \t]+|[ \t\r]+$/, "", v)
+      gsub(/^"|"$/, "", v)
+      data[cur "\x01" k] = v
+      if (k == "name" && !(v in byname)) byname[v] = cur
+    }
+    END { if (want in byname) print data[byname[want] "\x01" key] }
+  ' "$PRESETS"
+}
+
+# 쓸 preset 이름을 고른다 — 빈 문자열이면 "그 플랫폼의 첫 preset" 으로 물러선다.
+#   $1: release 전용 preset 이름   $2: 이 플랫폼의 platform 값("Android" 등)
+# 우선순위: --preset 으로 직접 고른 것 > release 전용 preset > 없음.
+pick_preset() {
+  if [ -n "$PRESET_ARG" ]; then
+    local want; want=$(preset_get_named "$PRESET_ARG" "platform")
+    [ -n "$want" ] || die "export_presets.cfg 에 preset \"$PRESET_ARG\" 가 없다. / No preset named \"$PRESET_ARG\" in export_presets.cfg."
+    [ "$want" = "$2" ] || die "preset \"$PRESET_ARG\" 는 $want 용인데 고른 장치는 $2 다. / Preset \"$PRESET_ARG\" targets $want, but the selected device is $2."
+    printf '%s\n' "$PRESET_ARG"
+    return 0
+  fi
+  [ "$BUILD_MODE" = "release" ] || return 0
+  [ -n "$(preset_get_named "$1" "platform")" ] || return 0
+  printf '%s\n' "$1"
+}
+
 # ── 플랫폼별 preset 값 ──────────────────────────────────────────────────
 find_godot() {
   local candidate dir drive
@@ -315,19 +358,33 @@ case "$PLATFORM" in
     ARTIFACT="$ROOT/$EXPORT_PATH"
     ;;
   android)
-    PRESET_NAME=$(preset_get "Android" "name")
-    PACKAGE_ID=$(preset_get "Android" "package/unique_name")
-    EXPORT_PATH=$(preset_get "Android" "export_path")
+    # SM A12·SM A15 는 같은 arm64-v8a APK 하나로 돈다 — release 는 공용 preset 을 쓴다
+    PRESET_NAME=$(pick_preset "Android Release" "Android")
+    if [ -n "$PRESET_NAME" ]; then
+      PACKAGE_ID=$(preset_get_named "$PRESET_NAME" "package/unique_name")
+      EXPORT_PATH=$(preset_get_named "$PRESET_NAME" "export_path")
+    else
+      PRESET_NAME=$(preset_get "Android" "name")
+      PACKAGE_ID=$(preset_get "Android" "package/unique_name")
+      EXPORT_PATH=$(preset_get "Android" "export_path")
+    fi
     [ -n "$PRESET_NAME" ] || die "export_presets.cfg 에 platform=\"Android\" preset 이 없다. / No platform=\"Android\" preset in export_presets.cfg."
     [ -n "$PACKAGE_ID" ]  || die "Android preset 에 package/unique_name 이 없다. / Android preset is missing package/unique_name."
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/android/${PRESET_NAME}.apk"
     ARTIFACT="$ROOT/$EXPORT_PATH"
     ;;
   ios)
-    PRESET_NAME=$(preset_get "iOS" "name")
-    PACKAGE_ID=$(preset_get "iOS" "application/bundle_identifier")
-    EXPORT_PATH=$(preset_get "iOS" "export_path")
-    PROJECT_ONLY=$(preset_get "iOS" "application/export_project_only")
+    PRESET_NAME=$(pick_preset "JaeHo16 Release" "iOS")
+    if [ -n "$PRESET_NAME" ]; then
+      PACKAGE_ID=$(preset_get_named "$PRESET_NAME" "application/bundle_identifier")
+      EXPORT_PATH=$(preset_get_named "$PRESET_NAME" "export_path")
+      PROJECT_ONLY=$(preset_get_named "$PRESET_NAME" "application/export_project_only")
+    else
+      PRESET_NAME=$(preset_get "iOS" "name")
+      PACKAGE_ID=$(preset_get "iOS" "application/bundle_identifier")
+      EXPORT_PATH=$(preset_get "iOS" "export_path")
+      PROJECT_ONLY=$(preset_get "iOS" "application/export_project_only")
+    fi
     [ -n "$PRESET_NAME" ] || die "export_presets.cfg 에 platform=\"iOS\" preset 이 없다. / No platform=\"iOS\" preset in export_presets.cfg."
     [ -n "$PACKAGE_ID" ]  || die "iOS preset 에 application/bundle_identifier 가 없다. / iOS preset is missing application/bundle_identifier."
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/ios/${PRESET_NAME}.ipa"
@@ -339,9 +396,17 @@ case "$PLATFORM" in
     IOS_OUT_DIR="$ROOT/$(dirname "$EXPORT_PATH")"
     ;;
   macos)
-    PRESET_NAME=$(preset_get "macOS" "name")
-    PACKAGE_ID=$(preset_get "macOS" "application/bundle_identifier")
-    EXPORT_PATH=$(preset_get "macOS" "export_path")
+    # release 는 전용 preset("macOS Release")이 있으면 그것으로 빌드한다 —
+    # 산출물 경로가 달라 debug 빌드를 덮어쓰지 않는다.
+    PRESET_NAME=$(pick_preset "macOS Release" "macOS")
+    if [ -n "$PRESET_NAME" ]; then
+      PACKAGE_ID=$(preset_get_named "$PRESET_NAME" "application/bundle_identifier")
+      EXPORT_PATH=$(preset_get_named "$PRESET_NAME" "export_path")
+    else
+      PRESET_NAME=$(preset_get "macOS" "name")
+      PACKAGE_ID=$(preset_get "macOS" "application/bundle_identifier")
+      EXPORT_PATH=$(preset_get "macOS" "export_path")
+    fi
     [ -n "$PRESET_NAME" ] || die "export_presets.cfg 에 platform=\"macOS\" preset 이 없다. / No platform=\"macOS\" preset in export_presets.cfg."
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/macos/${PRESET_NAME}.app"
     ARTIFACT="$ROOT/$EXPORT_PATH"
@@ -411,56 +476,57 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   else
     mkdir -p "$(dirname "$ROOT/$EXPORT_PATH")" artifacts/logs
   fi
-  # ── 배포용 맵 분할 ────────────────────────────────────────────────────
-  # 저작 씬(`main.tscn`)에는 청크가 **전부** 들어 있다 — 맵 디자이너가 늘 하던 대로
-  # 작업하기 위해서다(2026-09-10 사람 결정). 그대로 내보내면 A12 에서 씬 파싱에만
-  # 3.4초가 들므로, **배포본에서만** 잘라 내고 나머지는 입장 뒤 스트리밍한다.
+  # ── 배포용 맵 분할 · lazy-download · 내보내기 ──────────────────────────────
+  # 저작 씬(`main.tscn`)에는 청크가 **전부** 들어 있다 — 맵 디자이너가 늘 하던 대로 작업하기
+  # 위해서다(2026-09-10 사람 결정). 그대로 내보내면 A12 에서 씬 파싱에만 3.4초가 들므로
+  # **배포본에서만** 잘라 내고 나머지는 입장 뒤 스트리밍한다.
   #
-  # 🛑 `trap` 으로 되돌린다 — 빌드가 실패하든 Ctrl-C 로 끊기든 저작 씬이 잘린 채
-  #    남으면 안 된다. 다음 사람이 맵을 열었을 때 청크가 사라져 있게 된다.
-  MAP_SPLIT=0
-  LAZY_APPLIED=0
-  if [ "$BUILD_MODE" = "release" ] && [ -f "$ROOT/tools/split_map_for_release.py" ]; then
-    python3 "$ROOT/tools/split_map_for_release.py" --split \
-      || die "배포용 맵 분할에 실패했다 / Map split for release failed."
-    MAP_SPLIT=1
-    trap 'python3 "$ROOT/tools/split_map_for_release.py" --restore >/dev/null 2>&1;
-          python3 "$ROOT/tools/apply_lazy_download.py" --restore >/dev/null 2>&1' EXIT INT TERM
-  fi
-
-  # ── lazy-download ────────────────────────────────────────────────────
-  # release 기본값이다. 기물의 **시각 리소스만** 번들에서 빼고, 게임이 맵에 들어간 뒤
-  # R2 에서 받아 채운다. 콜리전은 언제나 번들에 남으므로 팩이 늦어도 걸어다닐 수 있다
-  # (`scripts/prop_visual.gd` — 시각 슬롯 구조가 그것을 보장한다).
+  # 🛑🛑 **release 는 사본에서 내보낸다 — 원본 `main.tscn` 은 한 바이트도 바꾸지 않는다**
+  #    (SSOT §3.5 저작 불가침 ② · 2026-09-12 사고). 예전에는 원본을 잘랐다가 되돌렸는데,
+  #    그 **사이에** Godot 에디터가 열려 있으면 잘린 씬을 읽어 디자이너에게 청크 2개만 보였다 —
+  #    그때 저장하면 잘린 맵이 확정된다. `tools/export_from_clone.py` 가 사본을 만들어
+  #    자르고·lazy-download 를 켜고·내보낸 뒤 산출물만 가져오고, 원본 해시가 그대로인지 검사한다.
   #
-  # 🛑 debug 는 무조건 끈다. 🛑 `--no-lazy-download` 로도 끈다.
-  if [ "$BUILD_MODE" = "release" ] && [ "$LAZY_DOWNLOAD" -eq 1 ] \
-       && [ -f "$ROOT/tools/apply_lazy_download.py" ]; then
-    step "lazy-download 적용 중 — / Applying lazy-download —"
-    python3 "$ROOT/tools/apply_lazy_download.py" --apply \
-      || die "lazy-download 설정에 실패했다 / Failed to apply lazy-download."
-    LAZY_APPLIED=1
-  elif [ "$BUILD_MODE" = "release" ]; then
-    echo "   lazy-download 없음 — 모든 자산을 번들에 넣는다 / no lazy-download: bundling every asset"
-  fi
-  "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
-  "$GODOT_BIN" --headless --path "$ROOT" \
-    "--export-$BUILD_MODE" "$PRESET_NAME" "$EXPORT_PATH" \
-    --log-file "artifacts/logs/install-$PLATFORM-$BUILD_MODE.log" \
-    || die "빌드 실패. artifacts/logs/install-$PLATFORM-$BUILD_MODE.log 를 확인한다. / Build failed. See artifacts/logs/install-$PLATFORM-$BUILD_MODE.log. Check matching export templates in Editor > Manage Export Templates.
+  # 🔑 debug 는 원본을 바꾸지 않으므로(자르지도 lazy 를 켜지도 않는다) 사본 없이 그대로 내보낸다.
+  #    사본 도구가 없는 프로젝트의 release 도 같은 길로 간다.
+  BUILD_FAIL_MSG="빌드 실패. artifacts/logs/install-$PLATFORM-$BUILD_MODE.log 를 확인한다. / Build failed. See artifacts/logs/install-$PLATFORM-$BUILD_MODE.log. Check matching export templates in Editor > Manage Export Templates.
    iOS 에서 오류 본문이 비어 있으면 아이콘 → Team ID → bundle id → ios.zip 템플릿 순으로 점검한다. / For empty iOS errors, check the icon, Team ID, bundle ID, and ios.zip template."
-  if [ "$LAZY_APPLIED" -eq 1 ]; then
-    python3 "$ROOT/tools/apply_lazy_download.py" --restore
-  fi
-  if [ "$MAP_SPLIT" -eq 1 ]; then
-    python3 "$ROOT/tools/split_map_for_release.py" --restore
-    trap - EXIT INT TERM
+  # 🔑 **이 스크립트는 여러 프로젝트가 함께 쓴다**(godot 스킬 · 프로젝트의 install.sh 는 이 파일로 가는 링크다).
+  #    프로젝트 전용 도구는 **있을 때만** 쓰고, 없는 프로젝트는 예전처럼 원본에서 그대로 내보낸다.
+  if [ "$BUILD_MODE" = "release" ] && [ -f "$ROOT/tools/export_from_clone.py" ]; then
+    EXPORT_ARGS=(--preset "$PRESET_NAME" --out "$EXPORT_PATH" --mode release
+                 --log "artifacts/logs/install-$PLATFORM-$BUILD_MODE.log" --godot "$GODOT_BIN")
+    if [ -f "$ROOT/tools/split_map_for_release.py" ]; then
+      EXPORT_ARGS+=(--split)
+    fi
+    # 🛑 `--no-lazy-download` 이면 켜지 않는다. 켜도 모바일 프리셋만 고친다(apply_lazy_download.py).
+    if [ "$LAZY_DOWNLOAD" -eq 1 ] && [ -f "$ROOT/tools/apply_lazy_download.py" ]; then
+      step "lazy-download 적용 — 사본에서 / Applying lazy-download in a clone —"
+      EXPORT_ARGS+=(--lazy)
+    else
+      echo "   lazy-download 없음 — 모든 자산을 번들에 넣는다 / no lazy-download: bundling every asset"
+    fi
+    python3 "$ROOT/tools/export_from_clone.py" "${EXPORT_ARGS[@]}" || die "$BUILD_FAIL_MSG"
+  else
+    "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
+    "$GODOT_BIN" --headless --path "$ROOT" \
+      "--export-$BUILD_MODE" "$PRESET_NAME" "$EXPORT_PATH" \
+      --log-file "artifacts/logs/install-$PLATFORM-$BUILD_MODE.log" \
+      || die "$BUILD_FAIL_MSG"
   fi
 fi
 
-# iOS 는 export_path 옆에 .ipa 가 떨어진다
+# iOS 는 export_path 옆에 .ipa 가 떨어진다.
+# 🛑 폴더의 아무 .ipa 나 집으면 **다른 preset 이 예전에 만든 빌드**를 설치하게 된다
+#    (preset 이 여러 개면 builds/ios 에 .ipa 가 여러 개 쌓인다).
+#    preset 이 지정한 경로를 먼저 쓰고, 없을 때만 가장 최근 .ipa 로 물러선다.
 if [ "$PLATFORM" = "ios" ]; then
-  ARTIFACT=$(find "$IOS_OUT_DIR" -maxdepth 1 -name '*.ipa' -print 2>/dev/null | head -1)
+  if [ -e "$ROOT/$EXPORT_PATH" ]; then
+    ARTIFACT="$ROOT/$EXPORT_PATH"
+  else
+    ARTIFACT=$(find "$IOS_OUT_DIR" -maxdepth 1 -name '*.ipa' -print0 2>/dev/null \
+      | xargs -0 ls -t 2>/dev/null | head -1)
+  fi
   [ -n "$ARTIFACT" ] || die ".ipa 를 찾지 못했다: / Could not find an .ipa: $IOS_OUT_DIR
    서명 설정(app_store_team_id·code_sign_identity_debug)을 확인한다. / Check signing settings (app_store_team_id and code_sign_identity_debug)."
 fi
@@ -489,7 +555,9 @@ case "$PLATFORM" in
     step "설치 중 — / Installing — $PACKAGE_ID"
     # 🛑 debug ↔ release 를 번갈아 깔면 서명이 달라 -r 이 거부된다(INSTALL_FAILED_UPDATE_INCOMPATIBLE).
     #    지우고 다시 깔면 되지만 **앱 데이터(로그인·세이브)가 함께 지워진다** → 사람에게 묻는다.
-    INSTALL_LOG=$(adb -s "$DEVICE_ID" install -r "$ARTIFACT" 2>&1) || true
+    # 🛑 --no-incremental — .idsig 가 APK 옆에 있으면 adb 가 incremental 설치를 골라
+    #    /data 를 수십 GB 씩 잠식하는 고아 파일을 남긴다(A12 실측).
+    INSTALL_LOG=$(adb -s "$DEVICE_ID" install --no-incremental -r "$ARTIFACT" 2>&1) || true
     printf '%s\n' "$INSTALL_LOG" | tail -2
     if printf '%s' "$INSTALL_LOG" | grep -q "INSTALL_FAILED_UPDATE_INCOMPATIBLE\|signatures do not match"; then
       warn "이미 깔린 앱과 서명이 다르다 (debug ↔ release 전환). 지우고 새로 깔아야 한다 — / The installed app has a different signature (debug/release switch). Reinstallation is required —
@@ -500,13 +568,18 @@ case "$PLATFORM" in
         y|Y|yes)
           step "기존 앱 삭제 — / Uninstalling the existing app — $PACKAGE_ID"
           adb -s "$DEVICE_ID" uninstall "$PACKAGE_ID" | tail -1
-          adb -s "$DEVICE_ID" install "$ARTIFACT" | tail -2
+          adb -s "$DEVICE_ID" install --no-incremental "$ARTIFACT" | tail -2
           ;;
         *)
           die "설치를 중단했다. 같은 모드로 다시 빌드하거나, 직접 지운다: / Installation cancelled. Rebuild with the same mode, or uninstall manually:
    adb -s $DEVICE_ID uninstall $PACKAGE_ID"
           ;;
       esac
+    elif ! printf '%s' "$INSTALL_LOG" | grep -q 'Success'; then
+      # 🛑 설치가 실패했는데 실행으로 넘어가면 **기기에 이미 있던 예전 빌드**가 떠서
+      #    방금 만든 것을 검증한 줄 알게 된다. 여기서 멈춘다.
+      die "설치 실패 — 기기의 앱은 그대로다. / Installation failed; the device still has the previous build.
+$(printf '%s' "$INSTALL_LOG" | tail -2)"
     fi
 
     if [ "$LAUNCH" -eq 1 ]; then
