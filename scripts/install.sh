@@ -11,6 +11,7 @@
 #   install.sh <선택> --release      릴리즈 빌드로 (묻지 않는다)
 #   install.sh <선택> --debug        디버그 빌드로 (묻지 않는다)
 #   install.sh <선택> --release --no-lazy-download
+#   install.sh <선택> --release --boot-profile   릴리스인데도 [Boot] 부팅 타임라인을 찍는다
 #                                    릴리즈인데 자산을 전부 번들에 넣는다 (기본은 lazy-download)
 #   install.sh <선택> --preset "A15 Test"
 #                                    export_presets.cfg 의 preset 을 직접 고른다
@@ -39,6 +40,7 @@
 #   bash install.sh --win                    Build and run on this Windows PC
 #   --debug / --release                     Choose the build mode without prompting
 #   --no-lazy-download                      Bundle every asset (release defaults to lazy-download)
+#   --boot-profile                          Emit [Boot] timeline logs from a release build too
 #   --skip-build                            Use an existing build
 #   --console                               Attach runtime logs (Ctrl+C to stop)
 #   --no-launch                             Build/install without launching
@@ -72,12 +74,21 @@ WIN=0
 #
 # 🛑 debug 빌드에서는 **무조건 꺼진다** — 개발 중에는 늘 모든 자산이 번들에 있어야 한다.
 LAZY_DOWNLOAD=1
+# 🛑 릴리스 APK 에는 `[Boot]` 로그가 **한 줄도 없다** — `BootProfile.mark()` 가 디버그·autotest·
+#    `bootprofile` 기능에서만 찍기 때문이다(`scripts/boot_profile.gd`). 2026-09-12 이것을 모르고
+#    릴리스 로그에서 부팅 타임라인을 찾다가 "로그가 밀렸나" 를 한참 의심했다.
+#    🔑 그래서 지금까지 인용해 온 부팅 숫자는 **전부 디버그 값**이다. 디버그는 GDScript 가
+#    최적화 없이 돌아 훨씬 느리므로, **릴리스의 진짜 부팅 시간을 재려면 이 옵션을 쓴다.**
+#    🛑 원본 `export_presets.cfg` 는 건드리지 않는다 — 사본에만 기능 태그를 더한다
+#    (`export_from_clone.py --feature`). 그래서 다른 세션의 빌드에 전파되지 않는다.
+BOOT_PROFILE=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --win)        WIN=1 ;;
     --release)    BUILD_MODE="release" ;;
     --debug)      BUILD_MODE="debug" ;;
+    --boot-profile) BOOT_PROFILE=1 ;;
     --no-lazy-download) LAZY_DOWNLOAD=0 ;;
     --skip-build) SKIP_BUILD=1 ;;
     --preset)
@@ -505,6 +516,11 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
       EXPORT_ARGS+=(--lazy)
     else
       echo "   lazy-download 없음 — 모든 자산을 번들에 넣는다 / no lazy-download: bundling every asset"
+    fi
+    # 🔑 릴리스에서도 `[Boot]` 타임라인을 찍게 한다(위 BOOT_PROFILE 주석 참조).
+    if [ "$BOOT_PROFILE" -eq 1 ]; then
+      step "bootprofile 기능 추가 — 릴리스에서도 [Boot] 로그를 찍는다 / adding bootprofile feature"
+      EXPORT_ARGS+=(--feature bootprofile)
     fi
     python3 "$ROOT/tools/export_from_clone.py" "${EXPORT_ARGS[@]}" || die "$BUILD_FAIL_MSG"
   else

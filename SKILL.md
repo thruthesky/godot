@@ -433,6 +433,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [editor-compass.md](references/editor-compass.md) | **동서남북 보조선** — 복사해 바로 쓰는 애드온([addons/editor_compass/](addons/editor_compass/)) · 숫자 `0` 토글 · 🛑 에디터 단축키가 **`_input` 이어야 하는 이유**(`_shortcut_input`·`_forward_3d_gui_input` 은 3D 뷰포트 클릭 후 안 온다) · 씬에 저장 안 되게 하는 `owner` 규칙 · **끄는 방법 셋**(`0` · `Project > Tools` 메뉴 · 플러그인 체크 해제)과 끌 때 **그룹 전체**를 떼어야 하는 이유 | 3D 씬에서 방향·원점을 모르겠을 때 · 에디터 단축키가 안 먹을 때 |
 | [whats-new.md](references/whats-new.md) | 최신 버전 신기능과 마이그레이션 | [상세](references/catalog.md#whats-newmd--최신-버전-신기능과-마이그레이션) |
 | [asset-store.md](references/asset-store.md) | Asset Store와 애드온 | [상세](references/catalog.md#asset-storemd--asset-store와-애드온) |
+| [asset-store-api.md](references/asset-store-api.md) | 🛑 **업로드 API 는 없다** — 스토어 REST API 전량 14개(조회 12·쓰기 2) | [상세](references/catalog.md#asset-store-apimd--asset-store-api) |
 | [level-design.md](references/level-design.md) | 맵 만들기 | [상세](references/catalog.md#level-designmd--맵-만들기) |
 | [openworld-3d.md](references/openworld-3d.md) | 오픈월드 만들기 ★ 넓은 야외 맵 | [상세](references/catalog.md#openworld-3dmd--오픈월드-만들기--넓은-야외-맵) |
 | [dictionary.md](references/dictionary.md) | 용어집 | [상세](references/catalog.md#dictionarymd--용어집) |

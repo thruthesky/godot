@@ -4,7 +4,8 @@
 
 Godot 에서 남이 만든 에셋·애드온을 가져오는 경로와, **설치된 애드온이 프로젝트에
 정확히 무엇을 남기는가**(`addons/` 폴더, `plugin.cfg`, `[editor_plugins]`, `[autoload]`)를
-다룬다. AI 도구 애드온의 상세는 [ai-tooling.md](ai-tooling.md) 로 넘긴다.
+다룬다. AI 도구 애드온의 상세는 [ai-tooling.md](ai-tooling.md) 로, **스토어의 REST API**
+(조회 자동화 · 🛑 업로드 API 는 없다)는 [asset-store-api.md](asset-store-api.md) 로 넘긴다.
 
 확인 기준은 **4.7.2.stable** 이다.
 
@@ -17,6 +18,7 @@ Godot 에서 남이 만든 에셋·애드온을 가져오는 경로와, **설치
 | [3](#3-활성화가-프로젝트에-남기는-것) | 활성화가 프로젝트에 남기는 것 |
 | [4](#4-함정--애드온이-autoload-를-심는-경우) | 함정 — 애드온이 `[autoload]` 를 심는 경우 |
 | [5](#5-이-프로젝트에서-쓰는-애드온) | 이 프로젝트에서 쓰는 애드온 |
+| [→](asset-store-api.md) | **스토어 REST API** — 조회 자동화 · 🛑 업로드 API 는 없다 |
 | [·](#공식-문서) | 공식 문서 |
 
 ---
@@ -154,15 +156,26 @@ grep -rL '@tool' addons/<이름> --include='*.gd'
 
 ## 5. 이 프로젝트에서 쓰는 애드온
 
-**현재 라리엔 3D 에는 활성화된 애드온이 없다.** `project.godot` 에 `[editor_plugins]` 도
-`[autoload]` 도 없고 `addons/` 폴더 자체가 없는 상태다.
+| 애드온 | 용도 | 들어온 경로 | 런타임 오토로드 | 문서 |
+|---|---|---|---|---|
+| **gohud** (`addons/gohud`) | 공용 HUD·UI 키트 — 모달·시트·다이얼로그·폼·알림·HUD 막대·퀵슬롯·조이스틱 | **git submodule** (`github.com/thruthesky/gohud`) | ❌ 없음 (오토로드 없이 동작. `GoRuntime` 은 **선택**) | `addons/gohud/README.ko.md` |
 
-애드온을 도입한다면 이 표를 갱신한다.
+`gohud` 는 이 프로젝트의 공용 UX 를 **독립 애드온으로 분리해 다시 짠 것**이고,
+Asset Store 배포와 다른 프로젝트 재사용이 목적이다. 라이브러리로서 지켜야 할 성질이 둘 있다.
 
-| 애드온 | 용도 | 런타임 오토로드 | 문서 |
-|---|---|---|---|
-| **Godot AI** (`godot_ai`) | 에디터 안에 MCP 서버를 띄워 AI 가 씬·노드·스크립트를 조작 | ✅ `_mcp_game_helper` | [ai-tooling.md](ai-tooling.md) |
-| Terrain3D | 대규모 야외 지형 (내장 터레인 에디터가 없다) | — | [level-design.md](level-design.md) |
+- **플러그인을 켜지 않아도 동작한다.** `plugin.cfg` 활성화는 편의 기능만 추가한다.
+- **오토로드를 심지 않는다.** §4 의 함정을 라이브러리 쪽에서 막아 둔 것이다 —
+  전역 상태는 `static` 으로 들고, 오토로드(`GoRuntime`)는 쓰고 싶은 프로젝트만 등록한다.
+
+서브모듈이라 **라리엔을 개발하면서 동시에 애드온을 고칠 수 있다.** 고치는 순서는
+`addons/gohud` 안에서 커밋·push → 상위 저장소에서 포인터 커밋이다.
+스토어 등록·버전 업로드는 **웹 UI 수동**이고(API 가 없다 —
+[asset-store-api.md §1](asset-store-api.md#1-결론--무엇이-되고-무엇이-안-되나)),
+올라간 뒤의 확인만 API 로 자동화한다.
+
+> 도입을 검토만 한 것들: **Terrain3D**(대규모 야외 지형 — 내장 터레인 에디터가 없다 →
+> [level-design.md](level-design.md)), **Godot AI**(`godot_ai` — 에디터 MCP 서버.
+> 🛑 오토로드 `_mcp_game_helper` 를 심는다 → [ai-tooling.md](ai-tooling.md)).
 
 > 애드온을 늘리기 전에 **엔진 내장 기능으로 되는지 먼저 본다.** 애드온은 엔진 업그레이드마다
 > 깨질 수 있는 의존성이고, 이 프로젝트는 모바일 용량 예산이 빠듯하다.
