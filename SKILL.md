@@ -423,6 +423,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [export-build-android.md](references/export-build-android.md) | Android 빌드 | [상세](references/catalog.md#export-build-androidmd--android-빌드) |
 | [export-build-ios.md](references/export-build-ios.md) | iOS 빌드 | [상세](references/catalog.md#export-build-iosmd--ios-빌드) |
 | [export-build-desktop.md](references/export-build-desktop.md) | macOS·Windows·Linux | [상세](references/catalog.md#export-build-desktopmd--macoswindowslinux) |
+| [iap-purchases.md](references/iap-purchases.md) | 인앱 결제 — 🛑 돈이 오가는 코드 | [상세](references/catalog.md#iap-purchasesmd--인앱-결제) |
 | [multiplayer.md](references/multiplayer.md) | 멀티플레이어 | [상세](references/catalog.md#multiplayermd--멀티플레이어) |
 | [project-config.md](references/project-config.md) | 설정 파일 포맷과 CLI | [상세](references/catalog.md#project-configmd--설정-파일-포맷과-cli) |
 | [ai-tooling.md](references/ai-tooling.md) | LSP·MCP·Codex 연동 | [상세](references/catalog.md#ai-toolingmd--lspmcpcodex-연동) |

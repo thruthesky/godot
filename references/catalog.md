@@ -616,6 +616,20 @@ Godot 이 `.ipa` 를 직접 만들지 않고 **Xcode 프로젝트까지만 내�
 archive` → `ExportOptions.plist` → `.ipa` → TestFlight 업로드, 그리고 **헤드리스에서 설정
 오류 메시지가 빈 문자열로 나오는 실측 현상**과 그때 점검할 항목 순서를 담는다.
 
+### [iap-purchases.md](iap-purchases.md) — 인앱 결제
+
+게임 안에서 돈을 받는 전 과정 — 상품 진열·가격 표시·결제창·영수증 검증·지급·복구. **누가 영수증을
+검증하나**(클라이언트를 믿으면 안 되는 이유)부터 정하고, 여덟 단계 흐름에서 **소비(consume)를 지급
+뒤에 하는 순서**가 왜 핵심인지 짚는다. Android 는 `godot-google-play-billing` 래퍼로 연결·조회·결제창을
+다루되 **요청은 시그널을 건 다음에 보낸다**(먼저 보내면 응답을 놓치고, 결제에서는 돈만 나간다),
+**인자 없는 `connected` 를 실패로 읽지 않는다**, 응답 키는 **바깥 `product_details` · 안쪽
+`one_time_purchase_offer_details_list`**, 신형 상품은 **`purchase_option_id` 를 넘겨야 결제창이
+열린다** 같은 실측 함정을 표와 코드로 정리했다. 결과 신호를 놓쳤을 때 **그 자리에서 한 번, 다음
+기회에 한 번** 두 겹으로 회수하는 설계와, 회수 코드를 써 놓고 부르지 않아 조용히 죽는 사고를 막는
+법도 담았다. 서버 검증의 최소 요건(멱등·환불·소유권·원장), iOS StoreKit 선택지, **헤드리스로는
+아무것도 드러나지 않으므로 실기기 로그로 검증하는 방법**(사이드로드가 안 되는 이유, 테스트 결제
+표시, 남길 로그 지점), 증상별 원인 표, 플러그인 aar 에서 응답 키를 직접 뽑아 대조하는 법.
+
 ### [export-build-desktop.md](export-build-desktop.md) — macOS·Windows·Linux
 
 데스크톱 3종의 테스트 실행과 Steam 배포용 릴리즈. 플랫폼별 필요 템플릿(macOS 는 debug·
