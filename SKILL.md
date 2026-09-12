@@ -116,15 +116,17 @@ description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 �
 > godot --headless --doctool /tmp/gddoc     # 클래스 정의 XML 전체 추출
 > ```
 
-## `/godot init` 과 `./install.sh` — 절차는 [references/godot-init.md](references/godot-init.md)
+## `/godot init` 과 `./install.sh`·`./uninstall.sh` — 절차는 [references/godot-init.md](references/godot-init.md)
 
-사용자가 **`/godot init`** 이라고 지시하면 세 가지를 한다 — ① 이 스킬의 `commands/godot-example.md` 를 대상
+사용자가 **`/godot init`** 이라고 지시하면 네 가지를 한다 — ① 이 스킬의 `commands/godot-example.md` 를 대상
 프로젝트의 `.claude/commands/` 로 **복사**한다(그 뒤로는 `/godot-example` 처럼 짧게 부른다). ② 프로젝트 루트에
 `install.sh` → `.claude/skills/godot/scripts/install.sh` 를 가리키는 **상대경로 심볼릭 링크**를 건다 — 복사가
-아니다. ③ `scripts/triangles.sh` → `../.claude/skills/godot/scripts/triangles.sh` 링크를 건다(🛑 `scripts/` 안에
+아니다. ③ 같은 방식으로 루트에 `uninstall.sh` → `.claude/skills/godot/scripts/uninstall.sh` 링크를 건다 —
+기기를 골라 그 기기에 깔린 이 게임의 앱을 **한 번에 모두** 지운다. ④ `scripts/triangles.sh` →
+`../.claude/skills/godot/scripts/triangles.sh` 링크를 건다(🛑 `scripts/` 안에
 있으므로 `..` 이 하나 더 붙는다). 복사하면 스킬을 고쳐도 사본은 옛날 그대로 남지만, 링크는 모든 프로젝트에 즉시 반영된다.
 🛑 같은 이름의 파일이 이미 있으면 덮어쓰지 않고 차이를 보여주며, `ln -sf` 를 쓰지 않고(진짜 `install.sh` 를
-말없이 지운다), 원본 존재를 먼저 확인하고, 만든 뒤 `./install.sh --list` 로 검증한다. 인자로 경로가 오면
+말없이 지운다), 원본 존재를 먼저 확인하고, 만든 뒤 `./install.sh --list`·`./uninstall.sh --list` 로 검증한다. 인자로 경로가 오면
 (`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 현재 프로젝트에 설치한다. 표에 없는 파일은 설치하지 않는다.
 **설치 명령 전문·지킬 것 8가지·Windows 대안·`project.godot` 탐색 규칙은 위 문서에 있다.**
 
@@ -439,7 +441,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [best-practices.md](references/best-practices.md) | 공식 Best practices 12편 + GDScript 스타일 가이드(명명·코드 순서) + 공식과 이 스킬이 다른 곳 | "왜 이렇게 하라고 하나"·씬 vs 스크립트·오토로드 남용·명명 규칙 |
 | [debugging.md](references/debugging.md) | 실행 뒤 문제 — Output·Debugger·Remote 씬 트리·오류 읽기·프로파일러·ObjectDB·원격 디버그·Android 심볼화·Troubleshooting·내비 디버그 | 오류 메시지·안 보임·느림·폰에서만 죽음 |
 | [keywords.md](references/keywords.md) | 예전 `description` 의 트리거 키워드 전량(9,319자) — 검색 색인 | 어떤 질문이 어느 문서로 가야 하는지 찾을 때 |
-| [godot-init.md](references/godot-init.md) | `/godot init` 설치 절차 전문 + `install.sh` 옵션·장치 목록 기준 (SKILL.md 에서 이동) | `/godot init` 지시를 받았을 때 · 실기기 빌드·설치 |
+| [godot-init.md](references/godot-init.md) | `/godot init` 설치 절차 전문 + `install.sh`·`uninstall.sh` 옵션·장치 목록 기준 (SKILL.md 에서 이동) | `/godot init` 지시를 받았을 때 · 실기기 빌드·설치 |
 
 ## 번들 스크립트
 
@@ -469,6 +471,19 @@ Godot 에디터가 실행 중이어야 한다. 상세 사용법은 [references/l
 `adb devices` 의 `device` 상태만), stdin 이 터미널이 아닐 때 묻지 않고 목록만 찍는 동작, macOS `.zip` 풀기와
 `com.apple.quarantine` 제거는 위 문서에 있다. 에디터 Remote Deploy 와 결과가 같으므로 에디터를 띄우지 않는
 작업에서는 이 스크립트를 쓴다 → [references/headless-workflow.md](references/headless-workflow.md) §3.
+
+### scripts/uninstall.sh — 상세는 [references/godot-init.md §3](references/godot-init.md)
+
+**기기를 골라 그 기기에 깔린 이 게임의 앱을 한 번에 지운다** — `install.sh` 의 짝이라 장치 목록·번호가 같다.
+지울 앱은 `export_presets.cfg` 의 앱 ID 들과 그 변종(`…​.debug`), 그리고 ID 의 마지막 마디·`config/name` 을
+검색어로 삼아 **ID 에 그 말이 들어가는 앱 전부**를 잡는다 — 옛 빌드·다른 서명·이름만 바뀐 사본이 여러 개
+깔려 있어도 한 번에 없앤다. 흔한 낱말(`game`·`test`·`godot`…)은 검색어로 쓰지 않아 남의 앱은 건드리지 않는다.
+목록을 보여주고 확인을 받은 뒤 지우고(`--yes` 로 생략), 지운 다음 **다시 찾아보고** 남았으면 종료 코드 1.
+🛑 실기기는 여러 작업이 함께 쓰므로 **`--apps` 로 무엇이 지워질지 먼저 보이고 사람의 승인을 받는다.**
+
+```bash
+./uninstall.sh 1 --apps    # 후보만 (지우지 않는다) · --dry-run · --yes · --pick · --match · --package · --keep-data
+```
 
 ### scripts/triangles.sh — 삼각형·드로우콜 세기
 

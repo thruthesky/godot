@@ -1,6 +1,6 @@
-# `/godot init` 과 `install.sh` — 슬래시 명령 설치 · 빌드·설치·실행 도구
+# `/godot init` 과 `install.sh`·`uninstall.sh` — 슬래시 명령 설치 · 빌드·설치·실행 · 앱 삭제 도구
 
-> **이 문서로 오는 상황** — 사용자가 **`/godot init`** 이라고 지시했을 때 · **`./install.sh`** 로 실기기(macOS·iOS·Android)에 빌드·설치·실행할 때 · 심볼릭 링크가 깨졌거나 장치가 목록에 안 보일 때
+> **이 문서로 오는 상황** — 사용자가 **`/godot init`** 이라고 지시했을 때 · **`./install.sh`** 로 실기기(macOS·iOS·Android)에 빌드·설치·실행할 때 · **`./uninstall.sh`** 로 기기에 깔린 이 게임의 앱을 모두 지울 때 · 심볼릭 링크가 깨졌거나 장치가 목록에 안 보일 때
 
 > 2026-09-03 에 `SKILL.md` 의 두 절(「`/godot init`」·「번들 스크립트 › scripts/install.sh」)을 **한 글자도 지우지 않고** 여기로 옮겼다.
 > Agent Skills 규격은 `SKILL.md` 본문을 500줄 미만으로 두라 하고, 아래 절차·옵션 표는 스킬이 트리거된 뒤 그 작업을 할 때만 필요하기 때문이다.
@@ -12,19 +12,24 @@
    - 설치하는 것 ① 슬래시 명령 — 복사한다 · ② `./install.sh` — 심볼릭 링크 · 절차 · 지킬 것
 2. [`scripts/install.sh` — 빌드·설치·실행](#2-scriptsinstallsh--빌드설치실행-원문은-skillmd-번들-스크립트에-있던-것)
    - 장치 목록 · 번호/기기 ID 선택 · 옵션(`--console`·`--skip-build`·`--release`·`--no-launch`·`--path`) · 비대화형 동작 · macOS `.zip`·quarantine
-3. [공식 문서](#공식-문서)
+3. [`scripts/uninstall.sh` — 기기에 깔린 이 게임의 앱을 모두 지운다](#3-scriptsuninstallsh--기기에-깔린-이-게임의-앱을-모두-지운다)
+   - 무엇을 "이 게임의 앱" 으로 보는가 · 옵션(`--apps`·`--dry-run`·`--yes`·`--pick`·`--match`·`--package`·`--keep-data`·`--purge-data`) · 플랫폼별 동작 · 지운 뒤 재확인
+4. [공식 문서](#공식-문서)
 
 ---
 
 ## 1. `/godot init` — 프로젝트에 슬래시 명령과 `./install.sh` 를 설치한다
 
-사용자가 **`/godot init`** 이라고 지시하면 세 가지를 한다.
+사용자가 **`/godot init`** 이라고 지시하면 네 가지를 한다.
 
 1. 이 스킬이 들고 있는 **명령 파일들을 대상 프로젝트의 `.claude/commands/` 로 복사**한다 —
    그 뒤로는 `/godot-example` 처럼 짧게 부를 수 있다
 2. 대상 프로젝트 **루트에 `./install.sh` 심볼릭 링크**를 건다 —
    `.claude/skills/godot/scripts/install.sh` 를 가리키며, 긴 경로 없이 `./install.sh` 로 부른다
-3. 대상 프로젝트 **`scripts/triangles.sh` 심볼릭 링크**를 건다 —
+3. 대상 프로젝트 **루트에 `./uninstall.sh` 심볼릭 링크**를 건다 —
+   `.claude/skills/godot/scripts/uninstall.sh` 를 가리키며, 기기를 골라 그 기기에 깔린
+   이 게임의 앱을 한 번에 모두 지운다 (→ [§3](#3-scriptsuninstallsh--기기에-깔린-이-게임의-앱을-모두-지운다))
+4. 대상 프로젝트 **`scripts/triangles.sh` 심볼릭 링크**를 건다 —
    `.claude/skills/godot/scripts/triangles.sh` 를 가리키며, 씬·에셋의 삼각형과 드로우콜을 센다
 
 ### 설치하는 것 ① 슬래시 명령 — **복사한다**
@@ -53,7 +58,22 @@
 ./install.sh 1 --console  # 1번 장치에 설치하고 로그를 터미널에 붙인다
 ```
 
-### 설치하는 것 ③ `scripts/triangles.sh` — **심볼릭 링크를 건다**
+### 설치하는 것 ③ `./uninstall.sh` — **심볼릭 링크를 건다. `install.sh` 와 같은 이유다**
+
+| 원본 (이 스킬 안) | 설치 위치 | 형태 |
+|---|---|---|
+| `scripts/uninstall.sh` | `<대상>/uninstall.sh` | 🛑 **심볼릭 링크** — `.claude/skills/godot/scripts/uninstall.sh` 를 가리킨다 |
+
+`install.sh` 의 짝이다. 같은 장치 목록·같은 번호를 쓰고, 지울 앱도 `export_presets.cfg` 와
+`project.godot` 에서 스스로 알아내므로 **프로젝트별로 고칠 것이 없다**.
+
+```bash
+./uninstall.sh          # 장치 목록 → 선택 → 지울 앱 목록 → 확인 → 삭제
+./uninstall.sh --list   # 장치 목록만
+./uninstall.sh 1 --apps # 1번 기기에 깔린 이 게임의 앱만 본다 (지우지 않는다)
+```
+
+### 설치하는 것 ④ `scripts/triangles.sh` — **심볼릭 링크를 건다**
 
 | 원본 (이 스킬 안) | 설치 위치 | 형태 |
 |---|---|---|
@@ -101,7 +121,18 @@ fi
 
 ./install.sh --list                          # 검증 — 장치 목록이 나오면 성공
 
-# ── ③ scripts/triangles.sh 심볼릭 링크 ───────────────────────
+# ── ③ ./uninstall.sh 심볼릭 링크 ─────────────────────────────
+[ -f .claude/skills/godot/scripts/uninstall.sh ] || echo "스킬이 없다. 링크를 걸지 않는다"
+
+if [ -e uninstall.sh ] || [ -L uninstall.sh ]; then
+  ls -l uninstall.sh                        # 이미 있으면 손대지 않고 사람에게 물어본다
+else
+  ln -s .claude/skills/godot/scripts/uninstall.sh uninstall.sh
+fi
+
+./uninstall.sh --list                        # 검증 — 장치 목록이 나오면 성공
+
+# ── ④ scripts/triangles.sh 심볼릭 링크 ───────────────────────
 mkdir -p scripts
 if [ -e scripts/triangles.sh ] || [ -L scripts/triangles.sh ]; then
   ls -l scripts/triangles.sh                 # 이미 있으면 손대지 않고 사람에게 물어본다
@@ -122,7 +153,8 @@ scripts/triangles.sh --glb                   # 검증 — 표가 나오면 성�
 | 🛑 **`ln -sf` 를 쓰지 않는다** | 루트에 있던 **진짜 `install.sh` 파일을 말없이 지운다.** 존재를 먼저 확인하고 없을 때만 건다 |
 | 🛑 **링크는 반드시 상대경로로 건다** (`ln -s .claude/skills/...`) | 절대경로(`/Users/…`)로 걸면 **폴더를 옮기거나 다른 사람이 클론하면 깨진다** |
 | **`.claude/skills/godot/scripts/install.sh` 가 실제로 있는지 먼저 확인한다** | 스킬이 없는 프로젝트에 걸면 **깨진 링크**만 남는다 |
-| 링크를 만든 뒤 **`./install.sh --list` 로 검증한다** | 링크가 걸렸다는 것과 동작한다는 것은 다르다 |
+| 링크를 만든 뒤 **`./install.sh --list`·`./uninstall.sh --list` 로 검증한다** | 링크가 걸렸다는 것과 동작한다는 것은 다르다 |
+| 🛑 **`/godot init` 은 `uninstall.sh` 를 걸기만 하고 실행하지 않는다** | 실행하면 사람이 쓰던 앱이 지워진다. 지우는 것은 사람이 부를 때만 |
 | 설치 후 **무엇이 생겼고 어떻게 부르는지** 알린다 | 파일만 복사하고 끝내면 쓸 줄 모른다 |
 | 새 명령은 **`commands/` 에 원본을 두고** 복사한다 | 내용이 두 곳으로 갈라지지 않게 한다 |
 | 슬래시 명령은 **재시작 후 인식**될 수 있다 | 목록에 안 보이면 세션을 다시 열라고 안내한다 |
@@ -185,6 +217,74 @@ macOS 는 `export_path` 가 `.zip` 이면 풀어서 `.app` 을 꺼내고, `com.a
 
 **에디터 Remote Deploy 와 결과가 같으므로, 에디터를 띄우지 않는 작업에서는 이 스크립트를
 쓴다.** 상세는 [references/headless-workflow.md](headless-workflow.md) §3.
+
+---
+
+## 3. `scripts/uninstall.sh` — 기기에 깔린 이 게임의 앱을 모두 지운다
+
+**`install.sh` 의 짝.** 그냥 실행하면 **같은 장치 목록·같은 번호**를 보여주고, 고른 기기에서
+**이 게임의 앱을 전부 찾아** 목록으로 보여준 뒤 확인을 받고 지운다. 개발 중에는 옛 빌드·다른 서명·
+이름만 바뀐 사본이 여러 개 쌓이는데, 그것들을 하나씩 찾아 지우지 않아도 된다.
+
+```bash
+./uninstall.sh                      # 장치 목록 → 선택 → 지울 앱 목록 → 확인 → 삭제
+./uninstall.sh --list               # 장치 목록만
+./uninstall.sh 1 --apps             # 후보만 본다 (아무것도 지우지 않는다)
+./uninstall.sh R58X609XXYV --yes    # 묻지 않고 전부 지운다
+```
+
+### 무엇을 "이 게임의 앱" 으로 보는가 — 프로젝트에서 스스로 알아낸다
+
+| 순서 | 잡는 것 | 예 |
+|---|---|---|
+| ① | `export_presets.cfg` 의 **모든** preset 에서 모은 `package/unique_name`(Android)·`application/bundle_identifier`(iOS·macOS) 와 **정확히 같은** ID | `com.withcenter.laryen` |
+| ② | 그 ID 로 **시작하는** 변종 | `com.withcenter.laryen.debug` · `…​.test` |
+| ③ | 그 ID 의 **마지막 마디**와 `project.godot` 의 `config/name` 을 검색어로 삼아, ID 에 그 말이 **들어가는** 앱 전부 | `com.old.laryen2d` · `org.example.laryen3d` |
+
+🛑 **흔한 낱말은 검색어로 쓰지 않는다** — `game`·`games`·`test`·`app`·`demo`·`godot`·`project`·`main`·
+`example`·`sample`·`new`·`my`·`mobile`·`client`·`server`·`build`·`dev`·`debug`·`release`·`android`·`ios`·
+`macos`·`windows`, 그리고 네 글자 미만은 버린다. 남의 앱을 지우는 사고를 막기 위해서다.
+검색어를 더하려면 `--match`, 자동 탐색을 끄고 딱 하나만 지우려면 `--package` 를 쓴다.
+
+```bash
+./uninstall.sh 1 --match myoldname        # 검색어를 더한다 (여러 번 가능)
+./uninstall.sh 1 --package com.foo.bar    # 이것만 지운다 (①②③ 을 끈다)
+```
+
+### 옵션
+
+| 옵션 | 하는 일 |
+|---|---|
+| `--list` | 장치 목록만 보고 끝 |
+| `--apps` | 그 기기의 삭제 후보만 보여주고 끝 — **지우기 전에 늘 이것부터** |
+| `--dry-run` | 실행할 명령만 찍는다 |
+| `--yes` | 확인 없이 지운다 (CI·스크립트) |
+| `--pick` | 후보 중 번호로 골라 지운다 (`1 3` 처럼 띄어 쓴다. 기본은 "전부") |
+| `--match <말>` | 검색어를 더한다 |
+| `--package <ID>` | 이 ID 만 지운다 (자동 탐색을 끈다) |
+| `--keep-data` | Android — 앱만 지우고 데이터·캐시는 남긴다 (`adb uninstall -k`) |
+| `--purge-data` | macOS·Windows — 앱과 함께 `user://` 저장 폴더도 지운다 |
+| `--path <경로>` | 프로젝트 경로 지정 |
+
+### 플랫폼별로 무엇을 지우는가
+
+| 플랫폼 | 찾는 곳 | 지우는 방법 |
+|---|---|---|
+| **Android** | `pm list packages` — **사용자 프로필 전부**(직장 프로필 포함) | `adb uninstall`. 거부되면 `pm uninstall --user <N>` 으로 프로필마다 다시 |
+| **iOS** | `devicectl device info apps` — 개발자가 설치한 앱 목록 | `devicectl device uninstall app` |
+| **macOS** | `/Applications` · `~/Applications` · `<프로젝트>/builds` 안의 `.app` 을 **`Info.plist` 의 `CFBundleIdentifier` 로** 판정 | 폴더 삭제 |
+| **Windows** | `<프로젝트>/builds` 안의 `.exe` | 파일 삭제 |
+
+**지운 뒤 다시 찾아본다.** 지우려던 것이 남아 있으면 목록과 함께 **종료 코드 1** 로 알린다 —
+"지웠다" 는 출력만 보고 넘어가지 않게 하기 위해서다. `--pick` 으로 **고르지 않은** 것이 남은 것은
+실패가 아니므로 그대로 두었다고만 알리고 0 으로 끝낸다.
+
+🛑 **지우면 되돌릴 수 없고 앱 데이터(로그인 세션·세이브)가 함께 사라진다.** 그래서 기본은 목록을
+보여주고 `[y/N]` 로 물어본다. **stdin 이 터미널이 아니면 묻는 대신 아무것도 지우지 않고 멈춘다** —
+CI 에서 사람 없이 앱이 사라지는 일을 막는다. 그런 자리에서는 `--yes` 를 명시한다.
+
+🛑 **실기기는 여러 작업이 함께 쓴다.** 남이 그 기기로 검증하는 중일 수 있으므로, 지우기 전에
+`--apps` 로 무엇이 지워질지 보여 주고 사람의 승인을 받는다.
 
 ---
 
