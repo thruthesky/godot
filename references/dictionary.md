@@ -1585,6 +1585,12 @@ GDScript 의 모든 값이 겉으로는 `Variant` 다. `var x = 1` 이라고 타
 
 `_process(delta)`·`_physics_process(delta)` 의 인자. **60fps 면 약 0.0167.** 속도에 곱해야 프레임 속도가 달라도 같은 거리를 간다(`velocity * delta` — 단 `move_and_slide()` 는 안에서 곱하므로 또 곱하지 않는다). [basics/09-controller.md](basics/09-controller.md) 의 "60배로 추락" 함정.
 
+### 헤드리스(headless) — 화면 없이 돈다
+
+`godot --headless` 로 띄운 Godot. **창도 소리도 그림도 없이** 로직·물리·네트워크·UI 배치만 돈다(`--display-driver headless --audio-driver Dummy` 의 줄임).
+모니터·키보드 없이 도는 서버를 "머리 없는(headless)" 기계라 부르던 데서 온 이름이다. 검사·임포트·빌드·서버에 쓰고, 서버용 바이너리를 따로 받지 않는다.
+🛑 **그리지 않으므로 스크린샷이 `null` 이고 `frame_post_draw` 가 오지 않는다** — 그림이 필요하면 가상 디스플레이(Xvfb)에서 찍는다 → [headless-workflow.md §2-A·§7](headless-workflow.md).
+
 ## 공식 문서
 
 

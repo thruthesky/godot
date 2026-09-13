@@ -194,6 +194,13 @@ GitHub 이슈·PR, Asset Store. **다만 웹에서 본 것도 그대로 옮기�
 확인하려고 만든 임시 씬·스크립트는 **스크래치패드에** 두고, 끝나면 지운다.
 사용자의 프로젝트를 실험장으로 쓰지 않는다.
 
+### 🛑 검증 실행은 사람 화면에 창을 띄우지 않는다
+
+사람이 같은 컴퓨터에서 일한다. AI 가 스스로 돌리는 확인·검사는 **꼭 필요한 경우를 빼고 `--headless`** 로 돌리고,
+그림(스크린샷·녹화)이 필요하면 `scripts/xvfb_run.sh`(리눅스 컨테이너의 가상 화면)로 찍는다. 창을 띄웠다면 그 이유를 보고에 적는다.
+macOS 의 Godot 창은 화면 밖 좌표·최소화·`no_focus` 로도 숨겨지지 않는다(실측).
+헤드리스에서 되는 것·안 되는 것·함정 → [references/headless-workflow.md §2-A](references/headless-workflow.md) · 컨테이너 → §7
+
 ### 알아낸 것은 문서에 남긴다
 
 밖에서 찾아 확인한 값·동작·함정은 **그 자리에서 답하고 끝내지 말고
@@ -362,6 +369,7 @@ Godot 에디터가 실행 중이어야 동작한다. 자세한 사용법·경고
 | 변수의 타입, 심볼 정의 | `gdscript_lsp.py hover` / `definition` |
 | 씬 구조, 프로젝트 설정 | `.tscn` / `project.godot` 직접 읽기 |
 | 런타임 오류, 실제 노드 값, 화면 | MCP 도구 ([references/ai-tooling.md](references/ai-tooling.md)) |
+| 실제로 어떻게 그려지나 (스크린샷·녹화) | `scripts/xvfb_run.sh` — 사람 화면에 창을 띄우지 않는다 ([headless-workflow.md §7](references/headless-workflow.md)) |
 | 특정 시점의 지역 변수 | DAP 브레이크포인트 |
 | 성능 병목 · fps 하락 | 🛑 **[references/perf-tuning-playbook.md](references/perf-tuning-playbook.md)** — 진단 5단계를 순서대로 |
 
@@ -420,7 +428,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [audio.md](references/audio.md) | 3D 오디오 | [상세](references/catalog.md#audiomd--3d-오디오) |
 | [shaders-3d.md](references/shaders-3d.md) | 셰이더 | [상세](references/catalog.md#shaders-3dmd--셰이더) |
 | [performance-mobile.md](references/performance-mobile.md) | 최적화와 내보내기 ★ §0 먼저 | [상세](references/catalog.md#performance-mobilemd--최적화와-내보내기--0-먼저) |
-| [headless-workflow.md](references/headless-workflow.md) | 에디터 없이 작업하기 ★ 기본 작업 방식 | [상세](references/catalog.md#headless-workflowmd--에디터-없이-작업하기--기본-작업-방식) |
+| [headless-workflow.md](references/headless-workflow.md) | 에디터 없이 작업하기 ★ 기본 작업 방식 · 🛑 `--headless` 로 되는 것·안 되는 것(스크린샷 null·입력 좌표·종료 조건) · 사람 화면 없이 촬영(`xvfb_run.sh`) | [상세](references/catalog.md#headless-workflowmd--에디터-없이-작업하기--기본-작업-방식) |
 | [export-build.md](references/export-build.md) | 빌드와 내보내기 (플랫폼 공통) | [상세](references/catalog.md#export-buildmd--빌드와-내보내기-플랫폼-공통) |
 | [export-build-android.md](references/export-build-android.md) | Android 빌드 | [상세](references/catalog.md#export-build-androidmd--android-빌드) |
 | [export-build-ios.md](references/export-build-ios.md) | iOS 빌드 | [상세](references/catalog.md#export-build-iosmd--ios-빌드) |
@@ -472,6 +480,19 @@ Godot 에디터가 실행 중이어야 한다. 상세 사용법은 [references/l
 `adb devices` 의 `device` 상태만), stdin 이 터미널이 아닐 때 묻지 않고 목록만 찍는 동작, macOS `.zip` 풀기와
 `com.apple.quarantine` 제거는 위 문서에 있다. 에디터 Remote Deploy 와 결과가 같으므로 에디터를 띄우지 않는
 작업에서는 이 스크립트를 쓴다 → [references/headless-workflow.md](references/headless-workflow.md) §3.
+
+### scripts/xvfb_run.sh — 사람 화면 없이 스크린샷·녹화
+
+`--headless` 는 그리지 않고(스크린샷 `null` · `--write-movie` 종료 코드 134), macOS 의 Godot 창은 숨길 수 없다(실측).
+이 스크립트는 **리눅스 컨테이너의 가상 디스플레이(Xvfb)** 에서 Godot 을 그려 PNG·AVI 를 남긴다 — 사람 화면에는 아무것도 뜨지 않는다.
+
+```bash
+bash .claude/skills/godot/scripts/xvfb_run.sh -s res://tests/login_screen_shot.gd   # 검사 스크립트 — SHOT_DIR=/out
+bash .claude/skills/godot/scripts/xvfb_run.sh --movie a.avi --frames 300            # main_scene 녹화
+```
+
+Docker 가 필요하고, 프로젝트 **사본**(rsync · 뺄 경로는 `.xvfbignore`)을 쓰며, 소프트웨어 렌더링이라 fps 측정에는 쓰지 않는다.
+옵션·실측·함정(`--init`·녹화 크기·GDExtension 오류) → [references/headless-workflow.md §7](references/headless-workflow.md)
 
 ### scripts/uninstall.sh — 상세는 [references/godot-init.md §3](references/godot-init.md)
 

@@ -770,12 +770,15 @@ godot --path . --main-pack game.pck      # pck 실행
 ### 헤드리스 (서버·CI)
 
 ```bash
-godot --headless --path . --import --quit             # 에셋 임포트만
+godot --headless --path . --import --quit             # 에셋 임포트만 (4.7 은 --quit 없이도 스스로 끝난다 — 실측)
 godot --headless --path . --script tools/build.gd     # 스크립트 실행
 godot --headless --path . --export-release "Android" build/game.aab
 godot --headless --path . --export-debug "Windows Desktop" build/game.exe
 godot --headless --path . --export-pack "Android" build/game.pck
 ```
+
+🛑 헤드리스는 그리지 않는다 — 스크린샷은 `null`, `--write-movie` 는 비정상 종료한다. 되는 것·안 되는 것·입력 좌표 함정은
+[headless-workflow.md §2-A](headless-workflow.md), 창 없이 그림을 얻는 법(리눅스 Xvfb 컨테이너)은 같은 문서 §7.
 
 ### 디버그·진단
 

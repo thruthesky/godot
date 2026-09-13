@@ -577,6 +577,12 @@ CPU/GPU 병목을 가르는 방법, `Performance` 모니터 전체 목록, **화
 `OU=` 값이라는 함정**, 에디터 실행 버튼(`Cmd+B`)과 Remote Deploy 의 차이와 아이콘이 뜨는
 전체 조건, 빌드 산출물이 `res://` 안에 있을 때 `.gdignore` 로 임포트를 막는 법을 다룬다.
 **실행 버튼을 기기로 향하게 하는 설정은 없다** — 이 구분이 이 문서의 출발점이다.
+§2-A 는 **`--headless` 가 정확히 무엇을 하고 무엇을 못 하는지**를 실측으로 정리한다 — 스크린샷 `null`·`frame_post_draw`
+0회·`--write-movie` 비정상 종료, 창이 64×64 라 논리 좌표 입력이 빗나가고 `root.push_input(e, true)` 로 푼다는 것,
+`--quit-after`·`--fixed-fps`·`--import` 의 실제 동작, 그리고 **AI 가 스스로 돌리는 실행은 사람 화면에 창을 띄우지 않는다는
+규칙**과 macOS 창을 화면 밖·최소화·`no_focus` 로도 숨길 수 없다는 WindowServer 실측. §7 은 리눅스 컨테이너의
+Xvfb 가상 디스플레이에서 스크린샷·녹화를 얻는 방법(다른 팀 제안의 재현 결과·녹화 크기는 뷰포트 설정을 따른다는 정정·
+`docker run --init` 함정·속도 표)과 한 줄 도구 `scripts/xvfb_run.sh` 를 다룬다.
 
 ### [export-build.md](export-build.md) — 빌드와 내보내기 (플랫폼 공통)
 
