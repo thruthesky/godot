@@ -3,7 +3,7 @@
 > **[Godot 기본](../basics.md)** 의 파트 **5 / 11**
 > [← 3. 인스턴싱(Instancing) — 설계도로 실체를 찍어낸다](03-instancing.md) · [5. 시그널(Signal) — 노드끼리 대화하는 방법 →](05-signal.md)
 
-> **이 문서로 오는 상황** — 스크립트가 노드에 어떻게 붙는지, 들여쓰기·`:=`·`@export`·`@tool` 이 무엇인지, **`_ready()` 가 왜 안 불리는지**, `pass` 가 뭔지
+> **이 문서로 오는 상황** — 스크립트가 노드에 어떻게 붙는지, 들여쓰기·`:=`·`&"..."`·`@export`·`@tool` 이 무엇인지, **`_ready()` 가 왜 안 불리는지**, `pass` 가 뭔지
 
 GDScript 파일은 혼자 돌지 않는다. **노드에 붙어야** 실행된다.
 
@@ -181,6 +181,29 @@ var velocity_x := 0.0  # 언제든 바꿀 수 있다
 
 `const` 에 나중에 대입하면 오류가 난다. **바뀌면 안 되는 값에 `const` 를 쓰면
 실수로 고치는 사고를 막을 수 있다.** 대문자로 쓰는 것은 관습이다.
+
+### `&"..."`는 무엇인가 — StringName으로 이름을 적는다
+
+**`&"default_dark"`는 `default_dark`라는 글자를 `StringName` 타입으로 적은 값**이다.
+`&`는 이름의 일부가 아니라 타입을 정하는 문법이다.
+
+```gdscript
+var text := "default_dark"         # String: 일반 문자열
+var preset_name := &"default_dark" # StringName: 이름을 다루는 문자열
+```
+
+`String`은 화면 문구·채팅 같은 일반 텍스트에, `StringName`은 프리셋·시그널·입력 액션처럼
+대상을 식별하는 이름에 자주 쓴다. `StringName`은 같은 이름을 내부적으로 공유해
+이름끼리 빠르게 비교할 수 있게 한다. 이 공유 방식을 **인터닝**이라고 한다.
+
+`GoUi.use_preset(&"default_dark")`에서는 `&"default_dark"`가 **이름 값**이고,
+`use_preset()`이 **그 이름의 디자인 묶음을 선택하는 함수**다. `&` 자체가 테마를 불러오지는 않는다.
+`GoUi`는 gohud 애드온의 클래스이므로 해당 애드온이 있어야 이 예제를 쓸 수 있다.
+
+이미 `String` 변수에 담긴 글자를 변환할 때는 `StringName(text)`라고 쓴다.
+`&text`라고 쓰면 문법 오류다. 타입과 변환 동작은 Godot 4.7.2에서 확인했다.
+이름표 비유, `var`와 불변 값의 차이, 변환법, 실행 가능한 전체 예제는
+[GDScript 레퍼런스의 StringName 절](../gdscript.md)에 있다.
 
 ### `@` 로 시작하는 것 — 어노테이션(annotation)
 

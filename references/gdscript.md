@@ -25,6 +25,8 @@
 14. [4.5~4.7 신규 문법](#14-4547-신규-문법)
 15. [자주 하는 실수](#15-자주-하는-실수)
 
+`&"default_dark"`의 `&`가 궁금하다면 [StringName 설명](#stringname)부터 읽는다.
+
 ---
 
 ## 1. 핵심 개념
@@ -170,7 +172,7 @@ var health_ratio: float:
 | 타입 | 용도 | 자주 쓰는 멤버 |
 |------|------|---------------|
 | `int` / `float` | 64비트 정수 / 실수 | `absi`, `clampf`, `lerpf`, `snappedf` |
-| `String` / `StringName` | 문자열 / 인터닝된 문자열 | `StringName`은 비교가 빠름. 시그널·액션 이름에 사용 |
+| `String` / `StringName` | 일반 텍스트 / 같은 이름을 공유하는 문자열 | `&"이름"`은 `StringName` 리터럴. [설명과 예제](#stringname) |
 | `Vector2` / `Vector3` | 2D/3D 벡터 | `length`, `normalized`, `dot`, `cross`, `direction_to`, `distance_to`, `lerp`, `slerp`, `move_toward` |
 | `Basis` | 3x3 회전·스케일 행렬 | `x`, `y`, `z` 축 벡터, `looking_at`, `orthonormalized` |
 | `Transform3D` | `Basis` + `origin` | `translated_local`, `rotated`, `inverse`, `interpolate_with` |
@@ -182,6 +184,157 @@ var health_ratio: float:
 | `Callable` | 함수 참조 | `call`, `bind`, `call_deferred` |
 | `Signal` | 시그널 참조 | `emit`, `connect`, `is_connected` |
 | `RID` | 서버 리소스 핸들 | `RenderingServer`, `PhysicsServer3D` 직접 조작 시 |
+
+### StringName
+
+**`&"default_dark"`의 `&`는 따옴표 안의 값을 `StringName` 타입으로 만들라는 표시다.**
+`StringName`은 Godot이 기본으로 제공하는 타입이며, 프로그램에서 대상을 식별하는 이름을
+다룰 때 쓴다. 여기서 **타입**은 값의 종류이고, **리터럴**은 코드에 직접 적은 값이라는 뜻이다.
+
+#### 같은 글자라도 타입이 다르다
+
+```gdscript
+var text := "default_dark"         # String: 일반 문자열
+var preset_name := &"default_dark" # StringName: 이름을 다루는 문자열
+```
+
+| 표현 | 글자 내용 | 타입 | 흔히 쓰는 곳 |
+|---|---|---|---|
+| `"default_dark"` | default_dark | `String` | 화면 문구, 채팅, 조합하거나 편집할 텍스트 |
+| `&"default_dark"` | default_dark | `StringName` | 프리셋·시그널·입력 액션처럼 식별에 쓰는 이름 |
+
+`&`는 이름에 포함되지 않는다. `print(preset_name)`으로 출력해도 `default_dark`가 보인다.
+`:=`는 오른쪽 값으로 변수 타입을 정하므로, 첫 번째 변수는 `String`, 두 번째는
+`StringName`이 된다. [왕초보 문법](basics/04-script.md)에도 짧은 설명이 있다.
+
+#### 이름을 공유한다는 뜻 — 인터닝
+
+게임에서는 “이 이름이 저 이름과 같은가?”를 자주 확인한다. `StringName`은 같은 내용의
+이름에 대해 내부 정보를 공유한다. 이 방식을 **문자열 인터닝**(string interning)이라고 한다.
+이미 등록된 이름이 있으면 그 정보를 함께 쓰므로, 두 `StringName`의 동등 비교는 문자열의
+각 글자를 반복해서 비교하는 대신 공유하는 이름 정보를 기준으로 빠르게 처리할 수 있다.
+이 내부 동작은 [공식 StringName 설명](https://docs.godotengine.org/en/stable/classes/class_stringname.html#description)에 근거한다.
+
+이름표 보관함에 `default_dark`, `default_light`가 각각 있고, 변수들이 해당 이름표를
+가리킨다고 생각하면 이해하기 쉽다. 이것은 **설명을 위한 비유**이며, 직접 이름표 번호를
+만들거나 등록 함수를 호출할 필요는 없다.
+
+```gdscript
+var first := &"default_dark"
+var second := &"default_dark"  # first와 같은 이름의 내부 정보를 공유한다.
+var third := &"default_light" # 다른 이름이다.
+
+print(first == second) # true: 같은 이름
+print(first == third)  # false: 다른 이름
+```
+
+`==`는 “두 값이 같은가?”를 확인한다. `true`는 참, `false`는 거짓이다.
+이 예제는 **값의 비교 결과**를 보여 준다. 내부 공유 방식 자체나 성능을 측정하는 코드는 아니다.
+
+#### 불변인 값과 변수를 구분한다
+
+`StringName`의 이름 내용은 불변이다. 하지만 `var`로 선언한 변수에 **다른 이름 값을
+다시 대입하는 것은 가능**하다.
+
+```gdscript
+var selected := &"default_dark"
+var saved := selected
+
+selected = &"default_light" # selected가 다른 이름을 담도록 바꾼다.
+print(selected)            # default_light
+print(saved)               # default_dark: 이쪽의 이름은 바뀌지 않는다.
+```
+
+공유하던 `default_dark`의 글자를 수정한 것이 아니라, `selected`에 새로운 값을 넣은 것이다.
+변수에 다른 값조차 대입하지 못하게 하려면 `const`를 쓴다. `StringName`과 `const`는 서로
+다른 개념이다.
+
+#### 이미 변수에 담긴 글자는 어떻게 변환하나
+
+```gdscript
+var raw_text := "default_dark"          # String 변수
+var preset_name := StringName(raw_text) # 기존 값을 StringName으로 변환
+var display_text := String(preset_name) # 다시 일반 String으로 변환
+```
+
+`&"..."`는 코드에 직접 적은 문자열 리터럴의 문법이다. 변수 앞에 `&`를 붙이는 일반적인
+변환 문법은 아니다. 따라서 `var preset_name := &raw_text`라고 쓰면 문법 오류가 난다.
+Godot 4.7.2의 실제 메시지는 `Expected expression for variable initial value after "=".`다.
+변수에 담긴 문자열을 `StringName`으로 변환하려면 위처럼 `StringName(raw_text)`를 사용한다.
+
+#### 어떤 때 사용하는가
+
+함수가 받는 타입이 `StringName`이거나, 같은 이름을 반복해서 비교·조회하는 경우에 사용한다.
+
+```gdscript
+var menu := Node.new()                 # 예시용 노드 하나를 만든다.
+menu.name = &"Menu"                    # Node.name의 타입은 StringName이다.
+menu.set_meta(&"category", "menu")     # 이름표 category에 일반 텍스트 menu를 저장한다.
+print(menu.get_meta(&"category"))      # 같은 이름표로 찾아 읽으면 menu가 나온다.
+menu.free()                           # 예시에서 만든 노드를 정리한다.
+```
+
+화면에 보여 줄 긴 문장, 채팅 내용, 자주 편집·조합하는 텍스트는 보통 `String`을 쓴다.
+`StringName`이 모든 문자열 작업을 빠르게 만드는 것은 아니다. 핵심은 **이름 공유와
+동등 비교**이며, 문자열 편집 메서드를 쓸 때는 `String`으로 변환되는 비용도 고려한다.
+
+`StringName`을 받는 함수에는 보통 일반 `String`을 전달해도 자동 변환된다. 예를 들어
+위의 `menu.set_meta("category", "menu")`도 사용할 수 있다. `&"category"`라고 쓰면
+처음부터 이름 타입인 값을 전달한다. 기본 문법과 리터럴 목록은
+[공식 GDScript 레퍼런스](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_basics.html#literals)를 참고한다.
+
+#### gohud 예제의 한 줄을 읽어 보기
+
+다음은 **gohud 애드온이 설치된 프로젝트에서** 사용하는 예제다. `StringName`은 Godot의
+내장 타입이고, `GoUi`는 gohud가 제공하는 클래스다.
+
+```gdscript
+GoUi.use_preset(&"default_dark")
+```
+
+| 부분 | 역할 |
+|---|---|
+| `GoUi` | 공통 UI 설정을 다루는 클래스 |
+| `use_preset(...)` | 사용할 디자인 묶음을 선택하는 정적 함수 |
+| `&"default_dark"` | 함수에 전달하는 `StringName` 값, 즉 선택할 프리셋의 이름 |
+
+**`default_dark`라는 이름을 전달해서 해당 디자인 묶음을 선택한다**는 뜻이다.
+`&` 자체가 테마를 불러오거나 바꾸는 것은 아니다. 그 작업은 `use_preset()`이 한다.
+아래처럼 나누어 써도 같은 뜻이다.
+
+```gdscript
+var preset_name := &"default_dark" # 사용할 디자인의 이름을 준비한다.
+GoUi.use_preset(preset_name)       # 그 이름에 해당하는 디자인 묶음을 선택한다.
+```
+
+이 설명에서 확인한 gohud의 `use_preset()`은 `String`과 `StringName`을 모두 받으므로
+`GoUi.use_preset("default_dark")`도 가능하다. 다른 함수는 해당 함수의 인자 타입을 확인한다.
+
+#### 직접 실행해서 타입과 비교 결과 확인하기
+
+빈 씬의 `Node`에 아래 스크립트를 붙이고 씬을 실행하면 Output에서 결과를 볼 수 있다.
+gohud 없이 실행할 수 있다. `_ready()`는 노드가 준비되면 Godot이 호출하는 함수이고,
+`print()`는 Output에 값을 표시하는 내장 함수다.
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+	var text := "default_dark"
+	var first := &"default_dark"
+	var second := &"default_dark"
+	var third := &"default_light"
+	# typeof()는 타입 번호를, type_string()은 그 번호의 타입 이름을 돌려준다.
+	print(type_string(typeof(text)))  # String
+	print(type_string(typeof(first))) # StringName
+	print(first)                      # default_dark
+	print(first == second)            # true
+	print(first == third)             # false
+```
+
+**검증: 2026-09-13, Godot 4.7.2.stable 헤드리스 실행.** 위 타입·출력·비교 결과와
+`StringName(raw_text)`·`String(preset_name)` 변환, 이름 재대입, `Node` 이름·메타데이터 예제를 확인했다.
+`&raw_text`는 별도 문법 검사에서 위 오류로 실패하는 것을 확인했다. 비교 속도는 측정하지 않았다.
 
 ### 벡터 상수 (Godot 3D 좌표계)
 
@@ -830,5 +983,3 @@ print_tree_pretty()                                 # 노드 트리 시각화
 ```
 
 ## 공식 문서
-
-
