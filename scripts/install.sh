@@ -41,6 +41,7 @@
 #   --debug / --release                     Choose the build mode without prompting
 #   --no-lazy-download                      Bundle every asset (release defaults to lazy-download)
 #   --boot-profile                          Emit [Boot] timeline logs from a release build too
+#   --boot-parts                            Also break the world scene load down part by part (slower overall)
 #   --skip-build                            Use an existing build
 #   --console                               Attach runtime logs (Ctrl+C to stop)
 #   --no-launch                             Build/install without launching
@@ -82,6 +83,7 @@ LAZY_DOWNLOAD=1
 #    🛑 원본 `export_presets.cfg` 는 건드리지 않는다 — 사본에만 기능 태그를 더한다
 #    (`export_from_clone.py --feature`). 그래서 다른 세션의 빌드에 전파되지 않는다.
 BOOT_PROFILE=0
+BOOT_PARTS=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -89,6 +91,10 @@ while [ $# -gt 0 ]; do
     --release)    BUILD_MODE="release" ;;
     --debug)      BUILD_MODE="debug" ;;
     --boot-profile) BOOT_PROFILE=1 ;;
+    # 🔑 월드 씬 로드를 **덩어리별로** 가른다(`character_flow._measure_world_parts()`).
+    #    🛑 순차 동기 로드라 **총 소요가 평소보다 늘어난다** — "얼마나 빨라졌나" 를 재는
+    #    평소 측정에는 쓰지 않는다. 내역이 필요할 때만. `--boot-profile` 을 함께 켠다.
+    --boot-parts) BOOT_PROFILE=1; BOOT_PARTS=1 ;;
     --no-lazy-download) LAZY_DOWNLOAD=0 ;;
     --skip-build) SKIP_BUILD=1 ;;
     --preset)
@@ -521,6 +527,10 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
     if [ "$BOOT_PROFILE" -eq 1 ]; then
       step "bootprofile 기능 추가 — 릴리스에서도 [Boot] 로그를 찍는다 / adding bootprofile feature"
       EXPORT_ARGS+=(--feature bootprofile)
+    fi
+    if [ "$BOOT_PARTS" -eq 1 ]; then
+      step "bootparts 기능 추가 — 월드 씬을 덩어리별로 잰다(총 소요는 늘어난다) / adding bootparts feature"
+      EXPORT_ARGS+=(--feature bootparts)
     fi
     python3 "$ROOT/tools/export_from_clone.py" "${EXPORT_ARGS[@]}" || die "$BUILD_FAIL_MSG"
   else
