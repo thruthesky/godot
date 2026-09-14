@@ -442,50 +442,23 @@ AAB 는 **업로드 키**로 서명해 Play Console 에 올린다. Play App Sign
 
 ## 10. 스플래시 화면 — 두 종류
 
-앱을 켜면 **두 개의 스플래시가 순서대로** 지나간다. 설정 위치가 다르다.
+> 앱 아이콘·스플래시의 **설정 방법·빈칸 규칙·실측 전체는 [app-icon-splash.md](app-icon-splash.md) 가 정본**이다.
+> 여기에는 Android 에서 꼭 기억할 것만 둔다.
+
+앱을 켜면 **스플래시 둘과 그 사이의 창 배경**이 순서대로 지나간다. 설정 위치가 다르다.
 
 | 순서 | 이름 | 설정 위치 | 표시 시점 |
 |---|---|---|---|
-| 1 | 안드로이드 **네이티브** 스플래시 | export preset 의 `splash_screen/*` | 아이콘 탭 직후. **엔진이 뜨기 전** |
-| 2 | Godot **부트** 스플래시 | `project.godot` 의 `boot_splash/*` | 엔진 초기화 후, 첫 씬 로딩 전 |
+| 1 | 안드로이드 **네이티브** 스플래시 (4.7 신기능) | export preset 의 `splash_screen/*` | 아이콘 탭 직후. **엔진이 뜨기 전** |
+| 사이 | 본 테마 **창 배경** | export preset 의 `screen/background_color` | 1번이 사라진 뒤 2번이 그려질 때까지 |
+| 2 | Godot **부트** 스플래시 | `project.godot` 의 `boot_splash/*` | 엔진 초기화 후, 첫 씬 첫 프레임까지 |
 
-### 1번 — 네이티브 (4.7 신기능)
-
-이전에는 Gradle 커스텀 빌드를 켜고 네이티브 리소스를 직접 넣어야 했지만, 4.7 부터
-**preset 옵션만으로** 된다. 경로: `Project > Export > Android > Options > Splash Screen`
-
-| 옵션 | 타입 | 의미 |
-|---|---|---|
-| `splash_screen/icon` | 이미지 | 중앙 아이콘 |
-| `splash_screen/branding_image` | 이미지 | 하단 브랜딩 로고 |
-| `splash_screen/background_color` | `Color` | 배경색 |
-| `splash_screen/disable_godot_boot_splash` | `bool` | 2번을 끈다 |
-
-```ini
-splash_screen/icon="res://ui/splash/icon_512.png"
-splash_screen/branding_image="res://ui/splash/laryen_logo.png"
-splash_screen/background_color=Color(0.05, 0.05, 0.08, 1)
-splash_screen/disable_godot_boot_splash=true
-```
-
-### 2번 — Godot 부트
-
-```ini
-; project.godot  (🧑 사람이 수정)
-[application]
-
-boot_splash/image="res://ui/splash/boot.png"
-boot_splash/bg_color=Color(0.05, 0.05, 0.08, 1)
-boot_splash/fullsize=true
-```
-
-### 두 개를 맞추지 않으면 두 번 깜빡인다
-
-**배경색을 반드시 같게 한다.** 같은 그림을 두 번 보여줄 이유가 없으면
-`disable_godot_boot_splash=true` 로 2번을 꺼서 네이티브 → 첫 씬으로 한 번에 넘긴다.
-
-단 **로딩이 긴 게임이면 2번을 살리는 편이 낫다.** 네이티브 스플래시는 엔진 초기화가 끝나면
-사라지므로, 그 뒤 씬 로딩 동안 검은 화면이 보이기 때문이다.
+- 🛑 **색 셋을 같게 한다** — `splash_screen/background_color` · `screen/background_color` · `boot_splash/bg_color`.
+  창 배경만 기본값(검정)으로 남기면 흰 스플래시 → **검정 0.48초** → 흰 부트 스플래시로 깜빡인다(Galaxy A17 실측) → [app-icon-splash.md §9](app-icon-splash.md)
+- 🛑 `splash_screen/background_color` 의 빈칸은 `Color()`(알파 0)다 — `Color(0, 0, 0, 1)` 은 검정으로 칠한다.
+- 🛑 런처 아이콘 `launcher_icons/adaptive_foreground_432x432` 를 비우면 main 아이콘이 적응형 전경으로 늘어나 **가장자리가 잘린다** → [app-icon-splash.md §5](app-icon-splash.md)
+- 🛑 4.7 에는 `boot_splash/fullsize` 가 없다 — `boot_splash/stretch_mode` 로 바뀌었다.
+- 앱 이름 — 기본은 프리셋 `package/name`, 언어별은 `config/name_localized`. Android 는 번역 등록 없이 된다 → [app-icon-splash.md §12](app-icon-splash.md)
 
 ---
 

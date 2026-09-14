@@ -286,7 +286,7 @@ Steam Deck 은 Arch 기반 Linux 이며 **Proton 없이 네이티브 Linux 빌�
 |---|---|---|
 | **Binary Format/Embed PCK** | On | 단일 실행 파일. 배포가 간단해진다 |
 | **Binary Format/Architecture** | `x86_64` / `universal`(macOS) | 대상 CPU |
-| **Application/Icon** | `.ico`(Win) / `.icns`(mac) | 실행 파일 아이콘 |
+| **Application/Icon** | `.ico`(Win) / `.icns`(mac) · png·webp·svg 도 된다 | 실행 파일 아이콘. 비우면 `config/windows_native_icon`·`config/macos_native_icon` → `config/icon`. Windows 는 `application/modify_resources=true` 여야 바뀐다 → [app-icon-splash.md §8](app-icon-splash.md) |
 | **Application/Product Name·Version** | 문자열 | 파일 속성 메타데이터 |
 | **Codesign** | 배포 시 On | macOS 는 공증까지 필요 |
 | **Export Filter** | `all_resources` | 무엇을 포함할지 |

@@ -655,6 +655,16 @@ OS 에서 무엇을 크로스 빌드할 수 있는지, macOS 의 `universal` 아
 d3d12·Mobile 렌더러 선택, GodotSteam 연동과 Steam 빌드 체크리스트, 크로스 플랫폼 빌드
 스크립트를 담는다.
 
+### [app-icon-splash.md](app-icon-splash.md) — 앱 아이콘·스플래시 화면 (모든 플랫폼)
+
+앱을 켜면 아이콘 → OS 네이티브 스플래시 → 창 배경 → Godot 부트 스플래시 → 첫 씬 순서로 보인다는 흐름을 먼저 세우고,
+`project.godot` 의 `config/icon` 과 `boot_splash/*` 두 곳만 채우면 iOS·macOS·Windows 는 따라오지만 **Android 는 적응형 런처
+아이콘·네이티브 스플래시·창 배경을 프리셋마다 따로 채워야 한다**는 결론을 표로 준다. 옵션을 비웠을 때 엔진이 무엇을 대신 쓰는지
+(4.7.2 소스 확인 — 적응형 전경을 비우면 네모 아이콘이 확대돼 잘린다 · `Color(0, 0, 0, 1)` 은 빈칸이 아니다 · 4.7 에 `fullsize` 는 없다),
+원본을 `keep` 임포트와 `.gdignore` 폴더에 두는 이유(원본 보관 폴더가 APK 에 145MB 딸려 들어간 실측), 네모 일러스트를 배경 레이어
+80dp 로 넣는 법, iOS 런치 화면이 부트 스플래시를 따라가는 규칙, Windows `.ico` 자동 변환과 `modify_resources`,
+그리고 **Galaxy A17 녹화로 잰 두 스플래시 사이 검정 0.48초와 로고 크기를 맞추는 캔버스 공식**, APK·실기기로 확인하는 명령, 그리고 **홈 화면 앱 이름을 언어별로 두는 법**(`config/name_localized` 에 적고, iOS·macOS 는 그 언어의 번역 파일을 하나 등록해야 이름 파일이 생긴다 · 번역 CSV 만 쓰는 방법과의 빈 프로젝트 비교 실측 · `config/name` 은 데스크톱 저장 폴더라 함부로 바꾸지 않는다)을 담는다.
+
 ### [multiplayer.md](multiplayer.md) — 멀티플레이어
 
 RPC·MultiplayerSpawner·MultiplayerSynchronizer 세 축과 피어 ID 규칙, "승패에 영향을 주는

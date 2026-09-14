@@ -452,6 +452,13 @@ Xcode 가 서명·아카이브·배포를 맡는** 2단계 구조라는 점을 �
 `linux_debug.x86_64`/`linux_release.x86_64` 를 쓰며 Steam Deck 대응과 실행 권한 부여를
 포함한다. 세 플랫폼 공통 빌드 스크립트와 렌더러 선택(d3d12·Mobile)도 여기 있다.
 
+### 앱 아이콘 · 스플래시 화면 (모든 플랫폼) → [app-icon-splash.md](app-icon-splash.md)
+
+`project.godot` 의 `config/icon` 과 `boot_splash/*` 두 곳만 채우면 iOS·macOS·Windows 는 그대로 따라오고,
+**Android 만** 적응형 런처 아이콘·네이티브 스플래시·창 배경을 프리셋에 따로 채워야 한다는 구조를 먼저 세운다.
+옵션을 비웠을 때 엔진이 무엇을 대신 쓰는지(4.7.2 소스 확인), 원본 이미지를 `keep` 임포트·`.gdignore` 로 두는 이유,
+두 스플래시 사이의 검은 깜빡임과 로고 크기를 맞추는 공식(Galaxy A17 실측), APK·실기기로 확인하는 명령을 다룬다.
+
 ---
 
 | Web(HTML5) | 🛑 **다루지 않는다** — 라리엔 3D 는 Android·iOS·Steam(데스크톱) 이다. 필요해지면 공식 https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html (SharedArrayBuffer·COOP/COEP 헤더·스레드 제약) |

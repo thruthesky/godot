@@ -107,8 +107,17 @@ builds/ios/Laryen3D.ipa
 
 ### 아이콘
 
-iOS 는 아이콘 누락이 **설정 오류로 export 자체를 막는다.** preset 의 `icons/*` 항목 또는
-`project.godot` 의 `application/config/icon` 을 채운다.
+iOS 는 아이콘 누락이 **설정 오류로 export 자체를 막는다.** preset 의 `icons/icon_1024x1024` 하나만 채우면
+모든 크기를 그것에서 만들고, 그것도 비면 `project.godot` 의 `application/config/icon` 을 줄여 쓴다.
+App Store 아이콘은 불투명이어야 한다 — 알파가 있으면 `boot_splash/bg_color` 로 채워 굽는다.
+런치 화면(`storyboard/*`)은 비워 두면 부트 스플래시 이미지·배경색을 쓴다.
+옵션 전체·빈칸 규칙 → [app-icon-splash.md §7](app-icon-splash.md).
+
+### 앱 이름
+
+홈 화면 표시 이름은 `config/name` 이다(iOS 에만 바꾸려면 `config/name.ios`). 언어별 이름(`config/name_localized`)은
+🛑 **그 언어의 번역 파일이 `internationalization/locale/translations` 에 등록돼 있어야** `<언어>.lproj/InfoPlist.strings` 로 들어간다
+→ [app-icon-splash.md §12](app-icon-splash.md).
 
 ---
 
