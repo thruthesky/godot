@@ -1589,7 +1589,13 @@ GDScript 의 모든 값이 겉으로는 `Variant` 다. `var x = 1` 이라고 타
 
 `godot --headless` 로 띄운 Godot. **창도 소리도 그림도 없이** 로직·물리·네트워크·UI 배치만 돈다(`--display-driver headless --audio-driver Dummy` 의 줄임).
 모니터·키보드 없이 도는 서버를 "머리 없는(headless)" 기계라 부르던 데서 온 이름이다. 검사·임포트·빌드·서버에 쓰고, 서버용 바이너리를 따로 받지 않는다.
-🛑 **그리지 않으므로 스크린샷이 `null` 이고 `frame_post_draw` 가 오지 않는다** — 그림이 필요하면 가상 디스플레이(Xvfb)에서 찍는다 → [headless-workflow.md §2-A·§7](headless-workflow.md).
+🛑 **그리지 않으므로 스크린샷이 `null` 이고 `frame_post_draw` 가 오지 않는다** — 그림이 필요하면 가상 모니터에서 찍는다 → [headless-workflow.md §2-A](headless-workflow.md) · [virtual-monitor.md](virtual-monitor.md).
+
+### 가상 모니터(virtual monitor) — 메모리 속에만 있는 화면
+
+실제 모니터 없이 **메모리 안에 화면을 만들어** 프로그램이 거기에 창을 띄우고 그리게 하는 것. 리눅스의 **Xvfb**(X virtual framebuffer)가 대표다.
+헤드리스와 달리 **정말로 그리므로 스크린샷·녹화가 나오고**, 사람이 보는 모니터에는 아무것도 뜨지 않는다. 이 스킬은 Docker 리눅스 컨테이너 안에서 돌린다(`scripts/xvfb_run.sh`).
+GPU 없이 CPU 로 그리는 경우가 많아 **그림 확인용이지 성능 측정용이 아니다** → [virtual-monitor.md](virtual-monitor.md).
 
 ## 공식 문서
 

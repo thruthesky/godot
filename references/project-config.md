@@ -778,7 +778,7 @@ godot --headless --path . --export-pack "Android" build/game.pck
 ```
 
 🛑 헤드리스는 그리지 않는다 — 스크린샷은 `null`, `--write-movie` 는 비정상 종료한다. 되는 것·안 되는 것·입력 좌표 함정은
-[headless-workflow.md §2-A](headless-workflow.md), 창 없이 그림을 얻는 법(리눅스 Xvfb 컨테이너)은 같은 문서 §7.
+[headless-workflow.md §2-A](headless-workflow.md), 화면에 안 보이게 실행해 캡처하는 법(가상 모니터)은 [virtual-monitor.md](virtual-monitor.md).
 
 ### 디버그·진단
 

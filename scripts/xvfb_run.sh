@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# xvfb_run.sh — 사람 화면에 창을 띄우지 않고 Godot 을 "그리면서" 실행한다. 스크린샷·녹화·픽셀 판정용.
+# xvfb_run.sh — 🖥 가상 모니터: 사람 화면에 창을 띄우지 않고 Godot 을 "그리면서" 실행한다. 스크린샷·녹화·픽셀 판정용.
 #
 #   리눅스 컨테이너(Docker) 안의 가상 디스플레이(Xvfb)에 창을 만들고 Mesa 소프트웨어 렌더러로 그린다.
 #   macOS 창·Dock 아이콘·전면 앱 전환이 하나도 생기지 않는다(WindowServer 로 실측).
@@ -35,7 +35,7 @@
 #    그 확장 없이도 되는 화면만 여기서 찍는다. ERROR 줄 수로 판정하는 검사는 이 줄을 걸러야 한다.
 # 🛑 소프트웨어 렌더링이다 — fps·프레임 시간 측정에 쓰지 않는다. 성능은 실기기에서 잰다.
 #
-# 자세한 설명 → .claude/skills/godot/references/headless-workflow.md §7
+# 자세한 설명 → .claude/skills/godot/references/virtual-monitor.md (가상 모니터 — 실행 → 스크린샷 → 검증 · 촬영 검사 뼈대)
 set -euo pipefail
 
 step() { printf '\033[1;34m▶\033[0m %s\n' "$*"; }

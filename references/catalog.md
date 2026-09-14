@@ -580,9 +580,17 @@ CPU/GPU 병목을 가르는 방법, `Performance` 모니터 전체 목록, **화
 §2-A 는 **`--headless` 가 정확히 무엇을 하고 무엇을 못 하는지**를 실측으로 정리한다 — 스크린샷 `null`·`frame_post_draw`
 0회·`--write-movie` 비정상 종료, 창이 64×64 라 논리 좌표 입력이 빗나가고 `root.push_input(e, true)` 로 푼다는 것,
 `--quit-after`·`--fixed-fps`·`--import` 의 실제 동작, 그리고 **AI 가 스스로 돌리는 실행은 사람 화면에 창을 띄우지 않는다는
-규칙**과 macOS 창을 화면 밖·최소화·`no_focus` 로도 숨길 수 없다는 WindowServer 실측. §7 은 리눅스 컨테이너의
-Xvfb 가상 디스플레이에서 스크린샷·녹화를 얻는 방법(다른 팀 제안의 재현 결과·녹화 크기는 뷰포트 설정을 따른다는 정정·
-`docker run --init` 함정·속도 표)과 한 줄 도구 `scripts/xvfb_run.sh` 를 다룬다.
+규칙**과 macOS 창을 화면 밖·최소화·`no_focus` 로도 숨길 수 없다는 WindowServer 실측, 렌더링 드라이버 지정·SubViewport·
+`force_draw()` 로도 헤드리스 스크린샷이 나오지 않는다는 우회 시도 전체 표(엔진 소스 근거 포함). §7 은 가상 모니터 요약이고
+정본은 아래 virtual-monitor.md 다.
+
+### [virtual-monitor.md](virtual-monitor.md) — 가상 모니터: 화면에 안 보이게 실행해 캡처·검증
+
+사람이 쓰는 화면에 게임 창을 띄우지 않고 **메모리 속 화면(리눅스 Xvfb)** 에서 Godot 을 실제로 그려 스크린샷·녹화를 얻는
+방법이다. AI 자율 개발의 화면 검증 절차 **실행 → 스크린샷 → 검증**(종료 코드·판정 숫자 · PNG 를 직접 열기 · `png_pixel.py` ·
+녹화 프레임 추출), 복사해 쓰는 **촬영 검사 뼈대 GDScript**(헤드리스로 잘못 돌리면 종료 코드 2), 한 줄 도구
+`scripts/xvfb_run.sh`(사본 동기화·조건부 임포트·`docker run --init`), 사람 화면에 창이 생기지 않았다는 WindowServer 반복 조회 증명,
+다른 팀 제안의 재현 결과(녹화 크기는 `--resolution` 이 아니라 뷰포트 설정을 따른다는 정정), 속도 표, 함정 10가지를 담는다.
 
 ### [export-build.md](export-build.md) — 빌드와 내보내기 (플랫폼 공통)
 

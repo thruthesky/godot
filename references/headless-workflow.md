@@ -1,6 +1,6 @@
 # 에디터 없이 작업하기 — 터미널만으로 도는 개발 루프
 
-> **이 문서로 오는 상황** — 에디터 없이 터미널만으로 — 6가지 기본 명령, 🛑 `--headless` 로 되는 것·안 되는 것(스크린샷 null·입력 좌표·종료 조건)과 **사람 화면에 창을 띄우지 않는 규칙**, 창 없이 스크린샷·녹화(리눅스 Xvfb 컨테이너 `xvfb_run.sh`), `install.sh` 로 빌드·설치·실행, iOS 실기기 preset, Remote Deploy 와의 관계
+> **이 문서로 오는 상황** — 에디터 없이 터미널만으로 — 6가지 기본 명령, 🛑 `--headless` 로 되는 것·안 되는 것(스크린샷 null·입력 좌표·종료 조건)과 **사람 화면에 창을 띄우지 않는 규칙**, 화면에 안 보이게 실행해 스크린샷·녹화하는 **가상 모니터** 요약(정본 [virtual-monitor.md](virtual-monitor.md)), `install.sh` 로 빌드·설치·실행, iOS 실기기 preset, Remote Deploy 와의 관계
 
 Godot 에디터 GUI 를 열지 않고 **코드 작성 → 검증 → 실행 → 실기기 확인**까지 끝내는 방법이다.
 Claude 가 이 프로젝트에서 작업할 때의 **기본 작업 방식**이며, CI 에서도 같은 명령을 쓴다.
@@ -17,7 +17,7 @@ Claude 가 이 프로젝트에서 작업할 때의 **기본 작업 방식**이�
 4. [iOS 실기기가 되게 하는 preset 설정](#4-ios-실기기가-되게-하는-preset-설정)
 5. [에디터 Remote Deploy 와의 관계](#5-에디터-remote-deploy-와의-관계)
 6. [자주 막히는 지점](#6-자주-막히는-지점)
-7. [사람 화면 없이 그림을 얻는다 — 리눅스 가상 디스플레이](#7-사람-화면-없이-그림을-얻는다--리눅스-가상-디스플레이)
+7. [사람 화면 없이 그림을 얻는다 — 가상 모니터](#7-사람-화면-없이-그림을-얻는다--가상-모니터)
 
 ---
 
@@ -32,14 +32,14 @@ LSP 정적 검증          python3 scripts/gdscript_lsp.py diagnose --changed   
         ↓
 창 없이 검사            godot --headless -s res://tests/<검사>.gd       ← AI 자율 실행의 기본
         ↓
-그림으로 확인(창 없음)  scripts/xvfb_run.sh -s res://tests/<촬영>.gd    ← 리눅스 컨테이너 가상 화면
+그림으로 확인(창 없음)  scripts/xvfb_run.sh -s res://tests/<촬영>.gd    ← 가상 모니터 (virtual-monitor.md)
         ↓
 실기기에서 최종 확인    scripts/install.sh <device-id>
 ```
 
 🛑 **사람이 같은 화면에서 일한다 — AI 가 스스로 돌리는 실행은 사람 화면에 창을 띄우지 않는다.**
 창(`godot --path .`)은 사람이 직접 볼 때, 또는 컨테이너로 안 되는 이유(Metal 전용 결함·실제 macOS 창 입력 등)가
-있을 때만 쓰고 그 이유를 보고에 적는다 → [§2-A](#2-a-헤드리스가-하는-일과-못-하는-일) · [§7](#7-사람-화면-없이-그림을-얻는다--리눅스-가상-디스플레이)
+있을 때만 쓰고 그 이유를 보고에 적는다 → [§2-A](#2-a-헤드리스가-하는-일과-못-하는-일) · [§7](#7-사람-화면-없이-그림을-얻는다--가상-모니터)
 
 **데스크톱 실행은 실기기 확인을 대체하지 못한다.** 터치·성능·GPU 드라이버·발열은
 기기에서만 드러난다. 특히 렌더러가 `mobile`(Metal/Vulkan)이면 데스크톱과 기기의
@@ -59,7 +59,7 @@ GODOT_BIN="${GODOT_BIN:-$(command -v godot)}"      # 또는 /Applications/Godot.
 |---|---|
 | **문법·부팅 검사** (창 없음) | `godot --headless --path . --quit-after 2 --log-file artifacts/logs/check.log` |
 | **임포트만 수행** | `godot --headless --path . --import --quit` |
-| **실제 게임 창 실행** 🛑 창이 뜨고 전면 앱을 가져간다 — 사람이 볼 때만 | `godot --path .` (프로젝트 폴더 안이면 `godot`) · AI 의 그림 확인은 [§7](#7-사람-화면-없이-그림을-얻는다--리눅스-가상-디스플레이) `xvfb_run.sh` |
+| **실제 게임 창 실행** 🛑 창이 뜨고 전면 앱을 가져간다 — 사람이 볼 때만 | `godot --path .` (프로젝트 폴더 안이면 `godot`) · AI 의 그림 확인은 [§7](#7-사람-화면-없이-그림을-얻는다--가상-모니터) `xvfb_run.sh` |
 | **정적 진단** (에디터 실행 중) | `python3 .claude/skills/godot/scripts/gdscript_lsp.py diagnose --changed` |
 | **빌드** | `godot --headless --path . --export-debug "<preset>" <출력경로>` |
 | **실기기 설치·실행** | `.claude/skills/godot/scripts/install.sh <device-id>` |
@@ -83,7 +83,7 @@ func capture() -> void:
 	print("[CAPTURE] ", ProjectSettings.globalize_path("user://shot.png"))
 ```
 
-저장 위치를 추측하지 말고 **로그에 절대 경로를 찍어 확인한다.** 컨테이너([§7](#7-사람-화면-없이-그림을-얻는다--리눅스-가상-디스플레이))에서는 환경변수 `SHOT_DIR`(= `/out`)에 저장한다.
+저장 위치를 추측하지 말고 **로그에 절대 경로를 찍어 확인한다.** 컨테이너([§7](#7-사람-화면-없이-그림을-얻는다--가상-모니터))에서는 환경변수 `SHOT_DIR`(= `/out`)에 저장한다.
 
 ---
 
@@ -105,7 +105,7 @@ $ godot --help
 
 사람 개발자가 같은 컴퓨터에서 일한다. 검증을 돌릴 때마다 게임 창이 떴다 사라지고 전면 앱이 바뀌면 사람의 작업이 끊긴다.
 **AI 가 자율적으로 개발·테스트·검증할 때는 꼭 필요한 경우를 빼고 `--headless` 로 돌리고, 그림이 필요하면
-[§7](#7-사람-화면-없이-그림을-얻는다--리눅스-가상-디스플레이) 의 컨테이너로 찍는다.** 창이 꼭 필요했다면 그 이유를 보고에 적는다.
+[§7](#7-사람-화면-없이-그림을-얻는다--가상-모니터) 의 컨테이너로 찍는다.** 창이 꼭 필요했다면 그 이유를 보고에 적는다.
 
 ### 기본 명령 — 실측 (2026-09-13 · Godot 4.7.2 · Apple M5 Max · 빈 프로젝트)
 
@@ -134,11 +134,36 @@ $ godot --help
 | Control 레이아웃·글자 크기 | 된다(버튼 최소 크기 96×31 계산) | 배치·넘침·겹침은 **숫자로** 판정한다 |
 | 입력 주입 | 된다 — 🛑 좌표 함정(아래 ①) | 클릭·터치 흐름 판정 |
 | `get_viewport().get_texture().get_image()` | 🛑 **`null`** + `ERROR: Parameter "t" is null.` | 스크린샷 불가 → §7 |
-| `RenderingServer.frame_post_draw` | 🛑 **60프레임 동안 0회** | `await` 하면 영원히 멈춘다(아래 ②) |
+| `RenderingServer.frame_post_draw` | 🛑 **매 프레임 오지 않는다** — 60프레임 동안 0회 · 90프레임 동안 1회(맥·리눅스) | 기다리는 시점 뒤로는 안 올 수 있어 `await` 하면 멈춘다(아래 ②) |
 | `RenderingServer.get_rendering_device()` | `null` | GPU·셰이더 확인 불가 |
 | `--write-movie out.avi` | 🛑 **종료 코드 134**(비정상 종료) · AVI 헤더 332바이트만 | 녹화 불가 — `.png` 시퀀스도 PNG 0장 → §7 |
 | 드로우콜·프레임 시간 | 의미 없음(더미 렌더러) | 성능은 실기기에서 잰다 |
 | `Engine.get_frames_per_second()` | 부팅 직후 **`1.0`** | FPS 문턱 로직이 검사 초반에 켜진다(아래 ⑤) |
+
+### 헤드리스에서 그림을 얻는 우회로는 없다 — 전부 시도했다 (2026-09-14)
+
+"렌더링 드라이버를 지정하면?" · "창과 무관한 `SubViewport` 라면?" · "강제로 그리게 하면?" 을 모두 시험했다.
+장면은 파란 배경 위 빨간 상자 하나이고, 가운데 픽셀이 빨강 · 모서리가 파랑이면 "그림" 으로 판정했다.
+
+| 실행 (맥 Godot 4.7.2 · 리눅스 컨테이너 Godot 4.7.2) | 메인 뷰포트 `get_image()` | 오프스크린 `SubViewport` | `force_draw()` 뒤 두 곳 | `get_rendering_device()` · 로컬 장치 |
+|---|---|---|---|---|
+| `--headless` (맥 · 리눅스) | null | null | null | null · null |
+| `--headless --rendering-driver` `metal`·`vulkan`·`opengl3`(맥) · `vulkan`·`opengl3`(리눅스) | null | null | null | null · null — 드라이버 **이름만** 바뀐다 |
+| `--headless --rendering-method gl_compatibility` (맥) | null | null | null | null · null |
+| `--display-driver headless --rendering-driver` `metal`(맥) · `vulkan`(리눅스) — `--headless` 없이 | null | null | null | null · null |
+| 리눅스 `--display-driver x11` 인데 가상 디스플레이가 없다 | 🛑 실행 실패 | `X11 Display is not available` | → wayland 폴백 실패 | → `Unable to create DisplayServer` (종료 1) |
+| **리눅스 Xvfb + `x11` · Compatibility** | ✅ 그림 | ✅ 그림 | ✅ 그림 | null · null (OpenGL 이라 없다) |
+| **리눅스 Xvfb + `x11` · Mobile(Vulkan `lavapipe`)** | ✅ 그림 | ✅ 그림 | ✅ 그림 | 있음 · 있음 |
+
+맥 헤드리스 6개 조합은 실행하는 동안 WindowServer 창 목록을 0.1초마다 조회했고, **새로 생긴 Godot 창은 0개**였다.
+
+**엔진 소스와 공식 문서도 같은 말을 한다** (4.7.2-stable):
+
+- `main/main.cpp` — `} else if (arg == "--headless") { // enable headless mode (no audio, no rendering).` 다음 줄에서 오디오·디스플레이 드라이버를 널 드라이버로 바꾼다
+- `servers/display/display_server_headless.h` — 헤드리스 디스플레이 서버가 허용하는 렌더링 드라이버는 `drivers.push_back("dummy");` **하나뿐**이다
+- 공식 문서 *Exporting for dedicated servers* — GPU 나 디스플레이 서버가 없는 기계에서는 "headless display server and Dummy audio driver" 로 돌리고, `--headless` 를 줘야 "no window spawns"
+
+→ **`--headless` 는 "창이 안 보이는 실행" 이 아니라 "그리기 자체가 없는 실행" 이다.** 그림은 가상 디스플레이([§7](#7-사람-화면-없이-그림을-얻는다--가상-모니터))에서만 나온다.
 
 ### 사람 화면에 무엇이 뜨나 — macOS 에게 밖에서 물었다
 
@@ -425,92 +450,18 @@ Remote Deploy 와 `install.sh` 는 결과가 같다. 에디터를 띄우지 않�
 
 ---
 
-## 7. 사람 화면 없이 그림을 얻는다 — 리눅스 가상 디스플레이
+## 7. 사람 화면 없이 그림을 얻는다 — 가상 모니터
+
+> 🖥 **정본은 [virtual-monitor.md](virtual-monitor.md) 로 옮겼다** — 실행 → 스크린샷 → 검증 절차 · 복사해 쓰는 촬영 검사 뼈대 · `xvfb_run.sh` · 증명 · 속도 · 함정.
 
 헤드리스는 그리지 않고([§2-A](#2-a-헤드리스가-하는-일과-못-하는-일)), macOS 의 Godot 창은 숨길 수 없다. 남는 길은
-**화면이 없는 곳에 가짜 화면을 만들고 거기에 창을 띄우는 것**이다.
-
-| 부품 | 하는 일 |
-|---|---|
-| **Xvfb**(X virtual framebuffer) | 리눅스에서 메모리 속에만 있는 화면을 만든다. 모니터가 없어도 창이 "뜬다" |
-| **Mesa** 소프트웨어 렌더러 | GPU 없이 CPU 로 그린다 — OpenGL 은 `llvmpipe`, Vulkan 은 `lavapipe` |
-| **Docker** 컨테이너 | 맥에서 리눅스를 돌린다. 컨테이너는 macOS 창을 만들 수 없으므로 **사람 화면과 완전히 분리된다** |
-
-### 다른 팀이 제시한 방식을 그대로 재현했다
-
-2026-09-13 · Docker 29.3(linux/aarch64) · Ubuntu 22.04 · Mesa 23.2 · 공식 `Godot_v4.7.2-stable_linux.arm64`.
+**메모리 속 화면(가상 모니터)을 만들고 거기에 창을 띄우는 것**이다 — 리눅스 컨테이너 안의 Xvfb 에서 그리므로 사람 화면에는 아무것도 뜨지 않는다.
 
 ```bash
-xvfb-run -a -s "-screen 0 1280x720x24" \
-  env LIBGL_ALWAYS_SOFTWARE=true \
-  godot --path "/path/to/project" --display-driver x11 --rendering-method gl_compatibility \
-  --resolution 1280x720 --write-movie "/tmp/game-test.avi" --fixed-fps 30 --quit-after 300
+bash .claude/skills/godot/scripts/xvfb_run.sh -s res://tests/login_screen_shot.gd   # ① 실행 → ② 검사가 SHOT_DIR 에 PNG 저장
 ```
 
-| 주장 | 실측 |
-|---|---|
-| `--headless` 로는 캡처·녹화를 못 한다 | ✅ **맞다** — 맥·컨테이너 둘 다 이미지 `null`, 녹화는 종료 코드 134 |
-| 가상 디스플레이에서는 렌더링·스크린샷·녹화가 된다 | ✅ **맞다** — MJPEG 30fps AVI 5.7MB, `ffprobe` 로 300프레임 확인 · 스크린샷 가운데 픽셀 빨간 상자 `(1,0,0)`·모서리 배경색 판정 통과 |
-| 1280×720 영상이 나온다 | ⚠️ **아니다 — 1152×648 로 녹화됐다.** 녹화 크기는 `--resolution` 이 아니라 **`display/window/size/viewport_width`·`viewport_height`** 를 따른다. 뷰포트를 1280×720 으로 설정하자 1280×720, `--resolution 640x360` 만 준 것은 기본값 1152×648 |
-| 약 10초 분량이고 처리 시간은 그와 다를 수 있다 | ✅ 300프레임(10초 분량) 녹화에 **3.8초** — `--fixed-fps` 가 실시간 동기화를 끈다 |
-| `LIBGL_ALWAYS_SOFTWARE=true` 를 준다 | 컨테이너에는 GPU 가 없어 **빼도 `llvmpipe` 로 그렸다** |
-| Compatibility 렌더러로 실행 가능한 프로젝트라면 | **Mobile 렌더러(Vulkan)도 `lavapipe` 로 그려진다** — 대신 첫 프레임까지 3.8초(셰이더 컴파일) · 스크린샷 한 장 6.8초 |
-| 녹화 명령만으로 게임이 자동 플레이되지는 않는다 | ✅ 맞다 — 입력은 `-s` 검사 스크립트가 넣는다 |
-| AI 가 스크린샷을 보고 판단한다 | ✅ **라리엔 3D 로그인 화면을 컨테이너에서 찍어 판정 전부 통과**(22/22 → 검사가 늘어난 뒤 25/25) · PNG 와 녹화 프레임을 열어 키 아트·3D 무대·버튼이 그려진 것을 확인 |
-
-### 🛑 재현하며 걸린 함정
-
-| 증상 | 원인 | 해결 |
-|---|---|---|
-| 컨테이너가 로그 한 줄 없이 영원히 멈춘다(6분) — 안에 godot 프로세스조차 없다 | `docker run … bash -c 'cd … && xvfb-run …'` 은 bash 가 마지막 명령을 `exec` 해 **`xvfb-run` 이 PID 1** 이 된다. 그러면 Xvfb 가 보내는 준비 신호를 받지 못하고 기다리기만 한다 | **`docker run --init`** — 같은 명령이 곧바로 끝났다 |
-| `ERROR: … ERR_CANT_OPEN` `at: init_output_device (drivers/alsa/audio_driver_alsa.cpp)` | 컨테이너에 사운드 장치가 없어 더미로 넘어간다(무해) | `--audio-driver Dummy` |
-| `ERROR: No GDExtension library found for current OS and architecture (linux.arm64)` | 프로젝트의 GDExtension 에 리눅스 바이너리가 없다(라리엔 3D: `godot_iap`·`laryen_social_auth`) | 그 확장 없이 뜨는 화면만 찍는다. **ERROR 줄 수로 실패를 세는 검사는 이 줄을 거른다** |
-| 영상 크기가 기대와 다르다 | 녹화는 뷰포트 설정 크기를 따른다 | `viewport_width/height` 를 맞추거나 스크린샷을 쓴다 |
-| 원본 프로젝트를 마운트하면 사람 에디터의 임포트 캐시가 흔들린다 | 리눅스 Godot 이 `.godot/` 를 고쳐 쓴다 | **사본**을 마운트한다 — 아래 도구가 한다 |
-
-### 속도 — 무엇에 얼마나 드나 (Apple M5 Max · Docker 18 CPU)
-
-| 작업 | 시간 |
-|---|---|
-| 맥 헤드리스 검사(빈 프로젝트 · 60프레임) | 0.6초 |
-| 컨테이너 기동 + 스크린샷(빈 프로젝트 · Compatibility) | 1.6초 (그중 godot 0.7초) |
-| 컨테이너 녹화 300프레임(빈 프로젝트 · Compatibility) | 4.1초 |
-| 컨테이너 스크린샷(빈 프로젝트 · Mobile·Vulkan `lavapipe`) | 7.1초 |
-| **라리엔 3D 로그인 화면 촬영 + 22개 판정**(Compatibility · 컨테이너 안) | **4.7초** |
-| **`xvfb_run.sh` 로 같은 촬영 — 임포트 생략**(25개 판정 · 다른 세션 변경 634건 동기화 포함) | **11.6초** (컨테이너 안 4초) |
-| `xvfb_run.sh` 로 같은 촬영 — 임포트함 | 약 25초 |
-| `xvfb_run.sh --mobile` 로 같은 촬영(Vulkan `lavapipe` · 임포트 생략) | 14.1초 (컨테이너 안 13초) |
-| 라리엔 3D 사본 임포트 — 처음 / 바뀐 것 없이 다시 | 23.6초 / 20.6초 |
-| 라리엔 3D 사본 rsync — 처음(14GB) / 바뀐 것 없음 | 53초 / 1.0초 |
-| 이미지 빌드(처음 한 번 · 695MB) | 52.8초 (apt 층이 캐시에 있으면 약 11초) |
-
-재임포트가 촬영보다 비싸므로 아래 도구는 **임포트를 필요할 때만** 한다. 같은 작업 트리를 다른 세션이 계속 고치는 곳에서는
-"무엇이든 바뀌면 임포트" 가 거의 매번 임포트가 된다(실측: 촬영 사이에 668건 — 대부분 `.gdignore` 폴더 안의 빌드 산출물).
-🛑 **소프트웨어 렌더링이다 — fps·프레임 시간 측정에 쓰지 않는다.** 그림이 맞는지만 본다. 성능은 실기기에서 잰다.
-
-### `scripts/xvfb_run.sh` — 한 줄로 찍는다
-
-```bash
-bash .claude/skills/godot/scripts/xvfb_run.sh -s res://tests/login_screen_shot.gd        # 검사 스크립트 — SHOT_DIR=/out
-bash .claude/skills/godot/scripts/xvfb_run.sh --size 1280x720 res://scenes/x.tscn --quit-after 120
-bash .claude/skills/godot/scripts/xvfb_run.sh --movie login.avi --frames 300 --fps 30    # main_scene 녹화
-bash .claude/skills/godot/scripts/xvfb_run.sh --mobile -s res://tests/x.gd               # Mobile 렌더러(느리다)
-bash .claude/skills/godot/scripts/xvfb_run.sh --out .cowork/<작업>/artifacts -s res://tests/x.gd
-bash .claude/skills/godot/scripts/xvfb_run.sh --help                                     # 옵션 전체
-```
-
-| 단계 | 하는 일 |
-|---|---|
-| 이미지 | [`scripts/xvfb/Dockerfile`](../scripts/xvfb/Dockerfile) 로 `godot-xvfb:<버전>-<arch>` 를 처음 한 번 만든다. 버전은 호스트 `godot --version` 을 따른다(사본의 임포트 캐시와 맞추려고) |
-| 사본 | `~/Library/Caches/godot-xvfb/<프로젝트>-<cksum>/proj` 로 rsync. 첫 사본만 호스트 `.godot` 을 가져가고 이후엔 컨테이너의 것을 지킨다. 뺄 경로는 프로젝트 루트 **`.xvfbignore`**(rsync 패턴) |
-| 임포트 | 첫 사본 · `--import` · 또는 **임포트가 필요한 변경**이 있을 때만 — 새 에셋 · 크기가 바뀐 에셋(`.import` 포함) · 새 `.gd`(class_name 캐시). 시간만 바뀐 파일 · `.tscn`·`.tres`·`.md`·`.translation`·`.uid`·`.cfg`·`.json` · 기존 `.gd` 수정 · `.gdignore` 폴더 안은 보지 않는다. 임포트할 때는 이유가 된 파일을 찍는다. 🛑 크기가 같은 에셋 수정은 놓치므로 그림이 옛것이면 `--import` |
-| 실행 | `docker run --init` · 호스트 사용자 권한 · `xvfb-run` · `--display-driver x11 --audio-driver Dummy` · 기본 렌더러 `gl_compatibility`(라리엔 3D 는 `rendering_method.mobile="gl_compatibility"` 라 **폰과 같은 렌더러**다) |
-| 산출물 | 컨테이너 `/out`(= `SHOT_DIR`) → 호스트 `<캐시>/<프로젝트>/out` 또는 `--out` |
-| 종료 코드 | godot 의 종료 코드를 그대로 돌려준다 · 제한 시간(`--timeout`, 기본 600초) 초과는 124 |
-
-- 🛑 godot 인자에 **호스트 경로를 쓰지 않는다** — 컨테이너 안에는 `/work/proj`(= `res://`)와 `/out` 뿐이다.
-- 🛑 컨테이너마다 `user://` 가 비어 있다 — 로그인 세션·설정이 남지 않는다(검사 재현성에는 오히려 좋다).
-- 🛑 Docker Desktop 이 꺼져 있으면 멈추지 않고 바로 알린다(종료 코드 2).
+③ **판정 숫자를 보고, 저장된 PNG 를 직접 열어 확인한다.** 🛑 소프트웨어 렌더링이라 fps 측정에는 쓰지 않는다.
 
 ---
 
@@ -520,7 +471,8 @@ bash .claude/skills/godot/scripts/xvfb_run.sh --help                            
 - [export-build-ios.md](export-build-ios.md) — iOS 서명·Xcode·TestFlight
 - [export-build-android.md](export-build-android.md) — Android APK·AAB·adb
 - [lsp.md](lsp.md) — LSP 정적 검증 (코드 작성 직후 필수)
-- [../scripts/xvfb_run.sh](../scripts/xvfb_run.sh) — §7 의 촬영 도구 (이미지 정의는 [../scripts/xvfb/Dockerfile](../scripts/xvfb/Dockerfile))
+- [virtual-monitor.md](virtual-monitor.md) — 🖥 가상 모니터: 화면에 안 보이게 실행해 스크린샷·녹화·검증 (정본)
+- [../scripts/xvfb_run.sh](../scripts/xvfb_run.sh) — 가상 모니터 도구 (이미지 정의는 [../scripts/xvfb/Dockerfile](../scripts/xvfb/Dockerfile))
 - `docs/godot/에디터 없이 작업.md` §13 — 사람이 읽는 전 과정 예제
 
 ## 공식 문서
