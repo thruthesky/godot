@@ -13,6 +13,8 @@
 #   install.sh <선택> --release --no-lazy-download
 #   install.sh <선택> --release --boot-profile   릴리스인데도 [Boot] 부팅 타임라인을 찍는다
 #                                    릴리즈인데 자산을 전부 번들에 넣는다 (기본은 lazy-download)
+#   install.sh <선택> --release --staging-server  릴리스인데 스테이징 서버에 붙인다 (프로젝트가 기능 태그
+#                                    staging_server 를 읽을 때 · 라리엔 3D 는 release 기본이 운영 서버)
 #   install.sh <선택> --preset "A15 Test"
 #                                    export_presets.cfg 의 preset 을 직접 고른다
 #                                    (기기별 debug preset 처럼 같은 플랫폼에 여러 개일 때)
@@ -42,6 +44,7 @@
 #   --no-lazy-download                      Bundle every asset (release defaults to lazy-download)
 #   --boot-profile                          Emit [Boot] timeline logs from a release build too
 #   --boot-parts                            Also break the world scene load down part by part (slower overall)
+#   --staging-server                        Release build that connects to the staging server (feature tag staging_server)
 #   --skip-build                            Use an existing build
 #   --console                               Attach runtime logs (Ctrl+C to stop)
 #   --no-launch                             Build/install without launching
@@ -84,12 +87,19 @@ LAZY_DOWNLOAD=1
 #    (`export_from_clone.py --feature`). 그래서 다른 세션의 빌드에 전파되지 않는다.
 BOOT_PROFILE=0
 BOOT_PARTS=0
+# 🌐 release 빌드인데 **스테이징 서버**에 붙인다 — 프로젝트가 기능 태그 `staging_server` 를 읽을 때만 뜻이 있다
+#    (라리엔 3D `scripts/client.config.gd`: release 기본은 운영 · debug 는 원래 스테이징).
+#    빌드하면 사본 프리셋에 태그를 심고(모바일 포함 · `export_from_clone.py --feature`), macOS·Windows 는
+#    실행 인자 `--staging-server` 도 넘긴다 — `--skip-build` 로 이미 만든 데스크톱 앱을 켤 때도 되게.
+#    🛑 원본 `export_presets.cfg` 는 건드리지 않는다. 모르는 프로젝트의 앱은 이 인자를 그냥 무시한다.
+STAGING_SERVER=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --win)        WIN=1 ;;
     --release)    BUILD_MODE="release" ;;
     --debug)      BUILD_MODE="debug" ;;
+    --staging-server) STAGING_SERVER=1 ;;
     --boot-profile) BOOT_PROFILE=1 ;;
     # 🔑 월드 씬 로드를 **덩어리별로** 가른다(`character_flow._measure_world_parts()`).
     #    🛑 순차 동기 로드라 **총 소요가 평소보다 늘어난다** — "얼마나 빨라졌나" 를 재는
@@ -484,6 +494,26 @@ android_release_signing() {
     $dbg"
 }
 
+# ── 스테이징 서버 옵션 확인 ─────────────────────────────────────────────
+# 🌐 `--staging-server` 가 뜻을 갖는 경우만 통과시킨다 — 조용히 무시되면 사람은 스테이징 빌드라고 믿고 운영에 붙는다.
+# 🛑 bash 3.2 + `set -u` 는 빈 배열 전개를 unbound 로 본다 — 쓰는 곳은 `${RUN_ARGS[@]+"${RUN_ARGS[@]}"}` 로 쓴다.
+RUN_ARGS=()
+if [ "$STAGING_SERVER" -eq 1 ]; then
+  if [ "$BUILD_MODE" != "release" ]; then
+    warn "--staging-server 는 release 에만 뜻이 있다 — debug 빌드는 원래 스테이징 서버에 붙는다. / --staging-server only matters for release builds; debug builds already use staging."
+  elif [ "$SKIP_BUILD" -eq 0 ] && [ ! -f "$ROOT/tools/export_from_clone.py" ]; then
+    die "--staging-server 는 tools/export_from_clone.py 가 있는 프로젝트에서만 쓴다 — 사본 프리셋에 기능 태그를 심는다. / --staging-server requires tools/export_from_clone.py (it adds the feature tag in a clone)."
+  fi
+  case "$PLATFORM" in
+    macos|windows) RUN_ARGS+=(--staging-server) ;;
+    *)
+      if [ "$SKIP_BUILD" -eq 1 ]; then
+        warn "이미 설치된 $PLATFORM 앱의 서버는 빌드 때 정해졌다 — 스테이징으로 바꾸려면 --skip-build 없이 다시 빌드한다. / The server of an installed $PLATFORM app is fixed at build time; rebuild without --skip-build."
+      fi
+      ;;
+  esac
+fi
+
 # ── 빌드 ────────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" -eq 0 ]; then
   [ "$PLATFORM" = "android" ] && [ "$BUILD_MODE" = "release" ] && android_release_signing
@@ -532,6 +562,11 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
       step "bootparts 기능 추가 — 월드 씬을 덩어리별로 잰다(총 소요는 늘어난다) / adding bootparts feature"
       EXPORT_ARGS+=(--feature bootparts)
     fi
+    # 🌐 스테이징 서버에 붙는 release — 사본 프리셋에만 기능 태그를 심는다(위 STAGING_SERVER 주석 참조).
+    if [ "$STAGING_SERVER" -eq 1 ]; then
+      step "staging_server 기능 추가 — release 인데 스테이징 서버에 붙는다 / adding staging_server feature"
+      EXPORT_ARGS+=(--feature staging_server)
+    fi
     python3 "$ROOT/tools/export_from_clone.py" "${EXPORT_ARGS[@]}" || die "$BUILD_FAIL_MSG"
   else
     "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
@@ -567,12 +602,12 @@ case "$PLATFORM" in
       ok "빌드만 완료 / Build ready: $ARTIFACT"
     elif [ "$CONSOLE" -eq 1 ]; then
       step "실행 중 (Ctrl+C 로 중지) / Launching with console output (Ctrl+C to stop)"
-      "$ARTIFACT" --rendering-driver vulkan
+      "$ARTIFACT" --rendering-driver vulkan ${RUN_ARGS[@]+"${RUN_ARGS[@]}"}
     else
       step "Windows 게임 실행 / Launching Windows game"
       mkdir -p artifacts/logs
       # Use the desktop Vulkan renderer; D3D12 crashes on this PC.
-      "$ARTIFACT" --rendering-driver vulkan >"artifacts/logs/install-windows-$BUILD_MODE-run.log" 2>&1 < /dev/null &
+      "$ARTIFACT" --rendering-driver vulkan ${RUN_ARGS[@]+"${RUN_ARGS[@]}"} >"artifacts/logs/install-windows-$BUILD_MODE-run.log" 2>&1 < /dev/null &
       ok "Windows 게임 실행 완료 / Launched Windows game (PID $!)."
       echo "   로그 / Logs: artifacts/logs/install-windows-$BUILD_MODE-run.log"
     fi
@@ -663,10 +698,11 @@ $(printf '%s' "$INSTALL_LOG" | tail -2)"
       [ -n "$BIN" ] || die "실행 바이너리를 찾지 못했다: / Could not find an executable: $APP/Contents/MacOS"
       if [ "$CONSOLE" -eq 1 ]; then
         step "실행 중 (로그 붙임 — Ctrl+C 로 중지) / Launching with console output (Ctrl+C to stop)"
-        "$BIN"
+        "$BIN" ${RUN_ARGS[@]+"${RUN_ARGS[@]}"}
       else
         step "실행 중 / Launching"
-        open "$APP"
+        # 🌐 `--args` 뒤가 앱의 실행 인자다(`--staging-server`). 🛑 이미 떠 있는 앱이면 `open` 은 인자 없이 그 창만 앞으로 가져온다.
+        if [ ${#RUN_ARGS[@]} -gt 0 ]; then open "$APP" --args "${RUN_ARGS[@]}"; else open "$APP"; fi
         ok "창을 확인한다. / Application window launched."
         echo "   로그: / Logs: $(basename "$0") macos --skip-build --console"
       fi
