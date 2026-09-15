@@ -494,6 +494,43 @@ android_release_signing() {
     $dbg"
 }
 
+# ── 켜 둔 macOS 앱 확인 ─────────────────────────────────────────────────
+# 🛑🛑 **실행 중인 앱의 번들 위로 다시 내보내지 않는다**(2026-09-15 라리엔 3D 사람 보고 — 로그아웃이 "Logging out..." 에 갇혔다).
+#    export 는 `Contents/` 를 새로 만든다. 켜 둔 게임은 자기 `.pck` 와 작업 폴더를 잃어 **처음 읽는 리소스부터 전부 실패**하고
+#    (로그인 씬 `Cannot open file` · `.import … Unterminated string` · `getcwd … is null`) 화면은 멈춘 것처럼 서 있다.
+#    게다가 빌드 뒤 `open` 은 **이미 떠 있는 옛 창을 앞으로 가져올 뿐**이라 사람은 새 빌드를 켰다고 믿는다.
+#    그래서 빌드 **전에** 같은 번들에서 도는 프로세스를 찾는다 — 대화형이면 묻고 끄고, 비대화형이면 멈춘다(사람의 창을 말없이 끄지 않는다).
+# 🔑 pgrep 대신 ps+awk — 셸 래퍼·패턴 해석에 흔들리지 않게 경로를 글자 그대로 비교한다.
+# 🛑 경로는 **환경 변수로** 넘긴다 — `awk -v 경로` 로 넘기면 awk 자신의 명령 줄에 그 경로가 찍혀 자기를 실행 중인 앱으로 잡는다(실측).
+macos_running_pids() {
+  ps -axo pid=,command= | MACOS_APP_ABS="$ARTIFACT/Contents/MacOS/" MACOS_APP_REL="$EXPORT_PATH/Contents/MacOS/" awk '
+    { abs = ENVIRON["MACOS_APP_ABS"]; rel = ENVIRON["MACOS_APP_REL"] }
+    (length(abs) > 0 && index($0, abs)) || (length(rel) > 0 && index($0, rel)) { print $1 }'
+}
+if [ "$SKIP_BUILD" -eq 0 ] && [ "$PLATFORM" = "macos" ]; then
+  RUNNING_PIDS=$(macos_running_pids)
+  if [ -n "$RUNNING_PIDS" ]; then
+    warn "같은 앱이 실행 중이다(PID $(echo $RUNNING_PIDS)) — 이대로 내보내면 그 창은 게임 파일을 잃고 멈춘다. / The same app is running (PID $(echo $RUNNING_PIDS)); exporting over it breaks that window.
+    $ARTIFACT"
+    QUIT_RUNNING="n"
+    if [ -t 0 ]; then printf '그 앱을 종료하고 빌드할까? [y/N]: / Quit it and build? [y/N]: '; read -r QUIT_RUNNING || QUIT_RUNNING="n"; fi
+    case "$QUIT_RUNNING" in
+      y|Y|yes)
+        kill $RUNNING_PIDS 2>/dev/null || true
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+          [ -z "$(macos_running_pids)" ] && break
+          sleep 1
+        done
+        [ -z "$(macos_running_pids)" ] || die "10초 안에 종료되지 않았다 — 창을 직접 닫고 다시 실행한다. / It did not quit within 10 seconds; close the window and retry."
+        ok "실행 중이던 앱을 종료했다. / Quit the running app."
+        ;;
+      *)
+        die "빌드를 멈췄다 — 게임 창을 닫고 다시 실행한다. / Build stopped: close the game window and run again."
+        ;;
+    esac
+  fi
+fi
+
 # ── 스테이징 서버 옵션 확인 ─────────────────────────────────────────────
 # 🌐 `--staging-server` 가 뜻을 갖는 경우만 통과시킨다 — 조용히 무시되면 사람은 스테이징 빌드라고 믿고 운영에 붙는다.
 # 🛑 bash 3.2 + `set -u` 는 빈 배열 전개를 unbound 로 본다 — 쓰는 곳은 `${RUN_ARGS[@]+"${RUN_ARGS[@]}"}` 로 쓴다.
