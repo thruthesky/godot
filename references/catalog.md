@@ -21,6 +21,23 @@
 [openworld-3d.md](openworld-3d.md) **§0 을 먼저 읽는다** —
 맵 크기는 나중에 조금씩 키울 수 있는 값이 아니다.
 
+### [rendering-cpu-optimization.md](rendering-cpu-optimization.md) — 렌더러 CPU 최적화를 엔진 팀이 하는 법
+
+**Godot 공식 블로그 [Optimizing CPU-side Rendering Code](https://godotengine.org/article/rendering-cpu-optimizations/)
+(Clay John · 2026-09-15)를 정리하고 라리엔 실측을 덧붙인 문서.**
+[perf-tuning-playbook.md](perf-tuning-playbook.md) 가 **"우리 게임이 느릴 때 무엇을 하나"** 라면,
+이 문서는 **"최적화라는 작업을 어떤 사고로 하나"** 다.
+
+| 절 | 내용 |
+|---|---|
+| **§1 CPU vs GPU** ★ | 느린 쪽이 프레임을 정한다 · 2D 배칭은 GPU 를 조금 주고 CPU 를 크게 얻고, 3D 오클루전 컬링은 그 반대 |
+| **§2 5단계** ★ | 찾기 → 이해 → 조사 → **재측정** → 반복. 🛑 분기 추가가 벡터화를 막고, 캐시가 메모리 병목을 악화시킨다 |
+| §3 프로파일러 | 내장 2종(GDScript·렌더러) · Tracy(추적) · 외부 샘플링(Superluminal). 엔진 코드는 외부 프로파일러라야 보인다 |
+| §4 화면 읽기 | 타임라인 · 콜 그래프 · 소스/디스어셈블 · 스레드 뷰(🟩 일함 / 🟥 대기) |
+| **§5 사례 1 Polygon2D** ★ | 매 프레임 메시를 지우고 다시 만들던 것을 **버퍼 갱신**으로 — 35ms → 13ms · 28 → 83 FPS. GDScript 에서 쓸 수 있는 저수준 API 4.7.2 실측표 |
+| §6 사례 2 SPIR-V→DXIL | 스레드 갭의 정체가 **OS 힙 할당 대기** → 스레드별 힙 → TPS 데모 로딩 **11초 단축** |
+| **§7 규칙 7가지** ★ | 🛑 테스트 케이스 없는 최적화는 하지 않는다 · 작고 안전한 이득으로 충분하면 멈춘다 |
+
 ### [lowend-3gb-60fps.md](lowend-3gb-60fps.md) — 🛑 3GB RAM 폰에서 60fps ★ 저사양 작업 전 필독
 
 **모바일 3D MMORPG 의 최소 지원 사양(3GB RAM)에서 60fps 를 확보한 A12 실측 기록.**

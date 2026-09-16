@@ -14,6 +14,9 @@
 > 컬링·LOD·해상도 스케일의 기능별 판정은 [lowend-culling-lod.md](lowend-culling-lod.md),
 > `Performance` 모니터 API·내보내기 설정은 [performance-mobile.md](performance-mobile.md).
 > **"지금 느린데 어디서부터 볼까"는 이 문서입니다.**
+>
+> **최적화라는 작업 자체의 사고법**(병목 찾기 → 이해 → 조사 → 🛑 재측정)과 **프로파일러 화면 읽는 법**은
+> [rendering-cpu-optimization.md](rendering-cpu-optimization.md) — 고도 엔진 팀이 실제로 한 사례 2건을 정리한 문서입니다.
 
 ## 목차
 
