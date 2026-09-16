@@ -348,6 +348,42 @@ pick_preset() {
 }
 
 # ── 플랫폼별 preset 값 ──────────────────────────────────────────────────
+# List every preset name for a platform, in export_presets.cfg order.
+preset_names_for_platform() {
+  awk -v want="$1" '
+    { sub(/\r$/, "") }
+    /^\[preset\.[0-9]+\]$/ { cur = $0; gsub(/[^0-9]/, "", cur); next }
+    /^\[preset\.[0-9]+\.options\]$/ { cur = ""; next }
+    /^[A-Za-z]/ {
+      if (cur == "") next
+      eq = index($0, "=")
+      if (eq == 0) next
+      k = substr($0, 1, eq - 1)
+      v = substr($0, eq + 1)
+      gsub(/^[ \t]+|[ \t\r]+$/, "", v)
+      gsub(/^"|"$/, "", v)
+      if (k == "name") nm[cur] = v
+      else if (k == "platform" && v == want && nm[cur] != "") order[++n] = cur
+    }
+    END { for (i = 1; i <= n; i++) print nm[order[i]] }
+  ' "$PRESETS"
+}
+
+# True when every custom export template the preset names exists on this machine.
+# A preset with empty custom_template uses the official templates, so it is always usable.
+# A Steam preset points at GodotSteam templates that live only on the machine that owns
+# them; elsewhere it is skipped instead of failing with "Custom debug template not found".
+preset_templates_present() {
+  local tpl
+  for tpl in "$(preset_get_named "$1" "custom_template/debug")" \
+             "$(preset_get_named "$1" "custom_template/release")"; do
+    [ -n "$tpl" ] || continue
+    if is_windows; then tpl=$(cygpath -u "$tpl" 2>/dev/null || printf '%s' "$tpl"); fi
+    [ -f "$tpl" ] || return 1
+  done
+  return 0
+}
+
 find_godot() {
   local candidate dir drive
   for candidate in godot godot4 godot_console; do
@@ -377,8 +413,22 @@ fi
 
 case "$PLATFORM" in
   windows)
-    PRESET_NAME=$(preset_get "Windows Desktop" "name")
-    EXPORT_PATH=$(preset_get "Windows Desktop" "export_path")
+    # Pick the first Windows Desktop preset this machine can actually export with:
+    # --preset wins, otherwise skip presets whose custom templates are missing here.
+    WIN_PRESET_FIRST=""
+    PRESET_NAME=""
+    if [ -n "$PRESET_ARG" ]; then
+      PRESET_NAME=$(pick_preset "" "Windows Desktop")
+    else
+      while IFS= read -r win_candidate; do
+        [ -n "$win_candidate" ] || continue
+        [ -n "$WIN_PRESET_FIRST" ] || WIN_PRESET_FIRST="$win_candidate"
+        if preset_templates_present "$win_candidate"; then PRESET_NAME="$win_candidate"; break; fi
+      done < <(preset_names_for_platform "Windows Desktop")
+      [ -n "$PRESET_NAME" ] || [ -z "$WIN_PRESET_FIRST" ] || die "Windows Desktop preset 이 있지만 이 PC 에 커스텀 템플릿이 없다 / Every Windows Desktop preset needs a custom template that is missing on this machine: $(preset_names_for_platform "Windows Desktop" | tr '
+' ' ')"
+    fi
+    EXPORT_PATH=$(preset_get_named "$PRESET_NAME" "export_path")
     [ -n "$PRESET_NAME" ] || die 'Windows Desktop preset 이 없다 / No platform="Windows Desktop" preset in export_presets.cfg.'
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/windows/${PRESET_NAME}.exe"
     case "$EXPORT_PATH" in *.exe) ;; *) die "Windows export_path 는 .exe 로 끝나야 한다 / Windows export_path must end in .exe: $EXPORT_PATH" ;; esac
