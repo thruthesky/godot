@@ -368,6 +368,19 @@ find_godot() {
   return 1
 }
 
+# 🛑 빌드 전에 서브모듈 작업트리가 상위 저장소가 기록한 포인터와 맞는지 본다.
+#    git pull 은 서브모듈을 건드리지 않는다 — 상위 코드가 애드온의 새 API 를 부르는데
+#    애드온 체크아웃만 옛 커밋에 앉아 있으면, export 는 디스크에 있는 것을 그대로 담으므로
+#    **빌드는 성공하고** 어긋남은 기기에서 스크립트 로드 파스 에러로야 드러난다
+#    (2026-09-16 라리엔 3D 실제 사고 — 서브모듈이 22커밋 뒤처져 로그인 화면이 죽었다).
+#    판정·문구는 프로젝트가 가진 scripts/check-submodules.sh 가 하고, 그 파일이 없는
+#    프로젝트에서는 아무 일도 하지 않는다. 앞선 작업트리(애드온을 고치는 중)는 경고만 하고 통과한다.
+if [ "$SKIP_BUILD" -eq 0 ] && [ "${LARYEN_SKIP_SUBMODULE_CHECK:-0}" != "1" ] \
+   && [ -f "$ROOT/scripts/check-submodules.sh" ]; then
+  bash "$ROOT/scripts/check-submodules.sh" \
+    || die "서브모듈이 어긋난 채로는 빌드하지 않는다 (위 해결 명령 참고) / refusing to build with a mismatched submodule checkout"
+fi
+
 if [ "$SKIP_BUILD" -eq 0 ]; then
   GODOT_BIN="${GODOT_BIN:-$(find_godot || true)}"
   [ -n "$GODOT_BIN" ] || die "godot 실행 파일을 찾지 못했다. GODOT_BIN 환경변수로 경로를 지정한다. / Godot was not found. Set GODOT_BIN to your Godot executable path."
