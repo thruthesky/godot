@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ProtonScatter — 처음부터 끝까지</title>
-<meta name="description" content="나무·바위를 자유롭게 흩뿌리면서 충돌까지 얻는 법. 설치부터 Keep Static Colliders 까지 10단계 클릭 순서. Godot 4.7.2 · ProtonScatter 4.2.0 실측.">
+<meta name="description" content="나무·바위를 자유롭게 흩뿌리면서 충돌까지 얻는 법. 설치부터 Keep Static Colliders 까지 10단계 클릭 순서, 그리고 Remove Outside (Model) · Footprint Multiplier · Keep Partial Overlap · Amount 로 청크 경계 안에 가두면서 밀도를 지키는 법. Godot 4.7.2 · ProtonScatter 4.2.0 실측.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
@@ -116,6 +116,9 @@ footer a{color:var(--blue)}
 .insp .v{flex:1;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
 .insp .row.on{background:rgba(217,72,15,.09)}
 .insp .row.on .k,.insp .row.on .v{color:var(--accent);font-weight:700}
+figure{margin:1.2em 0}
+figure img{display:block;width:100%;height:auto;border:1px solid var(--rule);border-radius:10px;background:#1e1e22;box-shadow:var(--shadow)}
+figcaption{margin-top:10px;font-size:13.5px;color:var(--muted);line-height:1.6}
 .insp .grp{padding:6px 14px;background:var(--paper);font-weight:900;font-size:12px;
   letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--rule)}
 </style>
@@ -131,11 +134,13 @@ footer a{color:var(--blue)}
     <p class="lede">
       나무·바위를 <b>자유롭게 흩뿌리면서 충돌까지</b> 얻는 유일한 방법.
       설치부터 <code>Keep Static Colliders</code> 까지 <b>클릭 순서 그대로</b> 적었다.
+      STEP 11~15 는 <b>뿌린 것을 걸러내 청크 경계 안에 가두면서 밀도를 지키는 법</b>이다.
     </p>
     <div class="tags">
       <span class="tag"><b>✓</b> 4.7.2.stable 실측</span>
       <span class="tag"><b>✓</b> 애드온 소스 확인</span>
       <span class="tag"><b>✓</b> 기본 프리셋 값 직접 읽음</span>
+      <span class="tag"><b>✓</b> 청크 씬 7곳 걸러내기 실측</span>
       <span class="tag">상세 문서 · <code>protonscatter.md</code></span>
     </div>
   </header>
@@ -515,6 +520,161 @@ func _create_collision(body: StaticBody3D, t: Transform3D) -> void:
 실패 0 건</code></pre>
   </section>
 
+  <!-- Part 2 -->
+  <blockquote class="ok">
+    <p>
+      <b>여기부터는 뿌린 것을 걸러내는 법이다.</b> 청크 경계 안에 가두면서 밀도를 지킨다 —
+      모디파이어 스택의 원리, <code>Remove Outside (Model)</code>, <code>Footprint Multiplier</code>,
+      <code>Keep Partial Overlap</code>, <code>Amount</code>. 2026-09-17 라리엔 3D 청크 씬 실측.
+      줄 번호·코드 전체는 <a href="doc.html?d=protonscatter#step-11-모디파이어-스택은-어떻게-도는가">상세 문서 Step 11~19</a>.
+    </p>
+  </blockquote>
+
+  <!-- Step 11 -->
+  <section class="step">
+    <h2><span class="num">STEP 11</span><span class="t">모디파이어 스택은 목록 하나를 차례로 고친다</span></h2>
+    <p class="why">인스펙터 카드가 따로따로 보여도 실제로는 한 줄 파이프라인이다.</p>
+<pre><code>rebuild
+  └ modifier_stack.start_update(scatter, domain)
+        transforms = 빈 목록
+        for modifier in stack:                    <span class="c"># modifier_stack.gd:23-24</span>
+            await modifier.process_transforms(transforms, domain, global_seed)
+  └ _on_transforms_ready(transforms)              <span class="c"># scatter.gd:745</span>
+        <span class="bad">목록이 비었으면 → 지우고 끝</span>             <span class="c"># :762 — build_completed 를 보내지 않는다</span>
+        아니면 → 아이템마다 몫을 나눠 MultiMesh
+        build_completed.emit()                    <span class="c"># :784</span></code></pre>
+    <table>
+      <tr><th>사실</th><th>그래서</th></tr>
+      <tr><td><b>Create 만 늘리고 Remove 는 줄이기만 한다</b></td><td>지운 자리는 다시 채워지지 않는다 → 밀도는 <code>Amount</code> 로 되살린다(STEP 15)</td></tr>
+      <tr><td><b>아이템 배정은 목록 순서로 이어 붙인 구간</b> <code>round(proportion / 합계 × 전체)</code></td><td>가운데 하나를 지우면 뒤 아이템 자리가 밀린다</td></tr>
+      <tr><td><b>결과가 0개면 <code>build_completed</code> 가 오지 않는다</b></td><td>화면에 아무것도 없고, 기다리는 코드는 멈춘다</td></tr>
+      <tr><td><b>꺼 둔(<code>enabled</code>) 모디파이어가 게임에서는 돈다</b></td><td><code>enabled</code> 검사가 <code>Engine.is_editor_hint()</code> 안에만 있다 → 끄려면 <b>스택에서 뺀다</b></td></tr>
+      <tr><td><b>BoxShape 는 높이까지, PathShape 는 XZ 만</b> 판정</td><td>Box 로 거를 때는 <code>Project On Colliders</code> <b>앞</b>에 둔다</td></tr>
+    </table>
+<pre><code><span class="c"># 헤드리스(= 게임과 같은 비에디터) · chunk_06_13 TreeScatter · Amount 23</span>
+모디파이어 빼기 → 나무 23그루
+모디파이어 켜기 → 나무 15그루
+모디파이어 <span class="hi">끄기</span> → 나무 <span class="bad">15그루</span>      <span class="c">← 꺼도 켠 것과 같다</span></code></pre>
+    <blockquote class="stop">
+      <p>
+        <b>Modifier Stack 패널이 안 보이면 인스펙터 검색칸을 비운다.</b> 패널은 <code>modifier_stack</code>
+        속성의 편집기라 검색어와 이름이 안 맞으면 통째로 숨는다. <b><code>Force rebuild</code></b> 는
+        인스펙터 맨 위가 아니라 <b>패널 툴바의 새로고침 아이콘</b>이다.
+      </p>
+    </blockquote>
+  </section>
+
+  <!-- Step 12 -->
+  <section class="step key">
+    <h2><span class="num">STEP 12</span><span class="t">Remove Outside 는 원점만, (Model) 은 모델 크기로</span></h2>
+    <p class="why">
+      내장 <code>Remove Outside</code> 는 <b>나무 밑동(원점) 한 점</b>만 본다 — 밑동이 영역 안이면 가지가 몇 m 나가도 남고,
+      청크 경계는 모른다. 그래서 라리엔 3D 는 <b><code>Remove Outside (Model)</code></b> 을 로컬로 추가했다
+      (원본 애드온에는 없다 · <code>addons/proton_scatter/src/modifiers/remove_outside_model.gd</code>).
+    </p>
+<pre><code><span class="c"># 자리마다 표본점 — 원점 + 모델 AABB 의 XZ 윤곽</span>
+점 = 원점 + (아이템 basis × 자리 basis) × (윤곽점 × <span class="hi">Footprint Multiplier</span>) + 오프셋
+<span class="c"># 청크 경계: 청크 루트 좌표로 |x| 또는 |z| &gt; 32 − Chunk Margin 이면 넘음 — 모드와 상관없이 항상</span></code></pre>
+    <table>
+      <tr><th>모드</th><th>영역(노란 선) 판정에서 지우는 경우</th><th>청크 경계</th></tr>
+      <tr><td><b>기본</b> (둘 다 꺼짐)</td><td>표본점 <b>하나라도</b> 영역 밖</td><td>항상 지킨다</td></tr>
+      <tr><td><b>Keep Partial Overlap</b> 켬</td><td>표본점이 <b>전부</b> 영역 밖 (원점이 안이면 남는다)</td><td>항상 지킨다</td></tr>
+      <tr><td><b>Negative Shapes Only</b> 켬</td><td>표본점 하나라도 <b>negative 영역 안</b></td><td>항상 지킨다</td></tr>
+    </table>
+    <table>
+      <tr><th>파라미터</th><th>기본</th><th>뜻</th></tr>
+      <tr><td><b>Footprint Multiplier</b></td><td><code>1.0</code></td><td>발자국 배율. 🛑 <b>0 금지</b></td></tr>
+      <tr><td>Edge Samples</td><td><code>1</code></td><td>윤곽 변마다 더 찍는 점</td></tr>
+      <tr><td>Fallback Radius</td><td><code>0.0</code></td><td>메시를 못 잰 아이템의 반지름</td></tr>
+      <tr><td><b>Keep Partial Overlap</b></td><td><code>false</code></td><td>🔑 청크 경계만 지키고 모양을 살릴 때 켠다</td></tr>
+      <tr><td>Negative Shapes Only</td><td><code>false</code></td><td>negative 영역에 걸친 것만 지운다(켜면 Keep Partial 무시)</td></tr>
+      <tr><td>Honor Proportion</td><td><code>true</code></td><td>지우지 않고 <b>비율을 지키며 자리를 고른다</b> → 🛑 스택 <b>맨 끝</b>에 둔다</td></tr>
+      <tr><td>Clip To Chunk</td><td><code>true</code></td><td>청크 경계 ±32m 도 판정</td></tr>
+      <tr><td>Chunk Margin</td><td><code>0.0</code></td><td>경계 안쪽 여유(m)</td></tr>
+      <tr><td>Debug Report</td><td><code>false</code></td><td>재빌드마다 Output 에 판정 내역</td></tr>
+    </table>
+<pre><code>[Remove Outside (Model)] 15 transforms in
+  chunk clip: border at +-32.00 m, margin 0.00
+  PlaneTree (proportion 20): reach 3.84 x 3.44 m — <span class="hi">1 blocked by chunk</span>, <span class="bad">8 by shape</span>
+<span class="c"># reach 에는 Source Scale Multiplier 가 빠져 있다 · blocked 는 "들어갈 수 없는 자리 수"(지운 수가 아니다)</span></code></pre>
+  </section>
+
+  <!-- Step 13 -->
+  <section class="step">
+    <h2><span class="num">STEP 13</span><span class="t">Footprint Multiplier — 0 이면 원점 검사로 돌아간다</span></h2>
+    <p class="why">
+      <code>윤곽점 × 0 = 0</code> 이라 모든 표본점이 원점 한 점으로 모인다. <b>붙여 놓고도 막지 못한다.</b>
+    </p>
+    <table>
+      <tr><th><code>chunk_03_11</code> pine_tree 70그루</th><th>청크 위반</th></tr>
+      <tr><td><code>footprint_multiplier = 0.0</code> (파일에 저장돼 있었다)</td><td>🛑 <b>2그루</b> — 원점은 안, 가지가 0.46m·1.18m 넘어 청크 없는 칸으로</td></tr>
+      <tr><td><code>1.0</code></td><td>✅ <b>0</b></td></tr>
+    </table>
+    <p>1 미만(예 0.8)은 잎이 조금 걸쳐도 남기고, 1 초과는 여유를 둔다.</p>
+  </section>
+
+  <!-- Step 14 -->
+  <section class="step key">
+    <h2><span class="num">STEP 14</span><span class="t">🛑 Keep Partial Overlap — 켜야 모양이 살아난다</span></h2>
+    <p class="why">
+      기본값은 가지 <b>전체</b>가 영역 안이어야 남긴다 → 청크와 상관없이 <b>영역 가장자리 나무까지</b> 지운다.
+      켜면 사실상 <b>청크 경계를 넘는 것만</b> 지워진다.
+    </p>
+    <table>
+      <tr><th>청크 · 노드</th><th>모델 reach</th><th>없음</th><th>기본값</th><th>켬</th></tr>
+      <tr><td><code>chunk_06_13</code> TreeScatter</td><td>7.10×7.04m</td><td>23</td><td>🛑 <b>6</b></td><td><b>15</b></td></tr>
+      <tr><td><code>chunk_10_06</code> TreeScatter</td><td>3.84×3.44m</td><td>15</td><td>🛑 <b>6</b></td><td><b>14</b></td></tr>
+      <tr><td><code>chunk_04_11</code> TreeScatter</td><td>3.84×3.44m</td><td>20</td><td>🛑 <b>0</b> (완료 신호 없음)</td><td><b>14</b></td></tr>
+      <tr><td><code>chunk_06_10</code> TreeScatter</td><td>0.30×0.33m ×6</td><td>40</td><td>🛑 <b>0</b> (완료 신호 없음)</td><td><b>40</b></td></tr>
+      <tr><td><code>chunk_06_10</code> MountainMeadowTrees</td><td>1.26×1.30m</td><td>26</td><td>🛑 <b>6</b></td><td><b>22</b></td></tr>
+    </table>
+    <p>
+      7개 청크에 <b>켬</b>으로 붙여 실제 검사기(메시 꼭짓점의 볼록 껍질로 잰다)로 판정 —
+      위반 <b>7·6·10·14·1·1·1 → 전부 0</b>, 나무 수는 23→15 · 28→21 · 1999→1990 · 75→57 · 15→14 · 30→29 · 30→29.
+    </p>
+  </section>
+
+  <!-- Step 15 -->
+  <section class="step">
+    <h2><span class="num">STEP 15</span><span class="t">Amount 로 밀도를 되살린다</span></h2>
+    <p class="why">
+      Remove 는 채우지 않는다. 경계 때문에 줄었다면 <code>Create Inside (Random) ▸ Amount</code> 를 올린다.
+    </p>
+    <table>
+      <tr><th><code>chunk_06_13</code> · Keep Partial Overlap 켬</th><th>23</th><th>30</th><th>35</th><th>40</th><th>45</th><th>50</th></tr>
+      <tr><td>남는 나무</td><td>15</td><td>21</td><td><b>24</b> ✅</td><td>29</td><td>31</td><td>34</td></tr>
+    </table>
+    <figure>
+      <img src="site/img/protonscatter-keep-partial-amount.png" alt="chunk_06_13 나무 배치도 세 장 — 모디파이어 없음 23그루, 기본값 6그루, Keep Partial Overlap 켬과 Amount 35 로 24그루" loading="lazy">
+      <figcaption>
+        위에서 본 배치도(헤드리스로 뽑은 실제 자리 · 렌더링 아님). 빨간 선 청크 경계 · 노란 선 영역 · 초록 원 가지 범위(넉넉한 근사).
+        <b>왼쪽</b> 모디파이어 없음 23 — 가지가 경계 밖 · <b>가운데</b> 기본값 6 · <b>오른쪽</b> Keep Partial Overlap 켬 + Amount 35 → 24, 경계 안.
+      </figcaption>
+    </figure>
+    <table>
+      <tr><th>알아 둘 것</th><th></th></tr>
+      <tr><td><b>Amount 를 올려도 기존 자리는 그대로</b></td><td>같은 seed 로 같은 순서를 뽑는다 — 실측 23→35 에서 23자리 이동 <b>0.00m</b>. 🛑 <code>Relax Position</code> 이 있으면 서로 밀어내 조금 움직인다(15→20 에서 최대 0.52m)</td></tr>
+      <tr><td><b>원래 모습과 똑같이는 안 된다</b></td><td>경계 밖으로 나가던 나무가 곧 위반이다. 나무는 경계에서 모델 반폭만큼 안쪽에만 남는다</td></tr>
+      <tr><td>배치를 바꾸려면</td><td><code>Global Seed</code> 를 바꾼다</td></tr>
+      <tr><td>경계 바깥까지 덮으려면</td><td>옆 청크 씬에 따로 심는다(청크가 없으면 지면부터)</td></tr>
+    </table>
+  </section>
+
+  <!-- 목표별 -->
+  <section>
+    <h2>목표별 설정표</h2>
+    <table>
+      <tr><th>하고 싶은 것</th><th>설정</th></tr>
+      <tr><td><b>청크 경계만 지키고 영역 모양은 그대로</b></td><td><code>Remove Outside (Model)</code> 을 <b>맨 끝</b>에 · <b>Keep Partial Overlap 켬</b></td></tr>
+      <tr><td><b>경계 때문에 준 나무 수를 되살리기</b></td><td><code>Amount</code> 를 올린다 (<code>chunk_06_13</code> 23 → 35)</td></tr>
+      <tr><td>가지까지 영역 안에 딱 맞게</td><td>기본값 — 많이 지워지므로 영역을 넓히거나 Amount 를 크게</td></tr>
+      <tr><td>길·건물 자리에 가지가 덮이지 않게</td><td>negative 영역 + <code>Negative Shapes Only</code> 켬</td></tr>
+      <tr><td>잎이 경계에 조금 걸쳐도 되게</td><td><code>Footprint Multiplier</code> 1 미만 — 🛑 0 금지</td></tr>
+      <tr><td>경계에서 여유</td><td><code>Chunk Margin</code> 2.0</td></tr>
+      <tr><td>모디파이어를 잠깐 끄기</td><td>🛑 <code>enabled</code> 끄기는 게임에서 안 꺼진다 → 스택에서 뺀다</td></tr>
+    </table>
+  </section>
+
   <!-- 막히는 곳 -->
   <section>
     <h2>🛑 막히는 곳 모음</h2>
@@ -530,6 +690,12 @@ func _create_collision(body: StaticBody3D, t: Transform3D) -> void:
       <tr><td><b>콜리전이 안 보인다</b></td><td>🛑 <b>정상이다.</b> 노드를 만들지 않으므로 디버그 뷰에 안 나온다</td></tr>
       <tr><td><b>콜리전 크기가 메시와 다르다</b></td><td>부모의 <code>scale</code> 이 버려졌다(제약 ②)</td></tr>
       <tr><td><b>실행 중 배치가 바뀐다</b></td><td><code>Enable Updates In Game</code> 을 끈다</td></tr>
+      <tr><td><b>Remove Outside (Model) 을 붙였더니 나무가 너무 적다</b></td><td><code>Keep Partial Overlap</code> 켜고 <code>Amount</code> 를 올린다(STEP 14·15)</td></tr>
+      <tr><td><b>나무가 전부 사라졌다 · <code>build_completed</code> 가 안 온다</b></td><td>걸러내기로 0개 — 0개면 신호를 보내지 않는다(STEP 11)</td></tr>
+      <tr><td><b>붙였는데도 가지가 경계를 넘는다</b></td><td><code>Footprint Multiplier</code> 가 0 → <code>1.0</code>(STEP 13)</td></tr>
+      <tr><td><b>에디터에서 끈 모디파이어가 게임에서 돈다</b></td><td><code>enabled</code> 는 에디터에서만 지켜진다 → 스택에서 뺀다</td></tr>
+      <tr><td><b>Modifier Stack 패널이 없다</b></td><td>인스펙터 <b>검색칸</b>을 비운다</td></tr>
+      <tr><td><b>씬이 통째로 안 열린다(<code>Parse Error</code>)</b></td><td><code>.tscn</code> 에 병합 충돌 표시가 남았거나, 로컬 모디파이어 스크립트를 커밋하지 않았다</td></tr>
     </table>
   </section>
 
@@ -562,6 +728,7 @@ func _create_collision(body: StaticBody3D, t: Transform3D) -> void:
     기준 <code>Godot 4.7.2.stable</code> · <code>ProtonScatter 4.2.0</code> (2026-07-26 커밋) ·
     프리셋 값은 <code>tests/protonscatter_preset_probe.gd</code> 로 직접 읽음 ·
     물리 판정은 <code>tests/protonscatter_collision_probe.gd</code> ·
+    걸러내기(STEP 11~15)는 2026-09-17 라리엔 3D 청크 씬 헤드리스 실측 · <code>Remove Outside (Model)</code> 은 라리엔 로컬 추가 ·
     <a href="https://github.com/HungryProton/scatter">ProtonScatter 저장소</a>
   </footer>
 </div>
