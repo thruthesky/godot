@@ -448,7 +448,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [asset-store.md](references/asset-store.md) | Asset Store와 애드온 | [상세](references/catalog.md#asset-storemd--asset-store와-애드온) |
 | [asset-store-api.md](references/asset-store-api.md) | 🛑 **업로드 API 는 없다** — 스토어 REST API 전량 14개(조회 12·쓰기 2) | [상세](references/catalog.md#asset-store-apimd--asset-store-api) |
 | [level-design.md](references/level-design.md) | 맵 만들기 | [상세](references/catalog.md#level-designmd--맵-만들기) |
-| [openworld-3d.md](references/openworld-3d.md) | 오픈월드 만들기 ★ 넓은 야외 맵 · 🛑 기물은 한 청크에 온전히 | [상세](references/catalog.md#openworld-3dmd--오픈월드-만들기--넓은-야외-맵) |
+| [openworld-3d.md](references/openworld-3d.md) | 오픈월드 만들기 ★ 넓은 야외 맵 · 🛑 기물은 한 청크에(원점 ABSOLUTE · 잎사귀 조금은 허용 · 돌린 상자 말고 실제 모양으로 잰다) | [상세](references/catalog.md#openworld-3dmd--오픈월드-만들기--넓은-야외-맵) |
 | [walkable-grid.md](references/walkable-grid.md) | 🧭 **통행 격자 — 서버가 보는 땅** — 씬 콜리전을 32cm 칸 비트 격자로 뽑아 서버 이동 판정·스폰·몬스터 길찾기에 쓴다 · 🛑 **화면(클라)에는 길인데 서버가 막는** 증상 표 · 판별 순서 · 칸 판정(광선 → 윗면 게이트 → 캡슐) · 배포 관문 G0~G4 · 청크 스트리밍과의 관계 · 실측 함정 | "화면엔 길인데 못 간다" · 나무 옆에 갇혔다 · 바닥 없는 곳으로 떨어졌다 · collision-update 가 멈췄을 때 |
 | [dictionary.md](references/dictionary.md) | 용어집 | [상세](references/catalog.md#dictionarymd--용어집) |
 | [getting-started.md](references/getting-started.md) | ★ 0단계 — 내려받기·프로젝트 매니저·New Project(Mobile)·핵심 개념 4·공식 문서·API 읽는 법 | Godot 을 처음 설치하거나 공식 문서·클래스 레퍼런스를 읽는 법을 물을 때 |
