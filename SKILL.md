@@ -437,6 +437,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [export-build-android.md](references/export-build-android.md) | Android 빌드 | [상세](references/catalog.md#export-build-androidmd--android-빌드) |
 | [export-build-ios.md](references/export-build-ios.md) | iOS 빌드 | [상세](references/catalog.md#export-build-iosmd--ios-빌드) |
 | [export-build-desktop.md](references/export-build-desktop.md) | macOS·Windows·Linux | [상세](references/catalog.md#export-build-desktopmd--macoswindowslinux) |
+| [dynamic-download.md](references/dynamic-download.md) | **동적 다운로드** — 자산을 앱 밖에 두고 실행 중에 받는다 · 🛑 **모바일만 받고 데스크톱(Steam)은 전부 번들**로 내는 구성(런타임 게이트 × export 필터) · PCK 마운트 · 🛑 리맵(`.import`) · catalog 는 맨 마지막 · 이어받기는 `HTTPClient` | 앱이 스토어 한도를 넘을 때 · `load_resource_pack()` 을 배포에 쓸 때 · 받았는데 화면에 안 붙을 때 |
 | [app-icon-splash.md](references/app-icon-splash.md) | 앱 아이콘·스플래시 화면·홈 화면 앱 이름 (모든 플랫폼) · 🛑 Android 는 프리셋을 따로 채운다 · `config/name` 은 바꾸지 않는다 | [상세](references/catalog.md#app-icon-splashmd--앱-아이콘스플래시-화면-모든-플랫폼) |
 | [iap-purchases.md](references/iap-purchases.md) | 인앱 결제 — 🛑 돈이 오가는 코드 | [상세](references/catalog.md#iap-purchasesmd--인앱-결제) |
 | [multiplayer.md](references/multiplayer.md) | 멀티플레이어 | [상세](references/catalog.md#multiplayermd--멀티플레이어) |
