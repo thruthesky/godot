@@ -1,55 +1,48 @@
 #!/usr/bin/env bash
 #
-# install.sh — Godot 에디터 없이 빌드·설치·실행한다.
+# install.sh — Build, install, and run without the Godot editor.
 #
-#   install.sh                       사용 가능한 장치를 번호로 보여주고 고르게 한다
-#   install.sh 1                     목록의 1번을 바로 고른다
-#   install.sh R58X609XXYV           Android 시리얼을 직접 지정
-#   install.sh 00008140-001C24C9…    iOS UDID 를 직접 지정
-#   install.sh macos                 이 맥에서 빌드·실행
+#   install.sh                       List available devices by number and prompt for one
+#   install.sh 1                     Pick device 1 from the list directly
+#   install.sh R58X609XXYV           Specify an Android serial directly
+#   install.sh 00008140-001C24C9…    Specify an iOS UDID directly
+#   install.sh macos                 Build and run on this Mac
+#   bash install.sh --win            Build and run on this Windows PC
+#                                    PowerShell: & "C:/Program Files/Git/bin/bash.exe" ./install.sh --win
 #
-#   install.sh <선택> --release      릴리즈 빌드로 (묻지 않는다)
-#   install.sh <선택> --debug        디버그 빌드로 (묻지 않는다)
-#   install.sh <선택> --release --no-lazy-download
-#   install.sh <선택> --release --boot-profile   릴리스인데도 [Boot] 부팅 타임라인을 찍는다
-#                                    릴리즈인데 자산을 전부 번들에 넣는다 (기본은 lazy-download)
-#   install.sh <선택> --release --staging-server  릴리스인데 스테이징 서버에 붙인다 (프로젝트가 기능 태그
-#                                    staging_server 를 읽을 때 · 라리엔 3D 는 release 기본이 운영 서버)
-#   install.sh <선택> --preset "A15 Test"
-#                                    export_presets.cfg 의 preset 을 직접 고른다
-#                                    (기기별 debug preset 처럼 같은 플랫폼에 여러 개일 때)
-#   install.sh <선택> --skip-build   빌드 생략, 설치·실행만
-#   install.sh <선택> --console      실행 로그를 터미널에 붙여서 본다
-#   install.sh <선택> --no-launch    설치만 하고 실행하지 않는다
-#   install.sh <선택> --path ~/game  프로젝트 경로 지정 (기본: 현재 폴더에서 위로 탐색)
-#   install.sh --list                목록만 보고 끝낸다
+#   install.sh <target> --release    Release build (no prompt)
+#   install.sh <target> --debug      Debug build (no prompt)
+#   install.sh <target> --release --no-lazy-download
+#                                    Release build with every asset bundled (release defaults to lazy-download)
+#   install.sh <target> --release --boot-profile
+#                                    Emit the [Boot] startup timeline from a release build too
+#   install.sh <target> --release --boot-parts
+#                                    Also time the world scene load part by part (slower overall; implies --boot-profile)
+#   install.sh <target> --staging-server     Connect to the staging server (no server prompt)
+#   install.sh <target> --production-server  Connect to the production server (no server prompt; debug builds too)
+#                                    With neither, you are asked which server after choosing the build mode (interactive only).
+#                                    Only meaningful when the project reads the feature tags staging_server / production_server
+#                                    (Laryen 3D: debug defaults to staging, release defaults to production)
+#   install.sh <target> --preset "A15 Test"
+#                                    Pick an export_presets.cfg preset directly
+#                                    (when one platform has several, e.g. per-device debug presets)
+#   install.sh <target> --skip-build Skip the build; install and run only
+#   install.sh <target> --console    Attach runtime logs to the terminal (Ctrl+C to stop)
+#   install.sh <target> --no-launch  Install without launching
+#   install.sh <target> --path ~/game
+#                                    Godot project directory (default: search upward from the current folder)
+#   install.sh --list                List available devices and exit
 #
-# 어느 플랫폼인지는 고른 장치가 정한다. preset 이름·패키지 ID·산출물 경로는
-# export_presets.cfg 에서 직접 읽으므로 프로젝트마다 고칠 필요가 없다.
+# The selected device decides the platform. Preset names, package IDs, and output paths are
+# read from export_presets.cfg, so nothing needs to change per project.
 #
-# 빌드 모드는 --debug/--release 를 주지 않으면 장치를 고른 뒤 물어본다(대화형일 때. 기본 Debug).
-#   Debug   — print() 로그가 logcat 에 나오고 원격 디버그가 붙는다. 엔진이 비최적화라 느리다
-#   Release — 실제 배포와 같은 최적화 빌드. 성능(fps)·로딩 시간 측정은 이쪽이 정답이다
-#             🛑 Android release 는 release keystore 가 필요하다. 없으면 이 스크립트가
-#                **debug keystore 로 서명**하고 경고한다(기기 테스트 전용 — 스토어 업로드 불가).
+# Without --debug/--release, the build mode is asked after the device is chosen (interactive only; default Debug).
+#   Debug   — print() logs reach logcat and the remote debugger attaches. The engine is unoptimized, so it is slow
+#   Release — The same optimized build as distribution. Use it to measure performance (fps) and loading time
+#             🛑 Android release needs a release keystore. Without one, this script signs with the
+#                debug keystore and warns (device testing only — cannot be uploaded to a store).
 #
-#   bash install.sh --win            이 Windows PC에서 빌드·실행 / Build and run on this Windows PC
-#   PowerShell: & "C:/Program Files/Git/bin/bash.exe" ./install.sh --win
-#   GODOT_BIN overrides automatic Godot detection. Matching export templates are required.
-#
-# English usage:
-#   bash install.sh [number|device-id|macos]  Select a target device
-#   bash install.sh --win                    Build and run on this Windows PC
-#   --debug / --release                     Choose the build mode without prompting
-#   --no-lazy-download                      Bundle every asset (release defaults to lazy-download)
-#   --boot-profile                          Emit [Boot] timeline logs from a release build too
-#   --boot-parts                            Also break the world scene load down part by part (slower overall)
-#   --staging-server                        Release build that connects to the staging server (feature tag staging_server)
-#   --skip-build                            Use an existing build
-#   --console                               Attach runtime logs (Ctrl+C to stop)
-#   --no-launch                             Build/install without launching
-#   --path <directory>                      Specify the Godot project directory
-#   --list                                  List available devices
+# GODOT_BIN overrides automatic Godot detection. Matching export templates are required.
 #
 set -euo pipefail
 
@@ -87,19 +80,26 @@ LAZY_DOWNLOAD=1
 #    (`export_from_clone.py --feature`). 그래서 다른 세션의 빌드에 전파되지 않는다.
 BOOT_PROFILE=0
 BOOT_PARTS=0
-# 🌐 release 빌드인데 **스테이징 서버**에 붙인다 — 프로젝트가 기능 태그 `staging_server` 를 읽을 때만 뜻이 있다
-#    (라리엔 3D `scripts/client.config.gd`: release 기본은 운영 · debug 는 원래 스테이징).
-#    빌드하면 사본 프리셋에 태그를 심고(모바일 포함 · `export_from_clone.py --feature`), macOS·Windows 는
-#    실행 인자 `--staging-server` 도 넘긴다 — `--skip-build` 로 이미 만든 데스크톱 앱을 켤 때도 되게.
+# 🌐 접속 서버 — "staging" · "production" · 빈 값(아직 안 정했다 → 빌드할 때 묻는다 · 비대화형이면 빌드 기본값).
+#    프로젝트가 기능 태그 `staging_server`·`production_server` 를 읽을 때만 뜻이 있다
+#    (라리엔 3D `scripts/client.config.gd`: debug 기본 = 스테이징 · release 기본 = 운영).
+#    빌드 기본값과 다른 쪽을 고르면(release→스테이징 · debug→운영) 사본 프리셋에 태그를 심고
+#    (모바일 포함 · `export_from_clone.py --feature`), macOS·Windows 는 실행 인자(`--staging-server`·
+#    `--production-server`)도 넘긴다 — `--skip-build` 로 이미 만든 데스크톱 앱을 켤 때도 되게.
 #    🛑 원본 `export_presets.cfg` 는 건드리지 않는다. 모르는 프로젝트의 앱은 이 인자를 그냥 무시한다.
-STAGING_SERVER=0
+SERVER_TARGET=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --win)        WIN=1 ;;
     --release)    BUILD_MODE="release" ;;
     --debug)      BUILD_MODE="debug" ;;
-    --staging-server) STAGING_SERVER=1 ;;
+    --staging-server)
+      [ "$SERVER_TARGET" != "production" ] || die "--staging-server and --production-server are mutually exclusive."
+      SERVER_TARGET="staging" ;;
+    --production-server)
+      [ "$SERVER_TARGET" != "staging" ] || die "--staging-server and --production-server are mutually exclusive."
+      SERVER_TARGET="production" ;;
     --boot-profile) BOOT_PROFILE=1 ;;
     # 🔑 월드 씬 로드를 **덩어리별로** 가른다(`character_flow._measure_world_parts()`).
     #    🛑 순차 동기 로드라 **총 소요가 평소보다 늘어난다** — "얼마나 빨라졌나" 를 재는
@@ -108,16 +108,16 @@ while [ $# -gt 0 ]; do
     --no-lazy-download) LAZY_DOWNLOAD=0 ;;
     --skip-build) SKIP_BUILD=1 ;;
     --preset)
-      [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || die "--preset 에 preset 이름이 필요하다 / --preset requires a preset name."
+      [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || die "--preset requires a preset name."
       shift; PRESET_ARG="$1" ;;
     --console)    CONSOLE=1 ;;
     --no-launch)  LAUNCH=0 ;;
     --list)       LIST_ONLY=1 ;;
     --path)
-      [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || die "--path 에 프로젝트 경로가 필요하다 / --path requires a project directory."
+      [ $# -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || die "--path requires a project directory."
       shift; PROJECT_ARG="$1" ;;
     -h|--help)    awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"; exit 0 ;;
-    -*)           die "알 수 없는 옵션: / Unknown option: $1" ;;
+    -*)           die "Unknown option: $1" ;;
     *)            SELECTION="$1" ;;
   esac
   shift
@@ -126,7 +126,7 @@ done
 if [ "$WIN" -eq 1 ]; then
   case "$SELECTION" in
     ""|win|windows|Windows) SELECTION="windows" ;;
-    *) die "--win 은 다른 장치 선택과 함께 쓸 수 없다 / --win cannot be combined with another device selection: $SELECTION" ;;
+    *) die "--win cannot be combined with another device selection: $SELECTION" ;;
   esac
 fi
 
@@ -137,12 +137,12 @@ is_windows() {
 
 windows_entry() {
   is_windows || return 0
-  printf 'windows\tlocal\t이 Windows PC에서 실행 / Run on this Windows PC (%s)\n' "$(uname -m)"
+  printf 'windows\tlocal\tRun on this Windows PC (%s)\n' "$(uname -m)"
 }
 
 case "$SELECTION" in
   win|windows|Windows)
-    is_windows || die "Windows Git Bash가 필요하다 / Use Git Bash on Windows, not WSL." ;;
+    is_windows || die "The Windows target requires Git Bash on Windows (not WSL)." ;;
 esac
 
 # ── 장치 수집 ───────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ esac
 
 macos_entry() {
   [ "$(uname -s)" = "Darwin" ] || return 0
-  printf 'macos\tlocal\t이 맥에서 실행 / Run on this Mac (%s)\n' "$(uname -m)"
+  printf 'macos\tlocal\tRun on this Mac (%s)\n' "$(uname -m)"
 }
 
 android_entries() {
@@ -158,7 +158,7 @@ android_entries() {
   adb devices -l 2>/dev/null | awk 'NR>1 && $2=="device" {
     serial = $1; model = ""
     for (i = 3; i <= NF; i++) if ($i ~ /^model:/) { model = substr($i, 7); gsub(/_/, " ", model) }
-    if (model == "") model = "Android 기기 / Android device"
+    if (model == "") model = "Android device"
     printf "android\t%s\t%s\n", serial, model
   }'
 }
@@ -177,7 +177,7 @@ ios_entries() {
         if (i == ui + 2 && $i ~ /^\(/) continue          # (paired) 는 건너뛴다
         model = model (model == "" ? "" : " ") $i
       }
-      if (model == "") model = "iOS 기기 / iOS device"
+      if (model == "") model = "iOS device"
       printf "ios\t%s\t%s — %s\n", uuid, $1, model
     }'
 }
@@ -187,7 +187,7 @@ collect_devices() { { windows_entry; macos_entry; ios_entries; android_entries; 
 DEVICES=$(collect_devices)
 
 print_menu() {
-  echo "사용 가능한 장치: / Available devices:"
+  echo "Available devices:"
   echo
   printf '%s\n' "$DEVICES" | awk -F'\t' '{
     label = toupper(substr($1,1,1)) substr($1,2)
@@ -199,8 +199,8 @@ print_menu() {
   }'
   echo
   # 연결이 없는 플랫폼은 왜 안 보이는지 알려 준다
-  printf '%s\n' "$DEVICES" | grep -q '^ios'     || echo "  (iOS 기기 없음 — USB 연결 후 '이 컴퓨터를 신뢰' 를 누른다 / No iOS device — connect via USB and select Trust This Computer on a Mac)"
-  printf '%s\n' "$DEVICES" | grep -q '^android' || echo "  (Android 기기 없음 — USB 디버깅을 켜고 연결한다 / No Android device — enable USB debugging and connect via USB)"
+  printf '%s\n' "$DEVICES" | grep -q '^ios'     || echo "  (No iOS device — connect via USB and tap 'Trust This Computer' on the device)"
+  printf '%s\n' "$DEVICES" | grep -q '^android' || echo "  (No Android device — enable USB debugging and connect via USB)"
 }
 
 if [ "$LIST_ONLY" -eq 1 ]; then print_menu; exit 0; fi
@@ -223,11 +223,11 @@ resolve_selection() {
 if [ -z "$SELECTION" ]; then
   print_menu
   if [ ! -t 0 ]; then
-    echo "번호를 인자로 준다: / Pass a device number as an argument:  $(basename "$0") 1"
+    echo "Pass a device number as an argument:  $(basename "$0") 1"
     exit 0
   fi
   echo
-  printf '번호 선택 [1]: / Select a number [1]: '
+  printf 'Select a number [1]: '
   read -r SELECTION || SELECTION=""
   [ -n "$SELECTION" ] || SELECTION="1"
   echo
@@ -235,14 +235,14 @@ fi
 
 ENTRY=$(resolve_selection "$SELECTION") || {
   print_menu >&2
-  die "'$SELECTION' 에 해당하는 장치가 없다. 위 번호나 기기 ID 를 쓴다. / No device matches '$SELECTION'. Use a number above or a device ID."
+  die "No device matches '$SELECTION'. Use a number above or a device ID."
 }
 
-[ -n "$ENTRY" ] || die "선택한 장치가 없다 / No available device matches '$SELECTION'. Use --list."
+[ -n "$ENTRY" ] || die "No available device matches '$SELECTION'. Use --list."
 PLATFORM=$(printf '%s' "$ENTRY" | cut -f1)
 DEVICE_ID=$(printf '%s' "$ENTRY" | cut -f2)
 DEVICE_LABEL=$(printf '%s' "$ENTRY" | cut -f3)
-ok "선택: / Selected: $PLATFORM — $DEVICE_LABEL"
+ok "Selected: $PLATFORM — $DEVICE_LABEL"
 
 # ── 빌드 모드 선택 ──────────────────────────────────────────────────────
 # --debug/--release 를 줬으면 묻지 않는다. 비대화형(파이프·CI)에서는 debug 로 간다.
@@ -251,25 +251,25 @@ if [ -z "$BUILD_MODE" ]; then
     BUILD_MODE="debug"     # 빌드를 안 하므로 로그 파일 이름에만 쓰인다
   elif [ ! -t 0 ]; then
     BUILD_MODE="debug"
-    echo "   (비대화형 — Debug 로 빌드한다. Release 는 --release / Noninteractive — building Debug. Use --release for Release.)"
+    echo "   (Noninteractive — building Debug. Use --release for Release.)"
   else
     echo
-    echo "빌드 모드: / Build mode:"
+    echo "Build mode:"
     echo
-    printf '  \033[1;36m1)\033[0m  Debug     print() 로그·원격 디버그. / print() logs and remote debugging. \033[90m엔진 비최적화 — fps 측정에는 부적합 / Use Release for FPS measurements\033[0m\n'
-    printf '  \033[1;36m2)\033[0m  Release   실제 배포와 같은 최적화 빌드. / Optimized build for distribution. \033[90mfps·로딩 시간 측정은 이쪽 / Use this for FPS and loading-time measurements\033[0m\n'
+    printf '  \033[1;36m1)\033[0m  Debug     print() logs and remote debugging. \033[90mUnoptimized engine — not for FPS measurements\033[0m\n'
+    printf '  \033[1;36m2)\033[0m  Release   The same optimized build as distribution. \033[90mUse this for FPS and loading-time measurements\033[0m\n'
     echo
-    printf '번호 선택 [1]: / Select a number [1]: '
+    printf 'Select a number [1]: '
     read -r MODE_SEL || MODE_SEL=""
     echo
     case "${MODE_SEL:-1}" in
       1|d|debug|Debug)     BUILD_MODE="debug" ;;
       2|r|release|Release) BUILD_MODE="release" ;;
-      *) die "빌드 모드가 '1'(Debug) 또는 '2'(Release) 여야 한다: / Build mode must be '1' (Debug) or '2' (Release): '$MODE_SEL'" ;;
+      *) die "Build mode must be '1' (Debug) or '2' (Release): '$MODE_SEL'" ;;
     esac
   fi
 fi
-ok "빌드 모드: / Build mode: $BUILD_MODE"
+ok "Build mode: $BUILD_MODE"
 
 # ── 프로젝트 루트 찾기 ──────────────────────────────────────────────────
 find_project_root() {
@@ -283,12 +283,44 @@ find_project_root() {
 }
 
 ROOT=$(find_project_root "${PROJECT_ARG:-$PWD}") \
-  || die "project.godot 을 찾지 못했다. Godot 프로젝트 안에서 실행하거나 --path 로 지정한다. / Could not find project.godot. Run inside a Godot project or specify --path."
+  || die "Could not find project.godot. Run inside a Godot project or specify --path."
 cd "$ROOT"
-ok "프로젝트: / Project: $ROOT"
+ok "Project: $ROOT"
+
+# ── 접속 서버 선택 ──────────────────────────────────────────────────────
+# --staging-server/--production-server 를 줬으면 묻지 않는다. 비대화형이면 빌드 모드의 기본 서버로 간다.
+# 🔑 엔터(기본)는 빌드 모드의 기본 서버다 — debug = 스테이징 · release = 운영. 엔터만 누르면 예전과 같은 앱이 나온다.
+# 🔑 이 스크립트는 여러 프로젝트가 함께 쓴다 — 두 기능 태그를 모두 읽는 프로젝트(라리엔 3D `scripts/client.config.gd`)에서만 묻는다.
+#    --skip-build 면 묻지 않는다: 모바일은 서버가 빌드 때 정해졌고, 데스크톱은 옵션을 줬을 때만 실행 인자로 바꾼다.
+project_reads_feature() { grep -rqsF --include='*.gd' "\"$1\"" "$ROOT/scripts" 2>/dev/null; }
+if [ "$BUILD_MODE" = "release" ]; then SERVER_DEFAULT="production"; else SERVER_DEFAULT="staging"; fi
+if [ -z "$SERVER_TARGET" ] && [ "$SKIP_BUILD" -eq 0 ] && [ -f "$ROOT/tools/export_from_clone.py" ] \
+   && project_reads_feature "staging_server" && project_reads_feature "production_server"; then
+  if [ ! -t 0 ]; then
+    SERVER_TARGET="$SERVER_DEFAULT"
+    echo "   (Noninteractive — using the build default server ($SERVER_TARGET). Use --staging-server or --production-server to change it.)"
+  else
+    if [ "$SERVER_DEFAULT" = "production" ]; then SERVER_DEF_NUM=2; else SERVER_DEF_NUM=1; fi
+    echo
+    echo "Server:"
+    echo
+    printf '  \033[1;36m1)\033[0m  Staging     Staging (test) server. \033[90mTest accounts and records stay out of the production DB\033[0m\n'
+    printf '  \033[1;36m2)\033[0m  Production  Production server with real players. \033[90mPurchases and records are real\033[0m\n'
+    echo
+    printf 'Select a number [%s]: ' "$SERVER_DEF_NUM"
+    read -r SERVER_SEL || SERVER_SEL=""
+    echo
+    case "${SERVER_SEL:-$SERVER_DEF_NUM}" in
+      1|s|staging|Staging)       SERVER_TARGET="staging" ;;
+      2|p|production|Production) SERVER_TARGET="production" ;;
+      *) die "Server must be '1' (Staging) or '2' (Production): '$SERVER_SEL'" ;;
+    esac
+  fi
+fi
+[ -z "$SERVER_TARGET" ] || ok "Server: $SERVER_TARGET"
 
 PRESETS="$ROOT/export_presets.cfg"
-[ -f "$PRESETS" ] || die "export_presets.cfg 가 없다. 먼저 export preset 을 만든다. / Missing export_presets.cfg. Create an export preset first."
+[ -f "$PRESETS" ] || die "Missing export_presets.cfg. Create an export preset first."
 
 # ── export_presets.cfg 파싱 ─────────────────────────────────────────────
 # $1: platform 값("Android"/"iOS"/"macOS"), $2: 읽을 키
@@ -337,8 +369,8 @@ preset_get_named() {
 pick_preset() {
   if [ -n "$PRESET_ARG" ]; then
     local want; want=$(preset_get_named "$PRESET_ARG" "platform")
-    [ -n "$want" ] || die "export_presets.cfg 에 preset \"$PRESET_ARG\" 가 없다. / No preset named \"$PRESET_ARG\" in export_presets.cfg."
-    [ "$want" = "$2" ] || die "preset \"$PRESET_ARG\" 는 $want 용인데 고른 장치는 $2 다. / Preset \"$PRESET_ARG\" targets $want, but the selected device is $2."
+    [ -n "$want" ] || die "No preset named \"$PRESET_ARG\" in export_presets.cfg."
+    [ "$want" = "$2" ] || die "Preset \"$PRESET_ARG\" targets $want, but the selected device is $2."
     printf '%s\n' "$PRESET_ARG"
     return 0
   fi
@@ -414,14 +446,14 @@ find_godot() {
 if [ "$SKIP_BUILD" -eq 0 ] && [ "${LARYEN_SKIP_SUBMODULE_CHECK:-0}" != "1" ] \
    && [ -f "$ROOT/scripts/check-submodules.sh" ]; then
   bash "$ROOT/scripts/check-submodules.sh" \
-    || die "서브모듈이 어긋난 채로는 빌드하지 않는다 (위 해결 명령 참고) / refusing to build with a mismatched submodule checkout"
+    || die "Refusing to build with a mismatched submodule checkout (see the fix commands above)."
 fi
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
   GODOT_BIN="${GODOT_BIN:-$(find_godot || true)}"
-  [ -n "$GODOT_BIN" ] || die "godot 실행 파일을 찾지 못했다. GODOT_BIN 환경변수로 경로를 지정한다. / Godot was not found. Set GODOT_BIN to your Godot executable path."
+  [ -n "$GODOT_BIN" ] || die "Godot was not found. Set GODOT_BIN to your Godot executable path."
   if is_windows; then GODOT_BIN=$(cygpath -u "$GODOT_BIN"); fi
-  command -v "$GODOT_BIN" >/dev/null 2>&1 || die "Godot 실행 파일이 없다 / Godot executable does not exist: $GODOT_BIN"
+  command -v "$GODOT_BIN" >/dev/null 2>&1 || die "Godot executable does not exist: $GODOT_BIN"
 fi
 
 case "$PLATFORM" in
@@ -438,13 +470,13 @@ case "$PLATFORM" in
         [ -n "$WIN_PRESET_FIRST" ] || WIN_PRESET_FIRST="$win_candidate"
         if preset_templates_present "$win_candidate"; then PRESET_NAME="$win_candidate"; break; fi
       done < <(preset_names_for_platform "Windows Desktop")
-      [ -n "$PRESET_NAME" ] || [ -z "$WIN_PRESET_FIRST" ] || die "Windows Desktop preset 이 있지만 이 PC 에 커스텀 템플릿이 없다 / Every Windows Desktop preset needs a custom template that is missing on this machine: $(preset_names_for_platform "Windows Desktop" | tr '
+      [ -n "$PRESET_NAME" ] || [ -z "$WIN_PRESET_FIRST" ] || die "Every Windows Desktop preset needs a custom template that is missing on this machine: $(preset_names_for_platform "Windows Desktop" | tr '
 ' ' ')"
     fi
     EXPORT_PATH=$(preset_get_named "$PRESET_NAME" "export_path")
-    [ -n "$PRESET_NAME" ] || die 'Windows Desktop preset 이 없다 / No platform="Windows Desktop" preset in export_presets.cfg.'
+    [ -n "$PRESET_NAME" ] || die 'No platform="Windows Desktop" preset in export_presets.cfg.'
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/windows/${PRESET_NAME}.exe"
-    case "$EXPORT_PATH" in *.exe) ;; *) die "Windows export_path 는 .exe 로 끝나야 한다 / Windows export_path must end in .exe: $EXPORT_PATH" ;; esac
+    case "$EXPORT_PATH" in *.exe) ;; *) die "Windows export_path must end in .exe: $EXPORT_PATH" ;; esac
     ARTIFACT="$ROOT/$EXPORT_PATH"
     ;;
   android)
@@ -458,8 +490,8 @@ case "$PLATFORM" in
       PACKAGE_ID=$(preset_get "Android" "package/unique_name")
       EXPORT_PATH=$(preset_get "Android" "export_path")
     fi
-    [ -n "$PRESET_NAME" ] || die "export_presets.cfg 에 platform=\"Android\" preset 이 없다. / No platform=\"Android\" preset in export_presets.cfg."
-    [ -n "$PACKAGE_ID" ]  || die "Android preset 에 package/unique_name 이 없다. / Android preset is missing package/unique_name."
+    [ -n "$PRESET_NAME" ] || die "No platform=\"Android\" preset in export_presets.cfg."
+    [ -n "$PACKAGE_ID" ]  || die "Android preset is missing package/unique_name."
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/android/${PRESET_NAME}.apk"
     ARTIFACT="$ROOT/$EXPORT_PATH"
     ;;
@@ -475,13 +507,13 @@ case "$PLATFORM" in
       EXPORT_PATH=$(preset_get "iOS" "export_path")
       PROJECT_ONLY=$(preset_get "iOS" "application/export_project_only")
     fi
-    [ -n "$PRESET_NAME" ] || die "export_presets.cfg 에 platform=\"iOS\" preset 이 없다. / No platform=\"iOS\" preset in export_presets.cfg."
-    [ -n "$PACKAGE_ID" ]  || die "iOS preset 에 application/bundle_identifier 가 없다. / iOS preset is missing application/bundle_identifier."
+    [ -n "$PRESET_NAME" ] || die "No platform=\"iOS\" preset in export_presets.cfg."
+    [ -n "$PACKAGE_ID" ]  || die "iOS preset is missing application/bundle_identifier."
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/ios/${PRESET_NAME}.ipa"
     if [ "$PROJECT_ONLY" = "true" ]; then
-      die "iOS preset 의 application/export_project_only 가 true 다. / The iOS preset has application/export_project_only=true.
-   이러면 Godot 이 Xcode 프로젝트만 만들고 멈춰서 .ipa 가 나오지 않는다. / This exports only the Xcode project, without an .ipa.
-   export_presets.cfg 에서 false 로 바꾼다. / Set it to false in export_presets.cfg."
+      die "The iOS preset has application/export_project_only=true.
+   Godot then exports only the Xcode project and stops, so no .ipa is produced.
+   Set it to false in export_presets.cfg."
     fi
     IOS_OUT_DIR="$ROOT/$(dirname "$EXPORT_PATH")"
     ;;
@@ -497,7 +529,7 @@ case "$PLATFORM" in
       PACKAGE_ID=$(preset_get "macOS" "application/bundle_identifier")
       EXPORT_PATH=$(preset_get "macOS" "export_path")
     fi
-    [ -n "$PRESET_NAME" ] || die "export_presets.cfg 에 platform=\"macOS\" preset 이 없다. / No platform=\"macOS\" preset in export_presets.cfg."
+    [ -n "$PRESET_NAME" ] || die "No platform=\"macOS\" preset in export_presets.cfg."
     [ -n "$EXPORT_PATH" ] || EXPORT_PATH="builds/macos/${PRESET_NAME}.app"
     ARTIFACT="$ROOT/$EXPORT_PATH"
     ;;
@@ -510,14 +542,14 @@ case "$EXPORT_PATH" in
     if [ "$BUILD_MODE" = "release" ]; then
       EXPORT_PATH=${EXPORT_PATH//debug/release}
       ARTIFACT="$ROOT/$EXPORT_PATH"
-      warn "산출물 이름의 'debug' 를 'release' 로 바꿨다 → / Changed 'debug' to 'release' in output path: $EXPORT_PATH"
+      warn "Changed 'debug' to 'release' in output path: $EXPORT_PATH"
     fi
     ;;
   *release*)
     if [ "$BUILD_MODE" = "debug" ]; then
       EXPORT_PATH=${EXPORT_PATH//release/debug}
       ARTIFACT="$ROOT/$EXPORT_PATH"
-      warn "산출물 이름의 'release' 를 'debug' 로 바꿨다 → / Changed 'release' to 'debug' in output path: $EXPORT_PATH"
+      warn "Changed 'release' to 'debug' in output path: $EXPORT_PATH"
     fi
     ;;
 esac
@@ -547,13 +579,13 @@ android_release_signing() {
            "$HOME/.android/debug.keystore"; do
     [ -f "$c" ] && { dbg="$c"; break; }
   done
-  [ -n "$dbg" ] || die "release keystore 가 없다. / No release keystore is configured.
-   스토어용은 keytool 로 만들어 GODOT_ANDROID_KEYSTORE_RELEASE_PATH/USER/PASSWORD 를 export 한다. / For store builds, use keytool and export GODOT_ANDROID_KEYSTORE_RELEASE_PATH/USER/PASSWORD.
-   (export-build-android.md §5). 임시로는 --debug 로 빌드한다. / See export-build-android.md section 5. For now, use --debug."
+  [ -n "$dbg" ] || die "No release keystore is configured, and no debug keystore was found to fall back on.
+   For store builds, create one with keytool and export GODOT_ANDROID_KEYSTORE_RELEASE_PATH/USER/PASSWORD
+   (export-build-android.md §5). For now, build with --debug."
   export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$dbg"
   export GODOT_ANDROID_KEYSTORE_RELEASE_USER="androiddebugkey"
   export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="android"
-  warn "release keystore 가 없어 debug keystore 로 서명한다 — 기기 테스트 전용이다(스토어 업로드 불가). / No release keystore: signing with the debug keystore for device testing only (not for store uploads).
+  warn "No release keystore: signing with the debug keystore — device testing only (cannot be uploaded to a store).
     $dbg"
 }
 
@@ -573,10 +605,10 @@ macos_running_pids() {
 if [ "$SKIP_BUILD" -eq 0 ] && [ "$PLATFORM" = "macos" ]; then
   RUNNING_PIDS=$(macos_running_pids)
   if [ -n "$RUNNING_PIDS" ]; then
-    warn "같은 앱이 실행 중이다(PID $(echo $RUNNING_PIDS)) — 이대로 내보내면 그 창은 게임 파일을 잃고 멈춘다. / The same app is running (PID $(echo $RUNNING_PIDS)); exporting over it breaks that window.
+    warn "The same app is running (PID $(echo $RUNNING_PIDS)) — exporting over it makes that window lose its game files and freeze.
     $ARTIFACT"
     QUIT_RUNNING="n"
-    if [ -t 0 ]; then printf '그 앱을 종료하고 빌드할까? [y/N]: / Quit it and build? [y/N]: '; read -r QUIT_RUNNING || QUIT_RUNNING="n"; fi
+    if [ -t 0 ]; then printf 'Quit that app and build? [y/N]: '; read -r QUIT_RUNNING || QUIT_RUNNING="n"; fi
     case "$QUIT_RUNNING" in
       y|Y|yes)
         kill $RUNNING_PIDS 2>/dev/null || true
@@ -584,31 +616,35 @@ if [ "$SKIP_BUILD" -eq 0 ] && [ "$PLATFORM" = "macos" ]; then
           [ -z "$(macos_running_pids)" ] && break
           sleep 1
         done
-        [ -z "$(macos_running_pids)" ] || die "10초 안에 종료되지 않았다 — 창을 직접 닫고 다시 실행한다. / It did not quit within 10 seconds; close the window and retry."
-        ok "실행 중이던 앱을 종료했다. / Quit the running app."
+        [ -z "$(macos_running_pids)" ] || die "It did not quit within 10 seconds — close the window yourself and run again."
+        ok "Quit the running app."
         ;;
       *)
-        die "빌드를 멈췄다 — 게임 창을 닫고 다시 실행한다. / Build stopped: close the game window and run again."
+        die "Build stopped — close the game window and run again."
         ;;
     esac
   fi
 fi
 
-# ── 스테이징 서버 옵션 확인 ─────────────────────────────────────────────
-# 🌐 `--staging-server` 가 뜻을 갖는 경우만 통과시킨다 — 조용히 무시되면 사람은 스테이징 빌드라고 믿고 운영에 붙는다.
+# ── 접속 서버 옵션 확인 ─────────────────────────────────────────────────
+# 🌐 고른 서버가 실제로 앱에 들어가는 경우만 통과시킨다 — 조용히 무시되면 사람은 스테이징 빌드라고 믿고 운영에 붙는다(반대도).
+#    빌드 기본 서버와 다른 쪽을 골랐을 때만 사본 프리셋에 기능 태그를 심는다(SERVER_FEATURE) — 같은 쪽이면 태그 없이도 그 서버다.
 # 🛑 bash 3.2 + `set -u` 는 빈 배열 전개를 unbound 로 본다 — 쓰는 곳은 `${RUN_ARGS[@]+"${RUN_ARGS[@]}"}` 로 쓴다.
 RUN_ARGS=()
-if [ "$STAGING_SERVER" -eq 1 ]; then
-  if [ "$BUILD_MODE" != "release" ]; then
-    warn "--staging-server 는 release 에만 뜻이 있다 — debug 빌드는 원래 스테이징 서버에 붙는다. / --staging-server only matters for release builds; debug builds already use staging."
-  elif [ "$SKIP_BUILD" -eq 0 ] && [ ! -f "$ROOT/tools/export_from_clone.py" ]; then
-    die "--staging-server 는 tools/export_from_clone.py 가 있는 프로젝트에서만 쓴다 — 사본 프리셋에 기능 태그를 심는다. / --staging-server requires tools/export_from_clone.py (it adds the feature tag in a clone)."
+SERVER_FEATURE=""
+if [ -n "$SERVER_TARGET" ]; then
+  if [ "$SKIP_BUILD" -eq 0 ] && [ "$SERVER_TARGET" != "$SERVER_DEFAULT" ]; then
+    SERVER_FEATURE="${SERVER_TARGET}_server"
+    [ -f "$ROOT/tools/export_from_clone.py" ] \
+      || die "--$SERVER_TARGET-server requires tools/export_from_clone.py (it adds the feature tag in a clone)."
+    project_reads_feature "$SERVER_FEATURE" \
+      || die "No script under scripts/ reads the feature tag \"$SERVER_FEATURE\"; the app would still use the $SERVER_DEFAULT server."
   fi
   case "$PLATFORM" in
-    macos|windows) RUN_ARGS+=(--staging-server) ;;
+    macos|windows) RUN_ARGS+=("--$SERVER_TARGET-server") ;;
     *)
       if [ "$SKIP_BUILD" -eq 1 ]; then
-        warn "이미 설치된 $PLATFORM 앱의 서버는 빌드 때 정해졌다 — 스테이징으로 바꾸려면 --skip-build 없이 다시 빌드한다. / The server of an installed $PLATFORM app is fixed at build time; rebuild without --skip-build."
+        warn "The server of an installed $PLATFORM app is fixed at build time — to switch to $SERVER_TARGET, rebuild without --skip-build."
       fi
       ;;
   esac
@@ -617,7 +653,7 @@ fi
 # ── 빌드 ────────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" -eq 0 ]; then
   [ "$PLATFORM" = "android" ] && [ "$BUILD_MODE" = "release" ] && android_release_signing
-  step "빌드 중 — / Building — $PLATFORM / $BUILD_MODE / preset \"$PRESET_NAME\""
+  step "Building — $PLATFORM / $BUILD_MODE / preset \"$PRESET_NAME\"${SERVER_TARGET:+ / server $SERVER_TARGET}"
   if [ "$PLATFORM" = "windows" ]; then
     mkdir -p "$(dirname "$ARTIFACT")" artifacts/logs
   else
@@ -635,38 +671,45 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   #    자르고·lazy-download 를 켜고·내보낸 뒤 산출물만 가져오고, 원본 해시가 그대로인지 검사한다.
   #
   # 🔑 debug 는 원본을 바꾸지 않으므로(자르지도 lazy 를 켜지도 않는다) 사본 없이 그대로 내보낸다.
-  #    사본 도구가 없는 프로젝트의 release 도 같은 길로 간다.
-  BUILD_FAIL_MSG="빌드 실패. artifacts/logs/install-$PLATFORM-$BUILD_MODE.log 를 확인한다. / Build failed. See artifacts/logs/install-$PLATFORM-$BUILD_MODE.log. Check matching export templates in Editor > Manage Export Templates.
-   iOS 에서 오류 본문이 비어 있으면 아이콘 → Team ID → bundle id → ios.zip 템플릿 순으로 점검한다. / For empty iOS errors, check the icon, Team ID, bundle ID, and ios.zip template."
+  #    단 debug 인데 운영 서버를 골랐으면 기능 태그를 심어야 하므로 사본에서 내보낸다(자르기·lazy 는 여전히 없다).
+  #    사본 도구가 없는 프로젝트의 release 도 원본에서 그대로 내보낸다.
+  BUILD_FAIL_MSG="Build failed. See artifacts/logs/install-$PLATFORM-$BUILD_MODE.log. Check matching export templates in Editor > Manage Export Templates.
+   If an iOS error has no details, check the icon → Team ID → bundle ID → ios.zip template, in that order."
   # 🔑 **이 스크립트는 여러 프로젝트가 함께 쓴다**(godot 스킬 · 프로젝트의 install.sh 는 이 파일로 가는 링크다).
   #    프로젝트 전용 도구는 **있을 때만** 쓰고, 없는 프로젝트는 예전처럼 원본에서 그대로 내보낸다.
-  if [ "$BUILD_MODE" = "release" ] && [ -f "$ROOT/tools/export_from_clone.py" ]; then
-    EXPORT_ARGS=(--preset "$PRESET_NAME" --out "$EXPORT_PATH" --mode release
+  if [ -f "$ROOT/tools/export_from_clone.py" ] && { [ "$BUILD_MODE" = "release" ] || [ -n "$SERVER_FEATURE" ]; }; then
+    EXPORT_ARGS=(--preset "$PRESET_NAME" --out "$EXPORT_PATH" --mode "$BUILD_MODE"
                  --log "artifacts/logs/install-$PLATFORM-$BUILD_MODE.log" --godot "$GODOT_BIN")
-    if [ -f "$ROOT/tools/split_map_for_release.py" ]; then
-      EXPORT_ARGS+=(--split)
+    if [ "$BUILD_MODE" = "release" ]; then
+      if [ -f "$ROOT/tools/split_map_for_release.py" ]; then
+        EXPORT_ARGS+=(--split)
+      fi
+      # 🛑 `--no-lazy-download` 이면 켜지 않는다. 켜도 모바일 프리셋만 고친다(apply_lazy_download.py).
+      if [ "$LAZY_DOWNLOAD" -eq 1 ] && [ -f "$ROOT/tools/apply_lazy_download.py" ]; then
+        step "Applying lazy-download in a clone"
+        EXPORT_ARGS+=(--lazy)
+      else
+        echo "   No lazy-download — bundling every asset"
+      fi
+      # 🔑 릴리스에서도 `[Boot]` 타임라인을 찍게 한다(위 BOOT_PROFILE 주석 참조).
+      if [ "$BOOT_PROFILE" -eq 1 ]; then
+        step "Adding the bootprofile feature — the release build emits [Boot] logs too"
+        EXPORT_ARGS+=(--feature bootprofile)
+      fi
+      if [ "$BOOT_PARTS" -eq 1 ]; then
+        step "Adding the bootparts feature — times the world scene part by part (total load time grows)"
+        EXPORT_ARGS+=(--feature bootparts)
+      fi
     fi
-    # 🛑 `--no-lazy-download` 이면 켜지 않는다. 켜도 모바일 프리셋만 고친다(apply_lazy_download.py).
-    if [ "$LAZY_DOWNLOAD" -eq 1 ] && [ -f "$ROOT/tools/apply_lazy_download.py" ]; then
-      step "lazy-download 적용 — 사본에서 / Applying lazy-download in a clone —"
-      EXPORT_ARGS+=(--lazy)
-    else
-      echo "   lazy-download 없음 — 모든 자산을 번들에 넣는다 / no lazy-download: bundling every asset"
-    fi
-    # 🔑 릴리스에서도 `[Boot]` 타임라인을 찍게 한다(위 BOOT_PROFILE 주석 참조).
-    if [ "$BOOT_PROFILE" -eq 1 ]; then
-      step "bootprofile 기능 추가 — 릴리스에서도 [Boot] 로그를 찍는다 / adding bootprofile feature"
-      EXPORT_ARGS+=(--feature bootprofile)
-    fi
-    if [ "$BOOT_PARTS" -eq 1 ]; then
-      step "bootparts 기능 추가 — 월드 씬을 덩어리별로 잰다(총 소요는 늘어난다) / adding bootparts feature"
-      EXPORT_ARGS+=(--feature bootparts)
-    fi
-    # 🌐 스테이징 서버에 붙는 release — 사본 프리셋에만 기능 태그를 심는다(위 STAGING_SERVER 주석 참조).
-    if [ "$STAGING_SERVER" -eq 1 ]; then
-      step "staging_server 기능 추가 — release 인데 스테이징 서버에 붙는다 / adding staging_server feature"
-      EXPORT_ARGS+=(--feature staging_server)
-    fi
+    # 🌐 빌드 기본과 다른 서버 — 사본 프리셋에만 기능 태그를 심는다(위 SERVER_TARGET 주석 참조).
+    case "$SERVER_FEATURE" in
+      staging_server)
+        step "Adding the staging_server feature — this release build connects to the staging server"
+        EXPORT_ARGS+=(--feature staging_server) ;;
+      production_server)
+        step "Adding the production_server feature — this debug build connects to the production server"
+        EXPORT_ARGS+=(--feature production_server) ;;
+    esac
     python3 "$ROOT/tools/export_from_clone.py" "${EXPORT_ARGS[@]}" || die "$BUILD_FAIL_MSG"
   else
     "$GODOT_BIN" --headless --path "$ROOT" --import --quit >/dev/null 2>&1 || true
@@ -688,32 +731,32 @@ if [ "$PLATFORM" = "ios" ]; then
     ARTIFACT=$(find "$IOS_OUT_DIR" -maxdepth 1 -name '*.ipa' -print0 2>/dev/null \
       | xargs -0 ls -t 2>/dev/null | head -1)
   fi
-  [ -n "$ARTIFACT" ] || die ".ipa 를 찾지 못했다: / Could not find an .ipa: $IOS_OUT_DIR
-   서명 설정(app_store_team_id·code_sign_identity_debug)을 확인한다. / Check signing settings (app_store_team_id and code_sign_identity_debug)."
+  [ -n "$ARTIFACT" ] || die "Could not find an .ipa: $IOS_OUT_DIR
+   Check the signing settings (app_store_team_id and code_sign_identity_debug)."
 fi
 
-[ -e "$ARTIFACT" ] || die "설치할 파일이 없다: / Build artifact does not exist: $ARTIFACT"
-ok "산출물: / Artifact: $ARTIFACT ($(du -sh "$ARTIFACT" | cut -f1))"
+[ -e "$ARTIFACT" ] || die "Build artifact does not exist: $ARTIFACT"
+ok "Artifact: $ARTIFACT ($(du -sh "$ARTIFACT" | cut -f1))"
 
 # ── 설치 · 실행 ─────────────────────────────────────────────────────────
 case "$PLATFORM" in
   windows)
     if [ "$LAUNCH" -eq 0 ]; then
-      ok "빌드만 완료 / Build ready: $ARTIFACT"
+      ok "Build ready: $ARTIFACT"
     elif [ "$CONSOLE" -eq 1 ]; then
-      step "실행 중 (Ctrl+C 로 중지) / Launching with console output (Ctrl+C to stop)"
+      step "Launching with console output (Ctrl+C to stop)"
       "$ARTIFACT" --rendering-driver vulkan ${RUN_ARGS[@]+"${RUN_ARGS[@]}"}
     else
-      step "Windows 게임 실행 / Launching Windows game"
+      step "Launching the Windows game"
       mkdir -p artifacts/logs
       # Use the desktop Vulkan renderer; D3D12 crashes on this PC.
       "$ARTIFACT" --rendering-driver vulkan ${RUN_ARGS[@]+"${RUN_ARGS[@]}"} >"artifacts/logs/install-windows-$BUILD_MODE-run.log" 2>&1 < /dev/null &
-      ok "Windows 게임 실행 완료 / Launched Windows game (PID $!)."
-      echo "   로그 / Logs: artifacts/logs/install-windows-$BUILD_MODE-run.log"
+      ok "Launched the Windows game (PID $!)."
+      echo "   Logs: artifacts/logs/install-windows-$BUILD_MODE-run.log"
     fi
     ;;
   android)
-    step "설치 중 — / Installing — $PACKAGE_ID"
+    step "Installing — $PACKAGE_ID"
     # 🛑 debug ↔ release 를 번갈아 깔면 서명이 달라 -r 이 거부된다(INSTALL_FAILED_UPDATE_INCOMPATIBLE).
     #    지우고 다시 깔면 되지만 **앱 데이터(로그인·세이브)가 함께 지워진다** → 사람에게 묻는다.
     # 🛑 --no-incremental — .idsig 가 APK 옆에 있으면 adb 가 incremental 설치를 골라
@@ -721,50 +764,50 @@ case "$PLATFORM" in
     INSTALL_LOG=$(adb -s "$DEVICE_ID" install --no-incremental -r "$ARTIFACT" 2>&1) || true
     printf '%s\n' "$INSTALL_LOG" | tail -2
     if printf '%s' "$INSTALL_LOG" | grep -q "INSTALL_FAILED_UPDATE_INCOMPATIBLE\|signatures do not match"; then
-      warn "이미 깔린 앱과 서명이 다르다 (debug ↔ release 전환). 지우고 새로 깔아야 한다 — / The installed app has a different signature (debug/release switch). Reinstallation is required —
-    🛑 앱 데이터(로그인 세션·세이브)가 함께 지워진다. / WARNING: app data, including login sessions and saves, will be deleted."
+      warn "The installed app has a different signature (debug ↔ release switch). It must be uninstalled and reinstalled —
+    🛑 app data (login session, saves) will be deleted with it."
       REINSTALL="n"
-      if [ -t 0 ]; then printf '지우고 새로 설치할까? [y/N]: / Uninstall and reinstall? [y/N]: '; read -r REINSTALL || REINSTALL="n"; fi
+      if [ -t 0 ]; then printf 'Uninstall and reinstall? [y/N]: '; read -r REINSTALL || REINSTALL="n"; fi
       case "$REINSTALL" in
         y|Y|yes)
-          step "기존 앱 삭제 — / Uninstalling the existing app — $PACKAGE_ID"
+          step "Uninstalling the existing app — $PACKAGE_ID"
           adb -s "$DEVICE_ID" uninstall "$PACKAGE_ID" | tail -1
           adb -s "$DEVICE_ID" install --no-incremental "$ARTIFACT" | tail -2
           ;;
         *)
-          die "설치를 중단했다. 같은 모드로 다시 빌드하거나, 직접 지운다: / Installation cancelled. Rebuild with the same mode, or uninstall manually:
+          die "Installation cancelled. Rebuild with the same mode, or uninstall manually:
    adb -s $DEVICE_ID uninstall $PACKAGE_ID"
           ;;
       esac
     elif ! printf '%s' "$INSTALL_LOG" | grep -q 'Success'; then
       # 🛑 설치가 실패했는데 실행으로 넘어가면 **기기에 이미 있던 예전 빌드**가 떠서
       #    방금 만든 것을 검증한 줄 알게 된다. 여기서 멈춘다.
-      die "설치 실패 — 기기의 앱은 그대로다. / Installation failed; the device still has the previous build.
+      die "Installation failed — the app on the device is unchanged (still the previous build).
 $(printf '%s' "$INSTALL_LOG" | tail -2)"
     fi
 
     if [ "$LAUNCH" -eq 1 ]; then
-      step "실행 중 / Launching"
+      step "Launching"
       adb -s "$DEVICE_ID" shell monkey -p "$PACKAGE_ID" \
         -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
-      ok "기기 화면을 확인한다. / Application launched on the device."
+      ok "Launched — check the device screen."
       if [ "$CONSOLE" -eq 1 ]; then
-        step "로그 (Ctrl+C 로 중지) / Logs (Ctrl+C to stop)"
+        step "Logs (Ctrl+C to stop)"
         adb -s "$DEVICE_ID" logcat -c
         adb -s "$DEVICE_ID" logcat -s godot:V GodotEngine:V AndroidRuntime:E DEBUG:V
       else
-        echo "   로그: / Logs: adb -s $DEVICE_ID logcat -s godot"
+        echo "   Logs: adb -s $DEVICE_ID logcat -s godot"
       fi
     fi
     ;;
 
   ios)
-    step "설치 중 — / Installing — $PACKAGE_ID"
+    step "Installing — $PACKAGE_ID"
     xcrun devicectl device install app --device "$DEVICE_ID" "$ARTIFACT" \
       | grep -E 'bundleID|installationURL' || true
 
     if [ "$LAUNCH" -eq 1 ]; then
-      step "실행 중 / Launching"
+      step "Launching"
       if [ "$CONSOLE" -eq 1 ]; then
         # 앱이 끝날 때까지 로그를 붙잡는다. Ctrl+C 로 중지.
         xcrun devicectl device process launch \
@@ -772,8 +815,8 @@ $(printf '%s' "$INSTALL_LOG" | tail -2)"
       else
         xcrun devicectl device process launch \
           --device "$DEVICE_ID" --terminate-existing "$PACKAGE_ID" | tail -1
-        ok "기기 화면을 확인한다. / Application launched on the device."
-        echo "   로그: / Logs: $(basename "$0") $DEVICE_ID --skip-build --console"
+        ok "Launched — check the device screen."
+        echo "   Logs: $(basename "$0") $DEVICE_ID --skip-build --console"
       fi
     fi
     ;;
@@ -783,10 +826,10 @@ $(printf '%s' "$INSTALL_LOG" | tail -2)"
     APP="$ARTIFACT"
     case "$ARTIFACT" in
       *.zip)
-        step "압축 해제 / Extracting archive"
+        step "Extracting archive"
         (cd "$(dirname "$ARTIFACT")" && unzip -oq "$(basename "$ARTIFACT")")
         APP=$(find "$(dirname "$ARTIFACT")" -maxdepth 1 -name '*.app' -print | head -1)
-        [ -n "$APP" ] || die ".app 을 찾지 못했다: / Could not find an .app: $(dirname "$ARTIFACT")"
+        [ -n "$APP" ] || die "Could not find an .app: $(dirname "$ARTIFACT")"
         ;;
     esac
 
@@ -795,19 +838,19 @@ $(printf '%s' "$INSTALL_LOG" | tail -2)"
 
     if [ "$LAUNCH" -eq 1 ]; then
       BIN=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f -perm -u+x -print 2>/dev/null | head -1)
-      [ -n "$BIN" ] || die "실행 바이너리를 찾지 못했다: / Could not find an executable: $APP/Contents/MacOS"
+      [ -n "$BIN" ] || die "Could not find an executable: $APP/Contents/MacOS"
       if [ "$CONSOLE" -eq 1 ]; then
-        step "실행 중 (로그 붙임 — Ctrl+C 로 중지) / Launching with console output (Ctrl+C to stop)"
+        step "Launching with console output (Ctrl+C to stop)"
         "$BIN" ${RUN_ARGS[@]+"${RUN_ARGS[@]}"}
       else
-        step "실행 중 / Launching"
+        step "Launching"
         # 🌐 `--args` 뒤가 앱의 실행 인자다(`--staging-server`). 🛑 이미 떠 있는 앱이면 `open` 은 인자 없이 그 창만 앞으로 가져온다.
         if [ ${#RUN_ARGS[@]} -gt 0 ]; then open "$APP" --args "${RUN_ARGS[@]}"; else open "$APP"; fi
-        ok "창을 확인한다. / Application window launched."
-        echo "   로그: / Logs: $(basename "$0") macos --skip-build --console"
+        ok "Launched — check the app window."
+        echo "   Logs: $(basename "$0") macos --skip-build --console"
       fi
     else
-      ok "빌드만 완료: / Build ready: $APP"
+      ok "Build ready: $APP"
     fi
     ;;
 esac
