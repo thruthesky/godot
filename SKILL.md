@@ -1,6 +1,6 @@
 ---
 name: godot
-description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 때의 개발 규범·검증 도구이자 Godot 을 처음 배우는 사람의 학습 자료. 설치·프로젝트 매니저·노드·씬·인스턴싱·리소스·생명주기·시그널·에디터 사용법 같은 기본 개념부터 GDScript, Node3D 좌표계, Jolt Physics, CharacterBody3D, 머티리얼·조명·셰이더, AnimationTree, 내비게이션, 입력·UI(HUD·메뉴·Theme·한글 폰트), glTF 임포트, 오디오, 저수준 네트워킹(UDP·HTTP·WebSocket), 디버깅, 저사양 Android(3GB RAM) 60fps 최적화, LSP 정적 검증, EditorPlugin, Asset Store, CSG·GridMap 레벨 디자인, 헤드리스 워크플로우, Android·iOS·macOS·Windows 빌드와 실기기 설치까지 다룬다. 다음 때 반드시 사용한다 — GDScript 작성·수정(작성 후 LSP 진단 필수), 씬·노드·.tscn 편집, 이동·충돌·물리, 조명·셰이더, 애니메이션, 길찾기·적 AI, 성능·드로우콜·프레임 문제, HUD·버튼·인벤토리 UI, 맵·블록아웃, 빌드·설치·실기기 실행, 앱 아이콘·스플래시 화면·앱 이름 적용, project.godot 설정, 에디터 도구·플러그인, 애드온, Godot 용어·기본 개념 학습, "노드가 뭔가요" 같은 입문 질문, 오류·크래시 진단. 성능·조명·저사양 질문이면 references/performance-mobile.md §0 을 먼저 읽는다. 키워드 — Godot, 고도, GDScript, tscn, Node3D, CharacterBody3D, Jolt, AnimationTree, NavigationAgent3D, MultiMesh, LOD, 드로우콜, 60fps, 3GB, 저사양, CSG, 블록아웃, GridMap, HUD, Theme, LSP, export, APK, Xcode, 헤드리스, 라리엔, godot init, 예제, 튜토리얼, 입문, 메시, mesh, 정점, vertex, 꼭짓점, 모서리, edge, 삼각형, triangle, 면, face, 폴리곤, 서피스, surface, 인덱스, 와이어프레임, wireframe, ArrayMesh, SurfaceTool, MeshInstance3D, 앱 아이콘, 런처 아이콘, 적응형 아이콘, adaptive icon, 스플래시, splash screen, boot_splash, 부트 스플래시, 앱 이름, 홈 화면 앱 이름, name_localized, package/name.
+description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 때의 개발 규범·검증 도구이자 Godot 을 처음 배우는 사람의 학습 자료. 설치·프로젝트 매니저·노드·씬·인스턴싱·리소스·생명주기·시그널·에디터 사용법 같은 기본 개념부터 GDScript, Node3D 좌표계, Jolt Physics, CharacterBody3D, 머티리얼·조명·셰이더, AnimationTree, 내비게이션, 입력·UI(HUD·메뉴·Theme·한글 폰트), glTF 임포트, 오디오, 저수준 네트워킹(UDP·HTTP·WebSocket), 디버깅, 저사양 Android(3GB RAM) 60fps 최적화, LSP 정적 검증, EditorPlugin, Asset Store, CSG·GridMap 레벨 디자인, 헤드리스 워크플로우, Android·iOS·macOS·Windows 빌드와 실기기 설치까지 다룬다. 다음 때 반드시 사용한다 — GDScript 작성·수정(작성 후 LSP 진단 필수), 씬·노드·.tscn 편집, 이동·충돌·물리, 조명·셰이더, 애니메이션, 길찾기·적 AI, 성능·드로우콜·프레임 문제, HUD·버튼·인벤토리 UI, 맵·블록아웃, 빌드·설치·실기기 실행, 앱 아이콘·스플래시 화면·앱 이름 적용, project.godot 설정, 에디터 도구·플러그인, 애드온, Godot 용어·기본 개념 학습, "노드가 뭔가요" 같은 입문 질문, 오류·크래시 진단. 성능·조명·저사양 질문이면 references/performance-mobile.md §0 을 먼저 읽는다. 키워드 — Godot, 고도, GDScript, tscn, Node3D, CharacterBody3D, Jolt, AnimationTree, NavigationAgent3D, MultiMesh, LOD, 드로우콜, 60fps, 3GB, 저사양, CSG, 블록아웃, GridMap, HUD, Theme, LSP, export, APK, Xcode, 헤드리스, 라리엔, godot init, 예제, 튜토리얼, 입문, 메시, mesh, 정점, vertex, 꼭짓점, 모서리, edge, 삼각형, triangle, 면, face, 폴리곤, 서피스, surface, 인덱스, 와이어프레임, wireframe, ArrayMesh, SurfaceTool, MeshInstance3D, 앱 아이콘, 런처 아이콘, 적응형 아이콘, adaptive icon, 스플래시, splash screen, boot_splash, 부트 스플래시, 앱 이름, 홈 화면 앱 이름, name_localized, package/name, Godotty, godotty 설치, install-godotty, 에디터 터미널 애드온.
 ---
 
 # Godot — 3D 게임 개발·학습 스킬
@@ -129,6 +129,17 @@ description: Godot 4.7 로 3D 게임(모바일 MMORPG 라리엔 3D)을 만들 �
 말없이 지운다), 원본 존재를 먼저 확인하고, 만든 뒤 `./install.sh --list`·`./uninstall.sh --list` 로 검증한다. 인자로 경로가 오면
 (`/godot init ~/apps/ex2`) 그 프로젝트에, 없으면 현재 프로젝트에 설치한다. 표에 없는 파일은 설치하지 않는다.
 **설치 명령 전문·지킬 것 8가지·Windows 대안·`project.godot` 탐색 규칙은 위 문서에 있다.**
+
+## `/godot install-godotty` — Godotty 터미널 애드온 설치 · 절차는 [references/godotty.md](references/godotty.md)
+
+사용자가 **`/godot install-godotty`** 라고 하거나 **Godotty 설치를 요청**하면 먼저 [godotty.md](references/godotty.md) 를 읽고,
+**설명으로 끝내지 않고 실제로 설치한다** — `bash .claude/skills/godot/scripts/install_godotty.sh [--project <경로>]`.
+완성된 릴리스 ZIP(`godotty-v0.9.7.zip`)만 쓴다. 🛑 Godot 에디터를 받거나 재설치하지 않고, Rust·Zig·Git·소스 빌드·
+Source code ZIP 을 쓰지 않으며, `plugin.cfg` 를 만들지 않고 `project.godot` 을 고치지 않는다. 대상이 없거나 여러 개면
+(종료 2) **경로를 묻고**, 대상 프로젝트의 에디터가 떠 있으면(종료 3) **저장·종료를 안내하고 멈춘다**(대신 종료하지 않는다).
+기존 Godotty 는 프로젝트 바깥(`~/.godotty-backups/`)에 백업하고 교체한다. 🛑 설치 직후 `--import` 는 SIGSEGV 로 죽는다 —
+검사는 `--headless --editor --quit-after` 로 한다. 보고에는 **프로젝트 경로 · 바이너리 경로 · 검증 결과**를 적고, 창이 필요한
+"하단 Terminal → + 로 두 터미널" 확인은 **남은 수동 확인**으로 따로 적는다(§4-3).
 
 ---
 
@@ -458,6 +469,7 @@ Godot에서 실제로 버그를 만들어내는 지점이다. 예외 없이 지�
 | [debugging.md](references/debugging.md) | 실행 뒤 문제 — Output·Debugger·Remote 씬 트리·오류 읽기·프로파일러·ObjectDB·원격 디버그·Android 심볼화·Troubleshooting·내비 디버그 | 오류 메시지·안 보임·느림·폰에서만 죽음 |
 | [keywords.md](references/keywords.md) | 예전 `description` 의 트리거 키워드 전량(9,319자) — 검색 색인 | 어떤 질문이 어느 문서로 가야 하는지 찾을 때 |
 | [godot-init.md](references/godot-init.md) | `/godot init` 설치 절차 전문 + `install.sh`·`uninstall.sh` 옵션·장치 목록 기준 (SKILL.md 에서 이동) | `/godot init` 지시를 받았을 때 · 실기기 빌드·설치 |
+| [godotty.md](references/godotty.md) | `/godot install-godotty` — **Godotty 에디터 터미널 애드온** 설치(v0.9.7 설치 ZIP · 스크립트 `install_godotty.sh`) · 요청문 7단계 · 파일·헤드리스 검증 · 🛑 설치 직후 `--import` SIGSEGV · git 110 MB·export 제외 | Godotty 설치 요청 · 하단 Terminal 버튼이 안 보일 때 |
 
 ## 번들 스크립트
 
@@ -487,6 +499,15 @@ Godot 에디터가 실행 중이어야 한다. 상세 사용법은 [references/l
 `adb devices` 의 `device` 상태만), stdin 이 터미널이 아닐 때 묻지 않고 목록만 찍는 동작, macOS `.zip` 풀기와
 `com.apple.quarantine` 제거는 위 문서에 있다. 에디터 Remote Deploy 와 결과가 같으므로 에디터를 띄우지 않는
 작업에서는 이 스크립트를 쓴다 → [references/headless-workflow.md](references/headless-workflow.md) §3.
+
+### scripts/install_godotty.sh — Godotty 터미널 애드온 설치 · 상세는 [references/godotty.md](references/godotty.md)
+
+```bash
+bash .claude/skills/godot/scripts/install_godotty.sh --dry-run            # 대상·버전·실행 중 에디터만 확인
+bash .claude/skills/godot/scripts/install_godotty.sh [--project <경로>]    # 받기 → sha256 대조 → 백업·복사 → 파일·헤드리스 검사
+```
+
+종료 코드 2 = 대상 불명확(묻는다) · 3 = 대상 에디터 실행 중(닫아 달라고 한다) · 4 = Godot 4.7 미만 · 5 = 다운로드·ZIP · 6 = 검사 실패.
 
 ### scripts/xvfb_run.sh — 🖥 가상 모니터: 사람 화면 없이 스크린샷·녹화
 
