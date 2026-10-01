@@ -10,7 +10,7 @@
 4. [InputEvent 처리](#4-inputevent-처리)
 5. [마우스 캡처와 시점 조작](#5-마우스-캡처와-시점-조작)
 6. [게임패드](#6-게임패드)
-7. [터치와 가상 조이스틱](#7-터치와-가상-조이스틱)
+7. [터치와 가상 조이스틱](#7-터치와-가상-조이스틱) — 🛑 [Android 핀치가 안 될 때](#-android-에서-두-손가락-핀치가-안-된다--disable_scroll_deadzone-을-켠다)
 8. [키 리바인딩](#8-키-리바인딩)
 9. [Control 레이아웃 시스템](#9-control-레이아웃-시스템)
 10. [컨테이너](#10-컨테이너)
@@ -481,6 +481,36 @@ pointing/emulate_touch_from_mouse=false
 
 에뮬레이션을 켜면 UI 버튼이 터치에서도 그냥 동작한다.
 다만 멀티터치가 필요하면 `InputEventScreenTouch`/`InputEventScreenDrag`를 직접 처리한다.
+
+### 🛑 Android 에서 두 손가락 핀치가 안 된다 — `disable_scroll_deadzone` 을 켠다
+
+`ScreenTouch`/`ScreenDrag` 로 핀치 줌을 직접 만들었는데 **데스크톱·헤드리스 검사는 통과하고 Android 폰에서만 줌이 안 되면** 이것이다.
+
+```ini
+[input_devices]
+
+pointing/android/disable_scroll_deadzone=true   # 기본 false (4.7.2 doctool 확인)
+```
+
+| | 기본값(false) | true |
+|---|---|---|
+| 끌기(`ACTION_MOVE`)를 Godot 에 넘기는 때 | `GestureDetector.onScroll` 이 부를 때만 — 손가락들의 **가운데 점**이 터치 슬롭을 넘게 움직여야 한다 | 첫 손가락이 움직일 때마다 바로(`onActionMove`) — 모든 손가락의 위치가 함께 온다 |
+| 두 손가락을 **대칭으로** 벌리기 | 가운데 점이 그대로라 `ScreenDrag` 가 **0건** — 닿고 떨어지는 `ScreenTouch` 만 온다 | 손가락마다 `ScreenDrag` 가 온다 |
+| 한 손가락 끌기 | 슬롭(약 8 dp)을 넘은 뒤부터 온다 — 처음 움직인 만큼이 빠진다 | 처음부터 온다 |
+
+- 근거: 엔진 소스 `platform/android/java/lib/src/main/java/org/godotengine/godot/input/GodotInputHandler.java` 의 `onTouchEvent`(🛑 `ACTION_MOVE` 는 「Drag events are handled by the GodotGestureHandler」 주석과 함께 그냥 버린다)와 `GodotGestureHandler.kt` 의 `onScroll`·`onActionMove`. 설정은 `Godot.kt` 가 `input_devices/pointing/android/disable_scroll_deadzone` 으로 읽는다.
+- 켜도 첫 손가락을 가만히 두고 둘째만 움직이면 가운데 점이 슬롭을 넘은 뒤부터 `onScroll` 이 넘긴다(그 전 조금은 빠진다).
+- `enable_pan_and_scale_gestures` 를 켜는 것은 다른 길이다 — 두 손가락 동작을 `InputEventMagnifyGesture`·`InputEventPanGesture` 로 **바꿔** 보낸다(손가락별 `ScreenDrag` 대신). `PanGesture` 를 macOS 트랙패드 스크롤로 읽는 코드가 있으면 뜻이 꼬인다.
+- 실측(방필 2026-10-01, Galaxy A17 Android 16 · A12 Android 12): 대칭으로 200 → 400 px 벌리기 — 끔 2,870 → **2,870** km(`ScreenDrag` 0건), 켬 2,870 → **1,435** km.
+- 🛑 `root.push_input` 으로 넣는 검사는 `Input` 을 거치지 않아 마우스 흉내(`emulate_mouse_from_touch`)도 생기지 않는다. 폰과 같은 이벤트 순서를 보려면 `Input.parse_input_event` 로 넣는다(창 좌표 — [headless-workflow.md §2-A](headless-workflow.md)). 그래도 위의 Android 자바 층은 지나지 않으므로 핀치는 실기기에서 한 번 확인한다.
+
+#### 실기기에 두 손가락을 넣는 법 — `app_process` + `injectInputEvent`
+
+`adb shell input` 은 한 손가락뿐이고, `sendevent` 로 `/dev/input/eventN` 에 쓰는 길은 shell 이 `input` 그룹이어도 **SELinux 가 막는다**(Samsung A12·A17 `Permission denied`). scrcpy 와 같은 길을 쓴다 — shell 권한으로 도는 `app_process` 에서 `InputManagerGlobal.getInstance().injectInputEvent(event, 0)`(Android 13 이하는 `InputManager.getInstance()`)를 리플렉션으로 부른다.
+
+1. `MotionEvent.obtain(downTime, eventTime, action, 포인터 수, PointerProperties[], PointerCoords[], 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)` 로 `ACTION_DOWN` → `ACTION_POINTER_DOWN | (1 << ACTION_POINTER_INDEX_SHIFT)` → `ACTION_MOVE`(두 포인터) … → `ACTION_POINTER_UP` → `ACTION_UP` 를 20 ms 간격으로 넣는다. 좌표는 **지금 회전된 화면 좌표**다.
+2. `javac -cp <sdk>/platforms/android-36/android.jar` → `d8 --lib … --output .` 로 `classes.dex` 를 만들어 `adb push … /data/local/tmp/inject.dex`.
+3. `adb shell CLASSPATH=/data/local/tmp/inject.dex app_process / Inject …`. 결과는 측정 오토로드의 `print` 를 `adb logcat` 으로 읽는다([perf-tuning-playbook.md §3.8](perf-tuning-playbook.md) 의 사본 측정 APK).
 
 ### 4.7 내장 가상 조이스틱 — VirtualJoystick 노드
 
