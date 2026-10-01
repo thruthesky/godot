@@ -196,7 +196,7 @@ Roughness — 0=거울, 1=완전 확산
 | **Shadows** | `shadow_to_opacity`, `disable_receive_shadows` | |
 | **Billboard** | `billboard_mode`, `billboard_keep_scale`, `particles_anim_*` | `ENABLED`/`Y_BILLBOARD`/`PARTICLES` |
 | **Grow** | `grow`, `grow_amount` | 정점을 법선 방향으로 밀어냄. 외곽선 |
-| **Transform** | `fixed_size`, `use_point_size`, `point_size` | `fixed_size`=거리 무관 동일 크기 |
+| **Transform** | `fixed_size`, `use_point_size`, `point_size` | `fixed_size`=거리 무관 동일 크기. 🛑 **노드 배율은 그대로 받는다** — `scale 0.01` 로 줄인 부모 아래의 `Label3D`(`fixed_size`·`BILLBOARD_ENABLED`)는 글자가 100 배 작아져 사라진다(4.7.2 가상 모니터 실측). `pixel_size` 를 배율로 나눠 되돌린다. `visibility_range_*` 도 배율을 곱하지 않는다 — 엔진이 카메라에서 **전역 AABB 가운데까지의 거리**와 그대로 비교한다(`renderer_scene_cull.cpp` `_visibility_range_check`) |
 | **Proximity Fade** | `proximity_fade_enabled`, `proximity_fade_distance` | 다른 지오메트리와 만나는 경계 페이드 (물 가장자리) |
 | **Distance Fade** | `distance_fade_mode`, `distance_fade_min/max_distance` | `PIXEL_ALPHA`(느림) / `PIXEL_DITHER` / `OBJECT_DITHER`(가장 빠름) |
 | **Stencil** (4.5+) | `stencil_mode`, `stencil_flags`, `stencil_compare`, `stencil_reference` | 외곽선, X-ray, 벽 뚫어보기 (아래 참고) |
@@ -1202,7 +1202,7 @@ $MinimapRect.texture = sub.get_texture()
 | 파티클이 화면 밖에서도 그려짐 | `visibility_aabb` 미설정 | AABB 설정 |
 | `ReflectionProbe.UPDATE_ALWAYS` | 프레임 폭락 | `UPDATE_ONCE` 사용 |
 | Emission이 주변을 밝히지 않음 | Mobile은 GI 없음 | 별도 `OmniLight3D` 배치 |
-| `far`가 매우 큼 | Z-fighting | 필요한 거리만 |
+| 멀리서 얇은 층이 깜빡임(Z-fighting) | `near` 가 작다 — 정밀도는 `far` 가 아니라 거의 `near` 가 정한다. Mobile 은 D24 깊이 버퍼(A12·A17 실측) | `near` 를 키운다. 줌 카메라는 거리²에 비례 — [3d-core.md §9](3d-core.md#9-camera3d) near/far 지침. 🛑 Mali 기기에서 확인(A12·가상 모니터에서는 안 보였다) |
 | SubViewport 항상 갱신 | 프레임 저하 | `UPDATE_WHEN_VISIBLE` |
 | 그림자 최대 거리가 과함 | 그림자가 흐림 + 느림 | `directional_shadow_max_distance` 축소 |
 

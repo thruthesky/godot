@@ -475,9 +475,21 @@ camera.v_offset = 0.0
 camera.make_current()
 ```
 
-**near/far 설정 지침**: `far / near` 비율이 깊이 버퍼 정밀도를 결정한다.
-비율이 클수록 원거리에서 Z-fighting이 생긴다. `near = 0.05`, `far = 1000` 정도가
-일반적인 3D 게임의 안전한 값이다. 모바일에서는 `far`를 더 줄여 컬링 이득을 얻는다.
+**near/far 설정 지침**: 🛑 깊이 정밀도는 **거의 `near` 가 정한다** — `far` 가 `near` 보다 훨씬 크면 `far` 는 거의 상관없다.
+Mobile 렌더러의 깊이 버퍼는 기기가 지원하면 **24비트 정수(D24)** 다(엔진 소스 `servers/rendering/renderer_rd/storage_rd/render_scene_buffers_rd.cpp` 의
+`get_depth_format` — D24 를 먼저 고른다. Galaxy A12·A17 실측 D24, 2026-10-01). 거리 z 의 깊이 오차는 약 **`z² ÷ (near × 2²⁴)`** 다.
+`near = 0.05`, `far = 1000` 이면 거리 100 에서 오차 약 1.2 cm — 일반적인 3D 게임은 이 정도면 된다. 모바일에서는 `far` 를 줄여 컬링 이득을 얻는다.
+
+**줌 범위가 큰 카메라(지도·전략 시점)** — `near` 를 거리에 비례(`거리 × 0.002` 등)만 시키면 오차도 거리에 비례해 커져,
+멀리서 얇게 겹친 층이 뒤바뀐다. 층 간격이 g 이면 오차가 g 의 4분의 1 이 되도록 **`near = 거리² × 4 ÷ (g × 2²⁴)`** 로 거리²에 비례시키고,
+땅이 잘리지 않게 위 한계를 둔다(내려다보는 각이 15° 이상이면 `거리 × 0.25`). 방필 `MapCamera.near_for()` 실측 —
+같은 장면(55 km, 층 간격 0.1 m)에서 near 를 바꿔 기준 화면과 다른 픽셀: `거리 × 0.002` **4,602** · `거리 × 0.02` 133 · 거리²(오차 g/2) 39 · **거리²(오차 g/4) 15**.
+
+| 🛑 함정 | 내용 |
+|---|---|
+| **GPU 마다 결과가 다르다** | 같은 D24·같은 장면이 Galaxy A12(PowerVR GE8320)와 가상 모니터(lavapipe)에서는 거의 깨끗했고 **A17(Mali-G68)에서만 줄무늬**였다. 원인(타일 메모리 안의 깊이 정밀도 차이로 추정)은 확인하지 않았다. **Mali 기기에서 확인한다** |
+| **판정법** | 같은 카메라에서 앱의 near 로 한 장, near 만 크게(거리 × 0.5) 키워 한 장 찍어 픽셀을 비교한다. 다른 픽셀이 층 순서가 뒤바뀐 곳이다 — 카메라가 움직이면 깜빡인다. 같은 near 로 다시 찍은 화면은 0 px 여야 한다 |
+| **같은 높이에 겹친 면은 near 로 못 고친다** | 정밀도와 상관없이 겹친다(공원 안 연못을 공원과 같은 높이에 그려 1.2 km 에서도 줄무늬). 높이를 띄운다 — [basics/01-world.md](basics/01-world.md) 의 z-fighting 실측 |
 
 ### 좌표 변환 API
 
@@ -798,7 +810,7 @@ func _physics_process(delta: float) -> void:
 | `camera.unproject_position`만 사용 | 뒤쪽 물체가 앞에 표시됨 | `is_position_behind` 확인 |
 | SpringArm이 플레이어와 충돌 | 카메라가 붙어버림 | `add_excluded_object` |
 | 머티리얼 색 변경이 전체에 반영 | 리소스 공유 | `duplicate()` 또는 `set_instance_shader_parameter` |
-| `far`를 매우 크게 설정 | Z-fighting | `far`를 필요한 만큼만 |
+| `near` 를 너무 작게(또는 줌 카메라에서 거리에 비례만) | 멀리서 Z-fighting | `near` 를 키운다 — 줌 카메라는 거리²에 비례(§9 near/far 지침). `far` 는 거의 상관없다 |
 | 트리 밖에서 `global_transform` 읽기 | 잘못된 값 | 트리 진입 후 접근 |
 
 ## 공식 문서

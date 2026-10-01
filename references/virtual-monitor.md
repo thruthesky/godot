@@ -255,6 +255,10 @@ Apple M5 Max · Docker 18 CPU.
 | 찍은 화면에 키 아트·에셋이 비어 있다 | 비동기 로드가 끝나기 전에 찍었다(제품은 정상인데 사진만 빈다) | 로드 완료를 확인한 뒤 찍는다(§3) |
 | 원본 프로젝트를 마운트하면 사람 에디터의 임포트 캐시가 흔들린다 | 리눅스 Godot 이 `.godot/` 를 고쳐 쓴다 | **사본**을 마운트한다 — 도구가 한다 |
 | 가상 모니터에서 fps 가 낮다 | GPU 없는 소프트웨어 렌더링이다 | 🛑 성능은 여기서 판단하지 않는다 → 실기기 · [perf-tuning-playbook.md](perf-tuning-playbook.md) |
+| 🛑 층 깜빡임(z-fighting)이 가상 모니터에서는 없는데 폰에서 생긴다 | 깊이 정밀도는 GPU 마다 다르다. 같은 D24·같은 장면이 lavapipe·Galaxy A12(PowerVR)에서는 깨끗했고 **A17(Mali-G68)에서만 줄무늬**였다(방필 지도, 2026-10-01) | 깜빡임은 **Mali 실기기**에서 판정한다. 방법 — [3d-core.md §9](3d-core.md#9-camera3d) near/far 지침 |
+| **에디터 화면**을 검증해야 한다(`@tool` 이 에디터에서 하는 일) | 게임 실행(`-s`)으로는 에디터 동작이 나오지 않는다 | 에디터도 가상 모니터에서 띄운다 — `xvfb_run.sh --path <사본> --mobile --size 1600x1000 --editor`. 🛑 `-e` 는 도구의 환경변수 옵션이라 **`--editor`** 로 쓴다. 검증은 **사본에만 넣은** `EditorPlugin`(`project.godot` 의 `editor_plugins/enabled` 에 추가)이 `_process` 에서 `EditorInterface.open_scene_from_path()` → 값 검사 → 촬영 → `get_tree().quit(코드)` 순으로 한다 |
+| 에디터 3D 화면을 원하는 곳으로 돌리고 싶다 | 에디터 카메라를 옮기는 공개 API 가 없다 | `EditorInterface.get_editor_viewport_3d(0).get_camera_3d().global_transform = …` 로 넣으면 에디터가 덮어쓰지 않는다 — 60 프레임 뒤에도 그대로였다(실측, 화면을 만지면 다시 에디터가 움직인다). 촬영은 그 뷰포트의 `get_texture().get_image()`, 에디터 창 전체는 `EditorInterface.get_base_control().get_viewport()` |
+| 검증 플러그인이 `EditorInterface.save_scene()` 뒤에 꼬인다 — `Task 'save' already exists.` 가 쌓이고 종료 코드 133 | 저장하는 동안 진행 창이 프레임을 돌려 **플러그인 `_process` 가 다시 불린다** | 저장 전에 다음 단계로 넘기고 `_busy` 같은 깃발로 재진입을 막는다 |
 
 ---
 
