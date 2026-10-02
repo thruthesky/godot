@@ -266,6 +266,23 @@ godot --path . --resolution 720x1600 -s res://tests/autopilot_shot.gd -- /경로
 
 **성능·로딩 측정은 Release 입니다.**
 
+### 3.8 제품 코드를 건드리지 않는 빠른 A/B — 사본 + 측정 오토로드 + 디버그 APK
+
+§3.2 의 훅을 아직 넣지 않은 프로젝트에서 "이 노드를 넣으면 fps·메모리가 얼마나 변하나"를 실기기로 빨리 가를 때 쓴다(방필 2026-10-01).
+
+| 순서 | 할 일 |
+|---|---|
+| 1 | 프로젝트를 스크래치 폴더로 `rsync`(`.git`·`build` 제외). 🛑 사람 프로젝트는 고치지 않는다 |
+| 2 | 사본 `project.godot` 에 측정 오토로드를 넣는다 — 씬이 뜨면 카메라를 장면마다 옮기고 `Performance` 값을 `print`, `get_viewport().get_texture().get_image().save_png("user://…")` |
+| 3 | 사본에서만: Android 라이브러리(AAR)를 싣는 내보내기 플러그인을 끈다(Gradle 빌드가 꺼진 프리셋은 일반 APK 로 내보낸다) · `textures/vram_compression/import_etc2_astc=true`(없으면 `ETC2/ASTC texture compression is required` 로 거절) · 패키지 이름에 `.probe` 를 붙여 기기의 진짜 앱과 섞이지 않게 |
+| 4 | `godot --headless --path <사본> --export-debug "Android" probe.apk` → `adb install -r` → `adb shell monkey -p <패키지> -c android.intent.category.LAUNCHER 1` |
+| 5 | 실행 중 `adb shell dumpsys meminfo <패키지>` 로 PSS·Graphics, 끝나면 `adb logcat -d` 의 `print` 줄 |
+| 6 | 촬영본 회수 — 디버그 APK 는 `run-as` 가 된다: `adb exec-out run-as <패키지> cat files/<경로>.png > x.png`(`user://` = `/data/data/<패키지>/files`) |
+| 7 | 비교군(예: 그 노드를 뺀 씬)도 같은 방법으로 만들어 **같은 기기에서 번갈아** 잰다. 끝나면 측정 앱을 지운다 |
+
+- 🛑 디버그 빌드다 — fps 절대값이 아니라 **같은 조건의 A/B 차이**로만 쓴다. 방필 A12: 메트로 지도 있음 27~31 fps · 없음 58~60 fps(GPU 병목이라 차이가 분명했다).
+- 화면을 기기 안에서 비교하지 말고 PNG 를 맥으로 가져와 헤드리스 Godot 의 `Image` 로 비교한다(폰 발열·시간).
+
 ---
 
 <a id="4"></a>

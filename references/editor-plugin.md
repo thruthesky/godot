@@ -174,6 +174,60 @@ func _get_configuration_warnings() -> PackedStringArray:
 사용자가 설정을 빠뜨렸을 때 실행 전에 알려주므로,
 팀에서 쓰는 노드에는 반드시 넣는다.
 
+### 화면에만 맞춘 값은 저장 직전에 되돌린다 — `NOTIFICATION_EDITOR_PRE_SAVE`
+
+`@tool` 스크립트가 **에디터 화면을 위해** 자식 노드의 값을 바꾸면(예: 0.01 로 줄여 끼운 씬의 이름표 `pixel_size` 를 100 배로),
+그 값이 씬 파일에 저장될 수 있다. 저장된 값에 실행할 때 한 번 더 맞추면 **두 번 바뀐다.**
+
+| 경우 | 바꾼 자식 값이 저장되는가 | 근거 |
+|---|---|---|
+| 인스턴스(`instance=`) 안의 노드 — 「편집 가능한 자식」 끔(기본) | **저장 안 된다** | `scene/resources/packed_scene.cpp` `_parse_node` — 주인이 편집 씬이 아니고 편집 가능 인스턴스도 아니면 건너뛴다 |
+| 씬 독에서 그 인스턴스의 **「편집 가능한 자식」을 켬** | 🛑 **저장된다** | 같은 함수 — `is_editable_instance` 면 바뀐 속성을 덮어쓰기로 적는다 |
+| 상속 씬의 노드 · 직접 만든 자식 | 🛑 저장된다 | 주인이 편집 씬 루트 |
+
+그래서 **저장 직전에 원래 값으로 되돌리고 저장 직후에 다시 맞춘다.** 에디터의 `EditorNode::_save_scene` 이
+`NOTIFICATION_EDITOR_PRE_SAVE`(9001) → 씬 묶기(`pack`) → `NOTIFICATION_EDITOR_POST_SAVE`(9002) 순서로 두 알림을 **씬 전체에**
+(`propagate_notification`) 보낸다(`editor/editor_node.cpp`, 4.7). 게임 실행 중에는 오지 않는다.
+
+```gdscript
+@tool
+extends Node3D
+
+var _fitted: Array[Label3D] = []
+var _originals: PackedFloat64Array = []
+
+func _ready() -> void:
+    _fit()
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_EDITOR_PRE_SAVE:
+        _restore()          # 맞추기 전 값으로 — 이 상태가 파일에 저장된다
+    elif what == NOTIFICATION_EDITOR_POST_SAVE:
+        _fit()              # 화면은 다시 맞춘 상태로
+
+func _fit() -> void:
+    if not _fitted.is_empty():
+        return              # 두 번 맞추지 않는다
+    for node: Node in find_children("*", "Label3D", true, false):
+        var label := node as Label3D
+        _fitted.append(label)
+        _originals.append(label.pixel_size)
+        label.pixel_size /= global_basis.get_scale().x
+
+func _restore() -> void:
+    for i: int in _fitted.size():
+        if is_instance_valid(_fitted[i]):
+            _fitted[i].pixel_size = _originals[i]
+    _fitted.clear()
+    _originals.clear()
+```
+
+- 실전 코드는 방필 `scenes/maps/philippines/region_inset.gd`(이름표 크기·보이는 거리·작은 메시 숨기기, 인스펙터 값이 바뀌면 다시 맞춤).
+- **검증 (2026-10-01, 4.7.2)** — 가상 모니터에서 실제 에디터로 씬을 열고 검증용 `EditorPlugin` 이 `EditorInterface.save_scene()` 을 세 번 불렀다:
+  그냥 저장 / 「편집 가능한 자식」 켜고 저장(`[editable path=…]` 가 생겨도 `pixel_size` 없음) / 대조군(맞추지 않는 `modulate` 를 바꾸면
+  저장된다 — 되돌리지 않으면 맞춘 값도 저장된다는 뜻). 30개 검사 모두 통과. 방법은 [virtual-monitor.md §7](virtual-monitor.md#7-함정).
+- 노드를 **지우거나 옮기는** 일(카메라 떼기 등)은 `Engine.is_editor_hint()` 일 때 하지 않는다 — 에디터의 선택·실행 취소 기록과 엇갈릴 수 있어 방필은 게임을 실행할 때만 한다.
+
 ### @tool 스크립트 수정 후
 
 **에디터가 이미 로드한 옛 버전을 계속 쓴다.** 다음 중 하나로 재로드한다.

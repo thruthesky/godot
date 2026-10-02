@@ -407,7 +407,7 @@ glTF 애니메이션 임포트와 후처리 스크립트, 콤보·히트스톱�
 시점을 설명한다. `InputMap` 액션 정의와 `physical_keycode`를 써야 하는 이유,
 `Input.get_vector()`가 대각선 정규화와 데드존을 처리하는 방식, `InputEvent` 계층 전체와
 `relative` vs `screen_relative`의 차이, 마우스 캡처 관리와 알트탭 대응, 게임패드 연결
-감지와 입력 장치 자동 전환, **4.7 장치 ID 상수**(`DEVICE_ID_KEYBOARD`=16 /
+감지와 입력 장치 자동 전환, **🛑 Android 두 손가락 핀치에는 `input_devices/pointing/android/disable_scroll_deadzone`**(끄면 대칭 핀치의 `ScreenDrag` 가 0건)과 실기기에 두 손가락을 넣는 법(`app_process` + `injectInputEvent`), **4.7 장치 ID 상수**(`DEVICE_ID_KEYBOARD`=16 /
 `DEVICE_ID_MOUSE`=32 / 게임패드는 0부터 — 터치도 0이라 겹치는 함정 포함),
 **창 미포커스 시 게임패드 입력 무시 설정**(`joypads/ignore_joypad_on_unfocused_application`,
 기본 꺼짐), 키 리바인딩 저장/로드를 다룬다. **4.7 내장 `VirtualJoystick` 노드는 전체
